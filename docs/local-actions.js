@@ -1,10 +1,41 @@
 // ZIQVA OLIM versi publik (GitHub Pages): meniru endpoint ./actions versi
-// server, tapi semua data disimpan di localStorage browser perangkat ini.
+// server, dengan data GLOBAL di database awan Supabase (REST API, anon key).
+// Peringkat, jumlah online, Mode Kelas, akun Guru/Ortu dan pantauan kini
+// berlaku lintas perangkat. Kunci di bawah adalah kunci publik (anon) yang
+// memang dirancang untuk ditempel di aplikasi web.
 (function () {
-  var K = { attempts: "ziqva_attempts", users: "ziqva_users", codes: "ziqva_codes", sessions: "ziqva_sessions", watched: "ziqva_watched", seq: "ziqva_seq" };
-  function read(key, fallback) { try { var v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } }
-  function write(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {} }
-  function nextId(kind) { var seq = read(K.seq, {}); seq[kind] = (seq[kind] || 0) + 1; write(K.seq, seq); return seq[kind]; }
+  var SB_URL = "https://kxibdredkbgknkjuvykr.supabase.co";
+  var SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4aWJkcmVka2Jna25ranV2eWtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUzMzM2NjUsImV4cCI6MjExMDkwOTY2NX0.rZLNBXb32_AATSrG6hxFmQIzaXsQlrO-VOpO9JW5YI0";
+
+  var originalFetch = window.fetch.bind(window);
+
+  async function sb(path, opts) {
+    opts = opts || {};
+    var headers = { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY, "Content-Type": "application/json" };
+    if (opts.prefer) headers.Prefer = opts.prefer;
+    var res;
+    try {
+      res = await originalFetch(SB_URL + "/rest/v1/" + path, {
+        method: opts.method || "GET",
+        headers: headers,
+        body: opts.body ? JSON.stringify(opts.body) : undefined,
+      });
+    } catch (e) {
+      throw new Error("Tidak dapat terhubung ke database. Periksa koneksi internet lalu coba lagi.");
+    }
+    var text = await res.text();
+    var data = null;
+    try { data = text ? JSON.parse(text) : null; } catch (e) { data = null; }
+    if (!res.ok) throw new Error((data && data.message) || "Database menolak permintaan ini.");
+    return data;
+  }
+  function enc(v) { return encodeURIComponent(String(v)); }
+  function getRows(table, query) { return sb(table + "?" + query); }
+  async function getOne(table, query) { var rows = await getRows(table, query); return rows && rows.length ? rows[0] : null; }
+  function insertRow(table, body) { return sb(table, { method: "POST", prefer: "return=representation", body: body }).then(function (r) { return r && r[0]; }); }
+  function patchRows(table, query, body) { return sb(table + "?" + query, { method: "PATCH", prefer: "return=representation", body: body }); }
+  function deleteRows(table, query) { return sb(table + "?" + query, { method: "DELETE", prefer: "return=minimal" }); }
+
   function nameKey(n) { return String(n || "").trim().toLowerCase(); }
   var ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
   function makeCode() { var b = crypto.getRandomValues(new Uint8Array(6)); var s = ""; for (var i = 0; i < b.length; i++) s += ALPHABET[b[i] % ALPHABET.length]; return s; }
@@ -13,22 +44,34 @@
     var d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(salt + ":" + password));
     var arr = new Uint8Array(d); var s = ""; for (var i = 0; i < arr.length; i++) s += arr[i].toString(16).padStart(2, "0"); return s;
   }
-  function ensureCode(studentName) {
-    var codes = read(K.codes, {}); var key = nameKey(studentName);
-    if (codes[key]) return codes[key].code;
-    var code = makeCode(); codes[key] = { student_name: String(studentName).trim(), code: code }; write(K.codes, codes); return code;
+  async function ensureCode(studentName) {
+    var key = nameKey(studentName);
+    var row = await getOne("student_codes", "name_key=eq." + enc(key) + "&select=*");
+    if (row) return row.code;
+    try {
+      var created = await insertRow("student_codes", { name_key: key, student_name: String(studentName).trim(), code: makeCode() });
+      if (created) return created.code;
+    } catch (e) { /* mungkin dibuat perangkat lain bersamaan; ambil ulang */ }
+    var again = await getOne("student_codes", "name_key=eq." + enc(key) + "&select=*");
+    return again ? again.code : "";
   }
-  function codeFor(studentName) { var codes = read(K.codes, {}); var row = codes[nameKey(studentName)]; return row ? row.code : ""; }
-  function userForToken(token) {
-    var sessions = read(K.sessions, {}); var uid = sessions[token];
-    var user = read(K.users, []).find(function (u) { return u.id === uid; });
+  async function codeFor(studentName) {
+    var row = await getOne("student_codes", "name_key=eq." + enc(nameKey(studentName)) + "&select=code");
+    return row ? row.code : "";
+  }
+  async function userForToken(token) {
+    if (!token) throw new Error("Sesi login sudah berakhir. Silakan masuk lagi.");
+    var sess = await getOne("app_sessions", "token=eq." + enc(token) + "&select=*");
+    if (!sess) throw new Error("Sesi login sudah berakhir. Silakan masuk lagi.");
+    var user = await getOne("app_users", "id=eq." + enc(sess.user_id) + "&select=*");
     if (!user) throw new Error("Sesi login sudah berakhir. Silakan masuk lagi.");
     return user;
   }
   function toUser(u) { return { id: u.id, name: u.name, username: u.username, role: u.role, organization: u.organization }; }
-  function newSession(userId) {
+  async function newSession(userId) {
     var token = crypto.randomUUID() + "-" + crypto.randomUUID();
-    var sessions = read(K.sessions, {}); sessions[token] = userId; write(K.sessions, sessions); return token;
+    await sb("app_sessions", { method: "POST", prefer: "return=minimal", body: { token: token, user_id: userId } });
+    return token;
   }
   function strip(a) { var copy = Object.assign({}, a); delete copy.device_id; return copy; }
   function classPub(c) {
@@ -39,9 +82,8 @@
       status: c.status, is_open: c.status === "open", created_at: c.created_at,
     };
   }
-  function classRanking(classId) {
-    var parts = read("ziqva_class_parts", []).filter(function (p) { return p.class_id === classId && p.status === "finished"; });
-    var sorted = parts.slice().sort(function (a, b) { return (b.score || 0) - (a.score || 0) || (a.duration_sec || 999999) - (b.duration_sec || 999999); });
+  function rankingFromParts(parts) {
+    var sorted = parts.filter(function (p) { return p.status === "finished"; }).slice().sort(function (a, b) { return (b.score || 0) - (a.score || 0) || (a.duration_sec || 999999) - (b.duration_sec || 999999); });
     return sorted.map(function (p, i) {
       return {
         rank: i + 1, participant_id: p.id, student_name: p.student_name, name: p.student_name,
@@ -50,20 +92,38 @@
       };
     });
   }
+  async function classRanking(classId) {
+    var parts = await getRows("class_participants", "class_id=eq." + enc(classId) + "&select=*");
+    return rankingFromParts(parts || []);
+  }
 
   var actions = {
     async saveAttempt(args) {
-      var attempts = read(K.attempts, []); var id = nextId("attempt");
-      attempts.push({ id: id, student_name: args.student_name, jenjang: args.jenjang, mapel: args.mapel, mode: args.mode, score: args.score, correct: args.correct, total: args.total, duration_sec: args.duration_sec, created_at: new Date().toISOString(), monitor_code: "", device_id: args.device_id || "" });
-      write(K.attempts, attempts);
-      return { id: id, monitor_code: ensureCode(args.student_name) };
+      var row = await insertRow("attempts", {
+        student_name: args.student_name, jenjang: args.jenjang, mapel: args.mapel, mode: args.mode,
+        score: args.score, correct: args.correct, total: args.total, duration_sec: args.duration_sec || 0,
+        device_id: args.device_id || "", class_name: args.class_name || null,
+      });
+      var code = await ensureCode(args.student_name);
+      return { id: row ? row.id : null, monitor_code: code };
     },
     async listAttempts(args) {
       var limit = args.limit || 30;
-      var rows = args.device_id ? read(K.attempts, []).filter(function (a) { return a.device_id === args.device_id; }).sort(function (x, y) { return y.id - x.id; }) : [];
+      var rows = [];
+      if (args.device_id) {
+        rows = await getRows("attempts", "device_id=eq." + enc(args.device_id) + "&select=*&order=id.desc&limit=500") || [];
+      }
       var n = rows.length;
+      var codes = {};
+      var names = {};
+      rows.forEach(function (r) { names[nameKey(r.student_name)] = true; });
+      var keys = Object.keys(names);
+      if (keys.length) {
+        var codeRows = await getRows("student_codes", "name_key=in.(" + keys.map(function (k) { return '"' + k.replace(/"/g, "") + '"'; }).join(",") + ")&select=*") || [];
+        codeRows.forEach(function (c) { codes[c.name_key] = c.code; });
+      }
       return {
-        attempts: rows.slice(0, limit).map(function (r) { var c = strip(r); c.monitor_code = codeFor(r.student_name); return c; }),
+        attempts: rows.slice(0, limit).map(function (r) { var c = strip(r); c.monitor_code = codes[nameKey(r.student_name)] || ""; return c; }),
         stats: {
           total_attempts: n,
           average_score: n ? Math.round(rows.reduce(function (s, r) { return s + r.score; }, 0) / n) : 0,
@@ -73,51 +133,59 @@
         },
       };
     },
+    async deleteAttempt(args) {
+      await deleteRows("attempts", "id=eq." + enc(args.id) + "&device_id=eq." + enc(args.device_id || ""));
+      return { ok: true };
+    },
     async register(args) {
-      var users = read(K.users, []); var username = String(args.username).trim().toLowerCase();
-      if (users.some(function (u) { return u.username === username; })) throw new Error("Username itu sudah dipakai. Coba username lain atau masuk dengan akun yang ada.");
+      var username = String(args.username).trim().toLowerCase();
+      var existing = await getOne("app_users", "username=eq." + enc(username) + "&select=id");
+      if (existing) throw new Error("Username itu sudah dipakai. Coba username lain atau masuk dengan akun yang ada.");
       var salt = randomHex(16);
-      var user = { id: nextId("user"), name: args.name, username: username, role: args.role, organization: args.organization || "", password_record: salt + "$" + (await hashPw(args.password, salt)) };
-      users.push(user); write(K.users, users);
-      return { token: newSession(user.id), user: toUser(user) };
+      var user = await insertRow("app_users", {
+        name: args.name, username: username, role: args.role, organization: args.organization || "",
+        password_record: salt + "$" + (await hashPw(args.password, salt)),
+      });
+      var token = await newSession(user.id);
+      return { token: token, user: toUser(user) };
     },
     async login(args) {
-      var user = read(K.users, []).find(function (u) { return u.username === String(args.username).trim().toLowerCase(); });
+      var user = await getOne("app_users", "username=eq." + enc(String(args.username).trim().toLowerCase()) + "&select=*");
       if (!user) throw new Error("Username atau kata sandi salah. Periksa lagi ya.");
-      var parts = user.password_record.split("$");
+      var parts = String(user.password_record || "").split("$");
       if ((await hashPw(args.password, parts[0] || "")) !== (parts[1] || "")) throw new Error("Username atau kata sandi salah. Periksa lagi ya.");
-      return { token: newSession(user.id), user: toUser(user) };
+      var token = await newSession(user.id);
+      return { token: token, user: toUser(user) };
     },
     async me(args) {
       if (!args.token) return { user: null };
-      try { return { user: toUser(userForToken(args.token)) }; } catch (e) { return { user: null }; }
+      try { return { user: toUser(await userForToken(args.token)) }; } catch (e) { return { user: null }; }
     },
     async logout(args) {
-      var sessions = read(K.sessions, {}); delete sessions[args.token]; write(K.sessions, sessions);
+      await deleteRows("app_sessions", "token=eq." + enc(args.token || ""));
       return { ok: true };
     },
     async addWatchedStudent(args) {
-      var user = userForToken(args.token);
-      var codes = read(K.codes, {}); var row = codes[nameKey(args.student_name)];
+      var user = await userForToken(args.token);
+      var row = await getOne("student_codes", "name_key=eq." + enc(nameKey(args.student_name)) + "&select=*");
       if (!row || row.code !== String(args.code).trim().toUpperCase()) throw new Error("Kode pantau tidak cocok untuk nama itu. Minta kode pantau yang tampil di layar hasil / Prestasiku anak, lalu coba lagi.");
-      var watched = read(K.watched, []);
-      var dup = watched.find(function (w) { return w.user_id === user.id && w.student_name.toLowerCase() === String(args.student_name).toLowerCase(); });
+      var mine = await getRows("watched", "user_id=eq." + enc(user.id) + "&select=*") || [];
+      var dup = mine.find(function (w) { return nameKey(w.student_name) === nameKey(args.student_name); });
       if (dup) return { id: dup.id };
-      var entry = { id: nextId("watched"), user_id: user.id, student_name: args.student_name };
-      watched.push(entry); write(K.watched, watched);
-      return { id: entry.id };
+      var entry = await insertRow("watched", { user_id: user.id, student_name: args.student_name });
+      return { id: entry ? entry.id : null };
     },
     async removeWatchedStudent(args) {
-      var user = userForToken(args.token);
-      write(K.watched, read(K.watched, []).filter(function (w) { return !(w.id === args.id && w.user_id === user.id); }));
+      var user = await userForToken(args.token);
+      await deleteRows("watched", "id=eq." + enc(args.id) + "&user_id=eq." + enc(user.id));
       return { ok: true };
     },
     async monitorDashboard(args) {
-      var user = userForToken(args.token);
-      var watchedRows = read(K.watched, []).filter(function (w) { return w.user_id === user.id; }).sort(function (a, b) { return b.id - a.id; });
+      var user = await userForToken(args.token);
+      var watchedRows = (await getRows("watched", "user_id=eq." + enc(user.id) + "&select=*&order=id.desc")) || [];
       var watched = watchedRows.map(function (w) { return { id: w.id, student_name: w.student_name }; });
-      var all = read(K.attempts, []).sort(function (a, b) { return b.id - a.id; });
-      var visible = all.filter(function (a) { return watched.some(function (w) { return w.student_name.toLowerCase() === a.student_name.toLowerCase(); }); });
+      var all = (await getRows("attempts", "select=*&order=id.desc&limit=500")) || [];
+      var visible = all.filter(function (a) { return watched.some(function (w) { return nameKey(w.student_name) === nameKey(a.student_name); }); });
       var byStudent = {};
       visible.forEach(function (a) { (byStudent[a.student_name] = byStudent[a.student_name] || []).push(a); });
       var students = Object.keys(byStudent).map(function (studentName) {
@@ -137,7 +205,7 @@
     async getLeaderboard(args) {
       var jenjang = args.jenjang || "";
       var limit = args.limit || 50;
-      var rows = read(K.attempts, []).filter(function (a) { return a.jenjang === jenjang; });
+      var rows = (await getRows("attempts", "jenjang=eq." + enc(jenjang) + "&select=*&order=id.desc&limit=2000")) || [];
       var byName = {};
       rows.forEach(function (a) {
         var k = nameKey(a.student_name);
@@ -166,71 +234,66 @@
       };
     },
     async heartbeat(args) {
-      var presence = read("ziqva_presence", {});
-      var now = Date.now();
-      if (args && args.device_id) presence[args.device_id] = now;
-      Object.keys(presence).forEach(function (k) { if (now - presence[k] > 90000) delete presence[k]; });
-      write("ziqva_presence", presence);
-      return { ok: true, online: Object.keys(presence).length };
+      if (args && args.device_id) {
+        await sb("presence?on_conflict=device_id", { method: "POST", prefer: "resolution=merge-duplicates,return=minimal", body: { device_id: args.device_id, last_seen: new Date().toISOString() } });
+      }
+      var cutoff = new Date(Date.now() - 90000).toISOString();
+      var rows = (await getRows("presence", "last_seen=gt." + enc(cutoff) + "&select=device_id")) || [];
+      return { ok: true, online: rows.length };
     },
     async getOnlineCount(args) {
-      var presence = read("ziqva_presence", {});
-      var now = Date.now();
-      Object.keys(presence).forEach(function (k) { if (now - presence[k] > 90000) delete presence[k]; });
-      write("ziqva_presence", presence);
-      return { online: Object.keys(presence).length };
+      var cutoff = new Date(Date.now() - 90000).toISOString();
+      var rows = (await getRows("presence", "last_seen=gt." + enc(cutoff) + "&select=device_id")) || [];
+      return { online: rows.length };
     },
     async createExamClass(args) {
-      var user = userForToken(args.token);
+      var user = await userForToken(args.token);
       var role = String(user.role || "").toLowerCase();
       if (role && role.indexOf("guru") === -1 && role.indexOf("teacher") === -1) throw new Error("Hanya akun Guru yang bisa membuat kelas ujian.");
-      var classes = read("ziqva_classes", []);
       var code = "KLS-" + makeCode().slice(0, 6);
-      var cls = {
-        id: nextId("class"), code: code, class_code: code, teacher_id: user.id,
-        class_name: args.class_name, name: args.class_name,
+      var cls = await insertRow("exam_classes", {
+        code: code, teacher_id: user.id, class_name: args.class_name,
         jenjang: args.jenjang, subject_id: args.subject_id || "", subject_name: args.subject_name,
         level: args.level, question_count: args.question_count, duration_minutes: args.duration_minutes,
-        questions: args.questions || [], status: "open", is_open: true,
-        created_at: new Date().toISOString(),
-      };
-      classes.push(cls); write("ziqva_classes", classes);
+        questions: args.questions || [], status: "open",
+      });
       var pub = classPub(cls);
       return Object.assign({ ok: true, class: pub }, pub);
     },
     async listMyClasses(args) {
-      var user = userForToken(args.token);
-      var parts = read("ziqva_class_parts", []);
-      var classes = read("ziqva_classes", []).filter(function (c) { return c.teacher_id === user.id; }).sort(function (a, b) { return b.id - a.id; }).map(function (c) {
+      var user = await userForToken(args.token);
+      var classes = (await getRows("exam_classes", "teacher_id=eq." + enc(user.id) + "&select=*&order=id.desc")) || [];
+      var parts = [];
+      if (classes.length) {
+        var ids = classes.map(function (c) { return c.id; }).join(",");
+        parts = (await getRows("class_participants", "class_id=in.(" + ids + ")&select=class_id,status")) || [];
+      }
+      var result = classes.map(function (c) {
         var pub = classPub(c);
         var ps = parts.filter(function (p) { return p.class_id === c.id; });
         pub.participant_count = ps.length; pub.participants_count = ps.length;
         pub.finished_count = ps.filter(function (p) { return p.status === "finished"; }).length;
         return pub;
       });
-      return { classes: classes };
+      return { classes: result };
     },
     async closeExamClass(args) {
-      var user = userForToken(args.token);
-      var classes = read("ziqva_classes", []);
-      var cls = classes.find(function (c) { return c.id === args.class_id && c.teacher_id === user.id; });
-      if (!cls) throw new Error("Kelas tidak ditemukan.");
-      cls.status = "closed"; cls.is_open = false; write("ziqva_classes", classes);
-      var pub = classPub(cls);
+      var user = await userForToken(args.token);
+      var updated = await patchRows("exam_classes", "id=eq." + enc(args.class_id) + "&teacher_id=eq." + enc(user.id), { status: "closed" });
+      if (!updated || !updated.length) throw new Error("Kelas tidak ditemukan.");
+      var pub = classPub(updated[0]);
       return Object.assign({ ok: true, class: pub }, pub);
     },
     async joinClass(args) {
-      var classes = read("ziqva_classes", []);
       var code = String(args.code || "").trim().toUpperCase();
-      var cls = classes.find(function (c) { return c.code.toUpperCase() === code; });
+      var cls = await getOne("exam_classes", "code=eq." + enc(code) + "&select=*");
       if (!cls) throw new Error("Kode Kelas tidak ditemukan. Periksa lagi kode dari gurumu ya.");
       if (cls.status !== "open") throw new Error("Kelas ini sudah ditutup oleh guru.");
-      var parts = read("ziqva_class_parts", []);
+      var parts = (await getRows("class_participants", "class_id=eq." + enc(cls.id) + "&select=*")) || [];
       var key = nameKey(args.student_name);
-      var part = parts.find(function (p) { return p.class_id === cls.id && nameKey(p.student_name) === key; });
+      var part = parts.find(function (p) { return nameKey(p.student_name) === key; });
       if (!part) {
-        part = { id: nextId("participant"), class_id: cls.id, student_name: String(args.student_name).trim(), device_id: args.device_id || "", status: "working", score: null, correct: null, total: null, duration_sec: null, joined_at: new Date().toISOString(), finished_at: null };
-        parts.push(part); write("ziqva_class_parts", parts);
+        part = await insertRow("class_participants", { class_id: cls.id, student_name: String(args.student_name).trim(), device_id: args.device_id || "", status: "working" });
       }
       var pub = classPub(cls);
       if (part.status === "finished") {
@@ -239,7 +302,7 @@
           class: pub, participant: part, participant_id: part.id,
           result: { score: part.score, correct: part.correct, total: part.total, duration_sec: part.duration_sec },
           score: part.score, correct: part.correct, total: part.total, duration_sec: part.duration_sec,
-          ranking: classRanking(cls.id),
+          ranking: rankingFromParts(parts),
         };
       }
       return {
@@ -249,11 +312,9 @@
       };
     },
     async submitClassResult(args) {
-      var classes = read("ziqva_classes", []);
-      var cls = classes.find(function (c) { return c.id === args.class_id; });
+      var cls = await getOne("exam_classes", "id=eq." + enc(args.class_id) + "&select=*");
       if (!cls) throw new Error("Kelas tidak ditemukan.");
-      var parts = read("ziqva_class_parts", []);
-      var part = parts.find(function (p) { return p.id === args.participant_id && p.class_id === cls.id; });
+      var part = await getOne("class_participants", "id=eq." + enc(args.participant_id) + "&class_id=eq." + enc(cls.id) + "&select=*");
       if (!part) throw new Error("Peserta kelas tidak ditemukan.");
       var pkg = cls.questions || [];
       var correct = 0;
@@ -263,75 +324,73 @@
       });
       var total = pkg.length || (args.submissions || []).length;
       var score = total ? Math.round((correct / total) * 100) : 0;
-      part.status = "finished"; part.score = score; part.correct = correct; part.total = total;
-      part.duration_sec = args.duration_sec || 0; part.finished_at = new Date().toISOString();
-      write("ziqva_class_parts", parts);
-      var attempts = read(K.attempts, []); var aid = nextId("attempt");
-      attempts.push({ id: aid, student_name: part.student_name, jenjang: cls.jenjang, mapel: cls.subject_name, mode: "ujian", score: score, correct: correct, total: total, duration_sec: part.duration_sec, created_at: new Date().toISOString(), monitor_code: "", device_id: args.device_id || part.device_id || "", class_name: cls.class_name, exam_class_name: cls.class_name });
-      write(K.attempts, attempts);
-      ensureCode(part.student_name);
+      var duration = args.duration_sec || 0;
+      var updated = await patchRows("class_participants", "id=eq." + enc(part.id), {
+        status: "finished", score: score, correct: correct, total: total,
+        duration_sec: duration, finished_at: new Date().toISOString(),
+      });
+      var partNow = updated && updated[0] ? updated[0] : Object.assign({}, part, { status: "finished", score: score, correct: correct, total: total, duration_sec: duration });
+      await insertRow("attempts", {
+        student_name: part.student_name, jenjang: cls.jenjang, mapel: cls.subject_name, mode: "ujian",
+        score: score, correct: correct, total: total, duration_sec: duration,
+        device_id: args.device_id || part.device_id || "", class_name: cls.class_name,
+      });
+      var monitorCode = await ensureCode(part.student_name);
       return {
-        ok: true, score: score, correct: correct, total: total, duration_sec: part.duration_sec,
-        participant: part, participant_id: part.id, class: classPub(cls),
-        ranking: classRanking(cls.id), monitor_code: codeFor(part.student_name),
+        ok: true, score: score, correct: correct, total: total, duration_sec: duration,
+        participant: partNow, participant_id: part.id, class: classPub(cls),
+        ranking: await classRanking(cls.id), monitor_code: monitorCode,
       };
     },
     async getClassDashboard(args) {
-      var user = userForToken(args.token);
-      var classes = read("ziqva_classes", []);
-      var cls = classes.find(function (c) { return c.id === args.class_id && c.teacher_id === user.id; });
+      var user = await userForToken(args.token);
+      var cls = await getOne("exam_classes", "id=eq." + enc(args.class_id) + "&teacher_id=eq." + enc(user.id) + "&select=*");
       if (!cls) throw new Error("Kelas tidak ditemukan.");
-      var parts = read("ziqva_class_parts", []).filter(function (p) { return p.class_id === cls.id; }).sort(function (a, b) { return a.id - b.id; });
+      var parts = (await getRows("class_participants", "class_id=eq." + enc(cls.id) + "&select=*&order=id.asc")) || [];
       return {
         class: classPub(cls),
         participants: parts, students: parts,
-        ranking: classRanking(cls.id),
+        ranking: rankingFromParts(parts),
         total_participants: parts.length, participants_count: parts.length,
         finished_count: parts.filter(function (p) { return p.status === "finished"; }).length,
         working_count: parts.filter(function (p) { return p.status !== "finished"; }).length,
       };
     },
     async getClassRankingByCode(args) {
-      var classes = read("ziqva_classes", []);
       var code = String(args.code || "").trim().toUpperCase();
-      var cls = classes.find(function (c) { return c.code.toUpperCase() === code; });
+      var cls = await getOne("exam_classes", "code=eq." + enc(code) + "&select=*");
       if (!cls) throw new Error("Kode Kelas tidak ditemukan. Periksa lagi kode dari gurumu ya.");
-      var parts = read("ziqva_class_parts", []).filter(function (p) { return p.class_id === cls.id; });
+      var parts = (await getRows("class_participants", "class_id=eq." + enc(cls.id) + "&select=*")) || [];
       var working = parts.filter(function (p) { return p.status !== "finished"; }).length;
       return {
-        class: classPub(cls), ranking: classRanking(cls.id),
+        class: classPub(cls), ranking: rankingFromParts(parts),
         working_count: working, still_working: working,
         finished_count: parts.filter(function (p) { return p.status === "finished"; }).length,
         total_participants: parts.length,
       };
     },
     async resetAllData(args) {
-      var attempts = read(K.attempts, []);
-      var mine = attempts.filter(function (a) { return a.device_id === (args.device_id || ""); });
-      var names = {}; mine.forEach(function (a) { names[nameKey(a.student_name)] = true; });
-      var rest = attempts.filter(function (a) { return a.device_id !== (args.device_id || ""); });
-      write(K.attempts, rest);
-      var codes = read(K.codes, {});
-      Object.keys(names).forEach(function (k) {
-        if (!rest.some(function (a) { return nameKey(a.student_name) === k; })) delete codes[k];
-      });
-      write(K.codes, codes);
+      var deviceId = args.device_id || "";
+      var mine = (await getRows("attempts", "device_id=eq." + enc(deviceId) + "&select=id,student_name")) || [];
+      var names = {};
+      mine.forEach(function (a) { names[nameKey(a.student_name)] = a.student_name; });
+      await deleteRows("attempts", "device_id=eq." + enc(deviceId));
+      var keys = Object.keys(names);
+      for (var i = 0; i < keys.length; i++) {
+        var remaining = await getOne("attempts", "student_name=eq." + enc(names[keys[i]]) + "&select=id");
+        if (!remaining) await deleteRows("student_codes", "name_key=eq." + enc(keys[i]));
+      }
       if (args.token) {
-        var sessions = read(K.sessions, {}); var uid = sessions[args.token];
-        if (uid != null) {
-          write(K.watched, read(K.watched, []).filter(function (w) { return w.user_id !== uid; }));
-          delete sessions[args.token]; write(K.sessions, sessions);
+        var sess = await getOne("app_sessions", "token=eq." + enc(args.token) + "&select=*");
+        if (sess) {
+          await deleteRows("watched", "user_id=eq." + enc(sess.user_id));
+          await deleteRows("app_sessions", "token=eq." + enc(args.token));
         }
       }
       return { ok: true, deleted_attempts: mine.length };
     },
-    async deleteAttempt(args) {
-      write(K.attempts, read(K.attempts, []).filter(function (a) { return !(a.id === args.id && a.device_id === (args.device_id || "")); }));
-      return { ok: true };
-    },
   };
 
-  var originalFetch = window.fetch.bind(window);
   window.fetch = function (input, init) {
     var url = typeof input === "string" ? input : (input && input.url) || "";
     var method = (init && init.method) || (typeof input === "object" && input && input.method) || "GET";
