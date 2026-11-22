@@ -148,6 +148,25 @@ export const MATERIALS: Record<string, Material> = {
     ],
     tips: ["Buat garis waktu di dinding kamar; tempel peristiwa sesuai urutannya.", "Hubungkan setiap peristiwa dengan 'sebab → kejadian → akibat' agar tidak sekadar hafal tanggal."],
   },
+  sejarah: {
+    title: "Sejarah — Perjalanan Bangsa & Dunia",
+    intro: "Sejarah adalah cerita nyata masa lalu yang membentuk kita hari ini. Cara termudah mempelajarinya: ikuti garis waktunya seperti membaca cerita — dari kerajaan-kerajaan Nusantara, masa penjajahan, perjuangan kemerdekaan, sampai Indonesia modern dan peristiwa dunia.",
+    focus: {
+      TK: "Bendera Merah Putih, lagu Indonesia Raya, Hari Kemerdekaan 17 Agustus, dan presiden pertama.",
+      SD: "Kerajaan Nusantara (Kutai, Sriwijaya, Majapahit, Demak), pahlawan daerah & nasional, dan Proklamasi 1945.",
+      SMP: "Kedatangan bangsa Eropa, tanam paksa, pergerakan nasional, Sumpah Pemuda, dan mempertahankan kemerdekaan.",
+      SMA: "Orde Lama, Orde Baru, Reformasi, Perang Dunia I & II, Perang Dingin, dan peradaban dunia.",
+    },
+    sections: [
+      { h: "1. Garis waktu besar Indonesia", body: "Abad ke-4 Kutai → abad ke-7 Sriwijaya → 1293 Majapahit → 1511 Portugis di Malaka → 1602 VOC → 1830 Tanam Paksa → 1908 Budi Utomo → 1928 Sumpah Pemuda → 1942 Jepang masuk → 17 Agustus 1945 Proklamasi → 1949 pengakuan kedaulatan → 1959 Dekrit → 1966 Supersemar → 1998 Reformasi. Satu garis, seluruh cerita!" },
+      { h: "2. Kerajaan-kerajaan Nusantara", body: "Kutai tertua (prasasti Yupa, Kalimantan Timur). Sriwijaya kerajaan maritim di Palembang. Majapahit dipersatukan Gajah Mada (Sumpah Palapa). Demak kerajaan Islam pertama di Jawa. Setiap kerajaan ingat lewat: pusatnya + tokohnya + peninggalannya." },
+      { h: "3. Masa penjajahan", body: "Portugis (1511), lalu Belanda lewat VOC (1602) yang memonopoli rempah. Daendels membangun Jalan Anyer–Panarukan; Van den Bosch menerapkan Tanam Paksa (1830). Inggris sempat memerintah lewat Raffles (1811–1816). Jepang menduduki Indonesia 1942–1945." },
+      { h: "4. Pergerakan & Proklamasi", body: "1908 Budi Utomo membuka Kebangkitan Nasional. 1928 Sumpah Pemuda menyatukan tekad. 1945: BPUPKI merumuskan dasar negara, Jepang menyerah 15 Agustus, golongan muda mendesak lewat Rengasdengklok, dan 17 Agustus 1945 Soekarno–Hatta memproklamasikan kemerdekaan. Bendera pusaka dijahit Fatmawati." },
+      { h: "5. Indonesia modern", body: "1959 Dekrit Presiden → Demokrasi Terpimpin. 1965 peristiwa G30S. 1966 Supersemar → Orde Baru dengan pembangunan Repelita. 1997 krisis moneter → 1998 Reformasi: Soeharto berhenti, Habibie menjadi presiden, Pemilu demokratis 1999, dan UUD diamandemen 1999–2002." },
+      { h: "6. Dunia: perang & peradaban", body: "Peradaban awal: Mesopotamia (Tigris–Eufrat) dan Mesir (Nil). 1776 Kemerdekaan AS, 1789 Revolusi Prancis. 1914–1918 Perang Dunia I, 1939–1945 Perang Dunia II (berakhir setelah bom atom Hiroshima–Nagasaki dan menyerahnya Jepang). Sesudahnya Perang Dingin AS–Uni Soviet hingga Uni Soviet bubar 1991." },
+    ],
+    tips: ["Gambar garis waktu panjang di kertas dan tempel peristiwa satu per satu — sejarah adalah cerita berurutan.", "Untuk setiap peristiwa, tanyakan: kapan, siapa, dan mengapa penting? Tiga pertanyaan itu mengunci ingatan.", "Kaitkan sejarah dunia dengan Indonesia: menyerahnya Jepang (15 Agustus 1945) adalah kunci percepatan Proklamasi."],
+  },
   ppkn: {
     title: "PPKn — Pancasila & Kewarganegaraan",
     intro: "PPKn mengajarkan bagaimana negara kita diatur dan bagaimana menjadi warga yang baik: Pancasila, UUD 1945, lembaga negara, dan hak asasi manusia.",

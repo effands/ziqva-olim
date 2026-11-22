@@ -1,0 +1,7 @@
+node_modules/
+app.db
+app.db-shm
+app.db-wal
+*.tsbuildinfo
+client/dist/
+server/dist/

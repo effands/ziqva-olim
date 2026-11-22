@@ -126,8 +126,7 @@ export const MALAIKAT: readonly (readonly [string, string])[] = [
   ["Mikail", "Membagikan rezeki dan menurunkan hujan"],
   ["Israfil", "Meniup sangkakala pada hari kiamat"],
   ["Izrail", "Mencabut nyawa makhluk hidup"],
-  ["Munkar", "Menanyai manusia di alam kubur"],
-  ["Nakir", "Menanyai manusia di alam kubur bersama Munkar"],
+  ["Munkar dan Nakir", "Menanyai manusia di alam kubur"],
   ["Raqib", "Mencatat amal baik manusia"],
   ["Atid", "Mencatat amal buruk manusia"],
   ["Malik", "Menjaga pintu neraka"],
@@ -164,7 +163,7 @@ export const ASMAUL: readonly (readonly [string, string])[] = [
   ["Al-Quddus", "Maha Suci"], ["As-Salam", "Maha Memberi Kesejahteraan"], ["Al-Khaliq", "Maha Pencipta"],
   ["Al-Alim", "Maha Mengetahui"], ["As-Sami'", "Maha Mendengar"], ["Al-Bashir", "Maha Melihat"],
   ["Ar-Razzaq", "Maha Pemberi Rezeki"], ["Al-Ghaffar", "Maha Pengampun"], ["Al-Hakim", "Maha Bijaksana"],
-  ["Al-Adl", "Maha Adil"], ["Al-Lathif", "Maha Lembut"], ["Al-Khabir", "Maha Mengetahui Segala Rahasia"],
+  ["Al-Adl", "Maha Adil"], ["Al-Lathif", "Maha Lembut"], ["Al-Khabir", "Maha Waspada"],
   ["Al-Qadir", "Maha Kuasa"], ["Al-Awwal", "Maha Awal"], ["Al-Akhir", "Maha Akhir"],
 ];
 
@@ -456,6 +455,150 @@ export const DHAMIR: readonly (readonly [string, string])[] = [
   ["أَنْتِ (anti)", "kamu perempuan"], ["أَنَا (anā)", "saya"], ["نَحْنُ (nahnu)", "kami / kita"],
   ["هُمْ (hum)", "mereka laki-laki"], ["أَنْتُمْ (antum)", "kalian laki-laki"],
 ];
+
+/* ---- Bank Bahasa Arab tambahan (perluasan besar) ---- */
+export const ARAB_VOCAB2: readonly (readonly [string, string])[] = [
+  ["نَافِذَةٌ (nāfidzatun)", "jendela"], ["كُرْسِيٌّ (kursiyyun)", "kursi"], ["مَكْتَبٌ (maktabun)", "meja / kantor"],
+  ["سَرِيرٌ (sarīrun)", "tempat tidur"], ["مِصْبَاحٌ (mishbāhun)", "lampu"], ["سَاعَةٌ (sā'atun)", "jam"],
+  ["حَقِيبَةٌ (haqībatun)", "tas"], ["مِفْتَاحٌ (miftāhun)", "kunci"], ["هَاتِفٌ (hātifun)", "telepon"],
+  ["تِلْفَازٌ (tilfāzun)", "televisi"], ["ثَلَّاجَةٌ (tsallājatun)", "kulkas"], ["مِرْوَحَةٌ (mirwahatun)", "kipas angin"],
+  ["دَفْتَرٌ (daftarun)", "buku tulis"], ["مِمْسَحَةٌ (mimsahatun)", "penghapus"], ["مِسْطَرَةٌ (mistharatun)", "penggaris"],
+  ["سَبُّورَةٌ (sabbūratun)", "papan tulis"], ["طَبَاشِيرُ (thabāsyīru)", "kapur tulis"], ["فَصْلٌ (fashlun)", "kelas"],
+  ["مَكْتَبَةٌ (maktabatun)", "perpustakaan"], ["مَلْعَبٌ (mal'abun)", "lapangan"], ["حَدِيقَةٌ (hadīqatun)", "taman / kebun"],
+  ["مَطْبَخٌ (mathbakhun)", "dapur"], ["حَمَّامٌ (hammāmun)", "kamar mandi"], ["غُرْفَةٌ (ghurfatun)", "kamar / ruangan"],
+  ["طَرِيقٌ (tharīqun)", "jalan"], ["جِسْرٌ (jisrun)", "jembatan"], ["مَطَارٌ (mathārun)", "bandara"],
+  ["مَحَطَّةٌ (mahaththatun)", "stasiun / terminal"], ["مُسْتَشْفَى (mustasyfā)", "rumah sakit"], ["صَيْدَلِيَّةٌ (shaidaliyyatun)", "apotek"],
+  ["فُنْدُقٌ (funduqun)", "hotel"], ["مَطْعَمٌ (math'amun)", "restoran"], ["دُكَّانٌ (dukkānun)", "toko / warung"],
+  ["خُبْزٌ (khubzun)", "roti"], ["أَرُزٌّ (aruzzun)", "nasi / beras"], ["لَحْمٌ (lahmun)", "daging"],
+  ["دَجَاجٌ (dajājun)", "ayam"], ["بَيْضٌ (baidhun)", "telur"], ["حَلِيبٌ (halībun)", "susu"],
+  ["شَايٌ (syāyun)", "teh"], ["قَهْوَةٌ (qahwatun)", "kopi"], ["سُكَّرٌ (sukkarun)", "gula"],
+  ["مِلْحٌ (milhun)", "garam"], ["عَسَلٌ (ʿasalun)", "madu"], ["تُفَّاحٌ (tuffāhun)", "apel"],
+  ["مَوْزٌ (mauzun)", "pisang"], ["بُرْتُقَالٌ (burtuqālun)", "jeruk"], ["عِنَبٌ (ʿinabun)", "anggur"],
+  ["بَطِّيخٌ (baththīkhun)", "semangka"], ["تَمْرٌ (tamrun)", "kurma"], ["زَيْتٌ (zaitun)", "minyak"],
+  ["رَأْسٌ (ra'sun)", "kepala"], ["عَيْنٌ (ʿainun)", "mata"], ["أَنْفٌ (anfun)", "hidung"],
+  ["فَمٌ (famun)", "mulut"], ["أُذُنٌ (udzunun)", "telinga"], ["يَدٌ (yadun)", "tangan"],
+  ["رِجْلٌ (rijlun)", "kaki"], ["شَعْرٌ (syaʿrun)", "rambut"], ["سِنٌّ (sinnun)", "gigi"],
+  ["قَلْبٌ (qalbun)", "hati / jantung"], ["أَسَدٌ (asadun)", "singa"], ["فِيلٌ (fīlun)", "gajah"],
+  ["جَمَلٌ (jamalun)", "unta"], ["غَنَمٌ (ghanamun)", "kambing / domba"], ["بَقَرَةٌ (baqaratun)", "sapi"],
+  ["أَرْنَبٌ (arnabun)", "kelinci"], ["فَأْرٌ (fa'run)", "tikus"], ["عُصْفُورٌ (ʿushfūrun)", "burung pipit"],
+  ["بَطَّةٌ (baththatun)", "bebek"], ["نَمْلَةٌ (namlatun)", "semut"], ["نَحْلَةٌ (nahlatun)", "lebah"],
+  ["فَرَاشَةٌ (farāsyatun)", "kupu-kupu"], ["مَطَرٌ (matharun)", "hujan"], ["ثَلْجٌ (tsaljun)", "salju"],
+  ["رِيحٌ (rīhun)", "angin"], ["سَحَابٌ (sahābun)", "awan"], ["أَرْضٌ (ardhun)", "bumi / tanah"],
+  ["سَمَاءٌ (samā'un)", "langit"], ["نَارٌ (nārun)", "api"], ["حَجَرٌ (hajarun)", "batu"],
+  ["ذَهَبٌ (dzahabun)", "emas"], ["فِضَّةٌ (fidhhatun)", "perak"], ["حَدِيدٌ (hadīdun)", "besi"],
+];
+export const ARAB_WARNA: readonly (readonly [string, string])[] = [
+  ["أَحْمَرُ (ahmaru)", "merah"], ["أَزْرَقُ (azraqu)", "biru"], ["أَخْضَرُ (akhdharu)", "hijau"],
+  ["أَصْفَرُ (ashfaru)", "kuning"], ["أَبْيَضُ (abyadhu)", "putih"], ["أَسْوَدُ (aswadu)", "hitam"],
+  ["بُنِّيٌّ (bunniyyun)", "cokelat"], ["وَرْدِيٌّ (wardiyyun)", "merah muda / pink"], ["رَمَادِيٌّ (ramādiyyun)", "abu-abu"],
+  ["بُرْتُقَالِيٌّ (burtuqāliyyun)", "oranye"], ["بَنَفْسَجِيٌّ (banafsajiyyun)", "ungu"],
+];
+export const ARAB_HARI: readonly (readonly [string, string])[] = [
+  ["الْأَحَدُ (al-ahadu)", "hari Ahad / Minggu"], ["الْإِثْنَيْنِ (al-itsnaini)", "hari Senin"],
+  ["الثُّلَاثَاءُ (ats-tsulātsā'u)", "hari Selasa"], ["الْأَرْبِعَاءُ (al-arbiʿā'u)", "hari Rabu"],
+  ["الْخَمِيسُ (al-khamīsu)", "hari Kamis"], ["الْجُمُعَةُ (al-jumuʿatu)", "hari Jumat"],
+  ["السَّبْتُ (as-sabtu)", "hari Sabtu"],
+];
+export const ARAB_KELUARGA: readonly (readonly [string, string])[] = [
+  ["جَدٌّ (jaddun)", "kakek"], ["جَدَّةٌ (jaddatun)", "nenek"], ["عَمٌّ (ʿammun)", "paman (dari ayah)"],
+  ["خَالٌ (khālun)", "paman (dari ibu)"], ["أَخٌ (akhun)", "saudara laki-laki"], ["أُخْتٌ (ukhtun)", "saudara perempuan"],
+  ["اِبْنٌ (ibnun)", "anak laki-laki / putra"], ["بِنْتٌ (bintun)", "anak perempuan / putri"], ["زَوْجٌ (zaujun)", "suami"],
+  ["زَوْجَةٌ (zaujatun)", "istri"], ["طِفْلٌ (thiflun)", "anak kecil / bayi"], ["عَائِلَةٌ (ʿā'ilatun)", "keluarga"],
+];
+export const ARAB_LAWAN: readonly (readonly [string, string])[] = [
+  ["كَبِيرٌ (kabīrun)", "besar"], ["صَغِيرٌ (shaghīrun)", "kecil"], ["طَوِيلٌ (thawīlun)", "panjang / tinggi"],
+  ["قَصِيرٌ (qashīrun)", "pendek"], ["قَرِيبٌ (qarībun)", "dekat"], ["بَعِيدٌ (baʿīdun)", "jauh"],
+  ["جَدِيدٌ (jadīdun)", "baru"], ["قَدِيمٌ (qadīmun)", "lama / kuno"], ["سَرِيعٌ (sarīʿun)", "cepat"],
+  ["بَطِيءٌ (bathī'un)", "lambat"], ["قَوِيٌّ (qawiyyun)", "kuat"], ["ضَعِيفٌ (dhaʿīfun)", "lemah"],
+  ["غَنِيٌّ (ghaniyyun)", "kaya"], ["فَقِيرٌ (faqīrun)", "miskin"], ["نَظِيفٌ (nazhīfun)", "bersih"],
+  ["وَسِخٌ (wasikhun)", "kotor"], ["حَارٌّ (hārrun)", "panas"], ["بَارِدٌ (bāridun)", "dingin"],
+  ["سَهْلٌ (sahlun)", "mudah"], ["صَعْبٌ (shaʿbun)", "sulit"], ["أَوَّلُ (awwalu)", "pertama"],
+  ["آخِرُ (ākhiru)", "terakhir"],
+];
+export const ARAB_KERJA: readonly (readonly [string, string])[] = [
+  ["كَتَبَ (kataba)", "menulis / telah menulis"], ["قَرَأَ (qara'a)", "membaca"], ["ذَهَبَ (dzahaba)", "pergi"],
+  ["جَاءَ (jā'a)", "datang"], ["أَكَلَ (akala)", "makan"], ["شَرِبَ (syariba)", "minum"],
+  ["جَلَسَ (jalasa)", "duduk"], ["قَامَ (qāma)", "berdiri"], ["نَامَ (nāma)", "tidur"],
+  ["لَعِبَ (laʿiba)", "bermain"], ["دَرَسَ (darasa)", "belajar"], ["عَمِلَ (ʿamila)", "bekerja"],
+  ["فَتَحَ (fataha)", "membuka"], ["أَغْلَقَ (aghlaqa)", "menutup"], ["سَمِعَ (samiʿa)", "mendengar"],
+  ["نَظَرَ (nazhara)", "melihat"], ["تَكَلَّمَ (takallama)", "berbicara"], ["ضَحِكَ (dhahika)", "tertawa"],
+  ["بَكَى (bakā)", "menangis"], ["رَكِبَ (rakiba)", "naik / mengendarai"],
+];
+export const ARAB_FACTS_BESAR: readonly Fact[] = [
+  ["Kalimat dalam bahasa Arab yang terdiri dari isim dan isim disebut jumlah …", "Ismiyah", ["Fi'liyah", "Syarathiyah", "Nidaiyah"], "Jumlah ismiyah diawali isim (mubtada' + khabar); jumlah fi'liyah diawali fi'il."],
+  ["Kalimat yang diawali fi'il (kata kerja) disebut jumlah …", "Fi'liyah", ["Ismiyah", "Zharfiyah", "Idhafah"], "Jumlah fi'liyah: fi'il + fa'il, misalnya كَتَبَ الطَّالِبُ."],
+  ["Kata yang menunjukkan makna dan terikat waktu (lampau, sekarang, akan datang) adalah …", "Fi'il", ["Isim", "Huruf", "Dhamir"], "Fi'il = kata kerja; isim = kata benda; huruf = kata sambung/tugas."],
+  ["Tanda isim yang paling mudah dikenali adalah …", "Bertanwin atau berawalan alif lam (ال)", ["Selalu berakhiran fathah", "Selalu diawali huruf jar", "Tidak bisa dibaca"], "Isim dapat bertanwin ( كِتَابٌ ) atau kemasukan ال ( الْكِتَابُ )."],
+  ["Isim yang menunjukkan laki-laki disebut isim …", "Mudzakkar", ["Muannats", "Mabni", "Mu'rab"], "Mudzakkar = maskulin; muannats = feminin, biasanya berakhiran ة."],
+  ["Kata “مَدْرَسَةٌ” termasuk isim muannats karena …", "Berakhiran ta' marbuthah (ة)", ["Diawali alif lam", "Berakhiran tanwin", "Jumlah hurufnya lima"], "Ta' marbuthah (ة) adalah tanda utama isim muannats."],
+  ["Jamak dari “مُسْلِمٌ” (mudzakkar) yang beraturan disebut jamak …", "Mudzakkar salim: مُسْلِمُونَ", ["Taksir", "Muannats salim", "Mutsanna"], "Jamak mudzakkar salim dibentuk dengan ون / ين: مُسْلِمُونَ."],
+  ["Jamak muannats salim dari “مُعَلِّمَةٌ” adalah …", "مُعَلِّمَاتٌ", ["مُعَلِّمُونَ", "مَعَالِيمُ", "مُعَلِّمَتَانِ"], "Jamak muannats salim berakhiran ات: مُعَلِّمَةٌ → مُعَلِّمَاتٌ."],
+  ["Bentuk mutsanna (dua) dari “طَالِبٌ” adalah …", "طَالِبَانِ", ["طُلَّابٌ", "طَالِبَاتٌ", "طَالِبٌ وَاحِدٌ"], "Mutsanna dibentuk dengan انِ: طَالِبَانِ = dua siswa."],
+  ["Kata tunjuk “هٰذَا” dipakai untuk benda yang …", "Dekat dan mudzakkar", ["Jauh dan mudzakkar", "Dekat dan muannats", "Jamak jauh"], "هٰذَا = ini (dekat, laki-laki); هٰذِهِ = ini (perempuan); ذٰلِكَ = itu (laki-laki)."],
+  ["Kata tunjuk “ذٰلِكَ” artinya …", "Itu (untuk laki-laki, jauh)", ["Ini (laki-laki)", "Ini (perempuan)", "Mereka"], "ذٰلِكَ = itu (mudzakkar jauh); تِلْكَ = itu (muannats jauh)."],
+  ["Pada kalimat “الْعِلْمُ نَافِعٌ”, kata “نَافِعٌ” berkedudukan sebagai …", "Khabar", ["Mubtada'", "Fa'il", "Maf'ul bih"], "الْعِلْمُ = mubtada' (subjek), نَافِعٌ = khabar (predikat): ilmu itu bermanfaat."],
+  ["Huruf jar “فِي” pada “فِي الْبَيْتِ” artinya …", "Di dalam / di", ["Dari", "Kepada", "Di atas"], "فِي = di (dalam); مِنْ = dari; إِلَى = ke/kepada; عَلَى = di atas."],
+  ["Isim yang didahului huruf jar selalu berakhiran …", "Kasrah (majrur)", ["Fathah", "Dhammah", "Sukun"], "Huruf jar membuat isim sesudahnya majrur: berakhiran kasrah."],
+  ["Fi'il mudhari' dari “كَتَبَ” (telah menulis) adalah …", "يَكْتُبُ", ["كَاتِبٌ", "اِكْتُبْ", "كِتَابَةٌ"], "كَتَبَ (madhi) → يَكْتُبُ (mudhari': sedang/akan menulis) → اُكْتُبْ (amr: tulislah!)."],
+  ["Kata “لَنْ” sebelum fi'il mudhari' berfungsi untuk …", "Menaﬁkan masa yang akan datang (tidak akan)", ["Menguatkan perintah", "Menanyakan waktu", "Menunjukkan kepemilikan"], "لَنْ يَذْهَبَ = dia tidak akan pergi; fi'il sesudahnya manshub (fathah)."],
+  ["Kata tanya “مَاذَا” artinya …", "Apa (yang …)?", ["Siapa?", "Di mana?", "Kapan?"], "مَاذَا = apa; مَنْ = siapa; أَيْنَ = di mana; مَتَى = kapan; كَيْفَ = bagaimana; كَمْ = berapa."],
+  ["Kata tanya untuk menanyakan jumlah/bilangan adalah …", "كَمْ", ["مَنْ", "أَيْنَ", "لِمَاذَا"], "كَمْ عَدَدُ الطُّلَّابِ؟ = berapa jumlah siswa?"],
+  ["Kata sambung “ثُمَّ” artinya …", "Kemudian / lalu", ["Dan (langsung)", "Atau", "Tetapi"], "وَ = dan; ثُمَّ = kemudian (ada jeda); أَوْ = atau; لٰكِنْ = tetapi."],
+  ["Isim nakirah adalah isim yang menunjukkan makna …", "Umum / belum tertentu", ["Khusus / tertentu", "Nama orang", "Kata ganti"], "Nakirah: umum (bertanwin); ma'rifah: tertentu, misalnya berawalan ال atau nama diri."],
+];
+
+/* Angka Arab 1–100 dibangun dari tabel — jawaban selalu dihitung dari tabel yang sama. */
+const AR_ONES: readonly string[] = ["وَاحِدٌ", "اِثْنَانِ", "ثَلَاثَةٌ", "أَرْبَعَةٌ", "خَمْسَةٌ", "سِتَّةٌ", "سَبْعَةٌ", "ثَمَانِيَةٌ", "تِسْعَةٌ", "عَشَرَةٌ"];
+const AR_TEENS: readonly string[] = ["أَحَدَ عَشَرَ", "اِثْنَا عَشَرَ", "ثَلَاثَةَ عَشَرَ", "أَرْبَعَةَ عَشَرَ", "خَمْسَةَ عَشَرَ", "سِتَّةَ عَشَرَ", "سَبْعَةَ عَشَرَ", "ثَمَانِيَةَ عَشَرَ", "تِسْعَةَ عَشَرَ"];
+const AR_TENS: readonly string[] = ["عِشْرُونَ", "ثَلَاثُونَ", "أَرْبَعُونَ", "خَمْسُونَ", "سِتُّونَ", "سَبْعُونَ", "ثَمَانُونَ", "تِسْعُونَ"];
+export function arabNumberWord(n: number): string {
+  if (n === 100) return "مِائَةٌ";
+  if (n >= 1 && n <= 10) return AR_ONES[n - 1] as string;
+  if (n >= 11 && n <= 19) return AR_TEENS[n - 11] as string;
+  const ten = Math.floor(n / 10);
+  const rem = n % 10;
+  const tenWord = AR_TENS[ten - 2] as string;
+  if (rem === 0) return tenWord;
+  return `${AR_ONES[rem - 1]} وَ${tenWord}`;
+}
+export const arabNumGen: LGen = (level) => {
+  const ranges: readonly (readonly [number, number])[] = [[1, 10], [1, 20], [11, 50], [21, 99], [1, 100]];
+  const range = ranges[Math.min(5, Math.max(1, level)) - 1] ?? [1, 10];
+  const n = ri(range[0], range[1]);
+  const word = arabNumberWord(n);
+  if (Math.random() < 0.5) {
+    const ds = [n - 2, n - 1, n + 1, n + 2, n + 10, n - 10]
+      .filter((x) => x >= 1 && x <= 100 && x !== n)
+      .map((x) => arabNumberWord(x));
+    return mkq(`Angka ${n} dalam Bahasa Arab adalah …`, word, ds, `${n} = ${word}.`);
+  }
+  const ds = [n - 2, n - 1, n + 1, n + 2, n + 10, n - 10].filter((x) => x >= 1 && x <= 100 && x !== n);
+  return mkNum(`Kata “${word}” adalah angka …`, n, ds, `${word} = ${n}.`);
+};
+/* Kata tunjuk هذا / هذه dipilih dari tabel gender kata benda — selalu konsisten. */
+const AR_ISYARAH_NOUNS: readonly (readonly [string, string, "m" | "f"])[] = [
+  ["كِتَابٌ", "buku", "m"], ["قَلَمٌ", "pena", "m"], ["بَابٌ", "pintu", "m"], ["وَلَدٌ", "anak laki-laki", "m"],
+  ["مَسْجِدٌ", "masjid", "m"], ["بَيْتٌ", "rumah", "m"], ["قَمَرٌ", "bulan", "m"], ["حِصَانٌ", "kuda", "m"],
+  ["مَكْتَبٌ", "meja", "m"], ["كُرْسِيٌّ", "kursi", "m"], ["مَدْرَسَةٌ", "sekolah", "f"], ["سَيَّارَةٌ", "mobil", "f"],
+  ["شَجَرَةٌ", "pohon", "f"], ["زَهْرَةٌ", "bunga", "f"], ["بِنْتٌ", "anak perempuan", "f"], ["شَمْسٌ", "matahari", "f"],
+  ["نَافِذَةٌ", "jendela", "f"], ["حَقِيبَةٌ", "tas", "f"], ["سَاعَةٌ", "jam", "f"], ["بَقَرَةٌ", "sapi", "f"],
+];
+export const arabIsyarahGen: LGen = () => {
+  const noun = pick(AR_ISYARAH_NOUNS);
+  const word = noun[0];
+  const arti = noun[1];
+  const gender = noun[2];
+  const near = gender === "m" ? "هٰذَا" : "هٰذِهِ";
+  const far = gender === "m" ? "ذٰلِكَ" : "تِلْكَ";
+  const otherNear = gender === "m" ? "هٰذِهِ" : "هٰذَا";
+  const otherFar = gender === "m" ? "تِلْكَ" : "ذٰلِكَ";
+  return mkq(
+    `Kata tunjuk yang tepat untuk mengawali “${word}” (${arti}) adalah …`,
+    near,
+    [otherNear, far, otherFar],
+    `“${word}” termasuk isim ${gender === "m" ? "mudzakkar (laki-laki)" : "muannats (perempuan)"}, jadi kata tunjuk dekatnya ${near}.`,
+  );
+};
 export const SILA: readonly (readonly [string, string])[] = [
   ["Sila ke-1", "Ketuhanan Yang Maha Esa"], ["Sila ke-2", "Kemanusiaan yang adil dan beradab"],
   ["Sila ke-3", "Persatuan Indonesia"], ["Sila ke-4", "Kerakyatan yang dipimpin oleh hikmat kebijaksanaan dalam permusyawaratan/perwakilan"],
@@ -466,14 +609,14 @@ export const SILA_LAMBANG: readonly (readonly [string, string])[] = [
   ["Sila ke-4", "Kepala banteng"], ["Sila ke-5", "Padi dan kapas"],
 ];
 export const PAHLAWAN: readonly (readonly [string, string])[] = [
-  ["Cut Nyak Dien", "Aceh"], ["Pattimura (Thomas Matulessy)", "Maluku"], ["Pangeran Diponegoro", "Jawa Tengah"],
+  ["Cut Nyak Dien", "Aceh"], ["Pattimura (Thomas Matulessy)", "Maluku (Ambon)"], ["Pangeran Diponegoro", "Jawa Tengah (Yogyakarta)"],
   ["Tuanku Imam Bonjol", "Sumatera Barat"], ["Sultan Hasanuddin", "Sulawesi Selatan"], ["R.A. Kartini", "Jawa Tengah (Jepara)"],
   ["Jenderal Sudirman", "Jawa Tengah (Purbalingga)"], ["Bung Tomo (Sutomo)", "Jawa Timur (Surabaya)"],
-  ["I Gusti Ngurah Rai", "Bali"], ["Martha Christina Tiahahu", "Maluku"],
+  ["I Gusti Ngurah Rai", "Bali"], ["Martha Christina Tiahahu", "Maluku (Nusalaut)"],
 ];
 export const DINASTI: readonly (readonly [string, string])[] = [
   ["Dinasti Umayyah", "Damaskus"], ["Dinasti Abbasiyah", "Bagdad"], ["Dinasti Fatimiyah", "Kairo"],
-  ["Dinasti Ayyubiyah", "Kairo / Damaskus"], ["Kesultanan Utsmaniyah (Ottoman)", "Istanbul"], ["Dinasti Safawiyah", "Isfahan (Persia)"],
+  ["Dinasti Umayyah II (Andalusia)", "Cordoba"], ["Kesultanan Utsmaniyah (Ottoman)", "Istanbul"], ["Dinasti Safawiyah", "Isfahan (Persia)"],
   ["Kesultanan Mughal", "Delhi / Agra (India)"],
 ];
 export const TOKOH_KARYA: readonly (readonly [string, string])[] = [
@@ -545,9 +688,6 @@ export const ALIRAN: readonly (readonly [string, string])[] = [
 const EMOJIS = ["⭐", "🍎", "🐶", "🌸", "🍌", "🐱", "🍓", "🦋", "🍇", "🐠"] as const;
 const ITEMS_ID = ["pensil", "buku", "permen", "stiker", "kelereng", "apel", "jeruk", "balon", "kartu", "biskuit"] as const;
 
-function numOpts(correct: number, spreads: number[]): (string | number)[] {
-  return [correct, ...spreads.map((s) => correct + s)];
-}
 function mkNum(q: string, correct: number, distractors: number[], explain: string, emoji?: string, four = true): Question | null {
   return mkq(q, fmt(correct), distractors.map((d) => fmt(d)), explain, emoji, four);
 }
@@ -796,7 +936,7 @@ const INF_CLASSIFY = [
   ...["Harddisk", "SSD", "Flashdisk", "Kartu memori"].map((x) => ({ item: x, cat: "Perangkat penyimpanan" })),
   ...["Microsoft Word", "Paint", "Google Chrome", "Kalkulator (aplikasi)", "Game edukasi"].map((x) => ({ item: x, cat: "Perangkat lunak (software)" })),
 ] as const;
-const PAI_ORDER_GEN: LGen = (level) => {
+const PAI_ORDER_GEN: LGen = (_level) => {
   const useIman = Math.random() < 0.5;
   const list = useIman ? RUKUN_IMAN : RUKUN_ISLAM;
   const idx = ri(0, list.length - 1);
@@ -947,7 +1087,7 @@ const smaLimit: LGen = () => {
   const a = ri(2, 9);
   return mkNum(`Nilai lim (x→${a}) (x² − ${a * a})/(x − ${a}) adalah …`, 2 * a, [a, 2 * a - 1, a * a], `(x²−${a * a}) = (x−${a})(x+${a}); sederhanakan → x+${a}; x=${a} → ${2 * a}.`);
 };
-const smaLog: LGen = (level) => {
+const smaLog: LGen = (_level) => {
   const base = pick([2, 3, 5, 10]);
   const e1 = ri(1, 3);
   const e2 = ri(1, 3);
@@ -1108,9 +1248,227 @@ export const FARAID_FACTS: readonly Fact[] = [
 export const fikihFacts2: readonly Fact[] = [
   ["Pengganti wudu/ mandi wajib dengan debu yang suci ketika tidak ada air disebut …", "Tayamum", ["Istinja", "Masah", "Ghusl"], "Tayamum memakai debu suci (QS Al-Maidah: 6)."],
   ["Urutan rukun wudu yang benar setelah membasuh wajah adalah …", "Membasuh kedua tangan sampai siku", ["Mengusap kepala", "Membasuh kaki", "Berkumur saja"], "Rukun wudu: wajah → tangan sampai siku → usap kepala → kaki → tertib."],
-  ["Benda najis yang berasal dari bangkai, darah, dan babi termasuk najis …", "Mutawassithah (sedang)", ["Mukhaffafah (ringan)", "Mughallazhah (berat)", "Ma'fu (dimaafkan)"], "Najis sedang: darah, nanah, bangkai. Mughallazhah: anjing & babi."],
+  ["Benda najis yang berasal dari bangkai dan darah termasuk najis …", "Mutawassithah (sedang)", ["Mukhaffafah (ringan)", "Mughallazhah (berat)", "Ma'fu (dimaafkan)"], "Najis sedang: darah, nanah, bangkai. Mughallazhah (berat): anjing & babi."],
+  ["Najis yang berasal dari anjing dan babi termasuk najis …", "Mughallazhah (berat)", ["Mukhaffafah (ringan)", "Mutawassithah (sedang)", "Ma'fu (dimaafkan)"], "Najis berat disucikan dengan 7 kali basuhan, salah satunya dicampur tanah/debu yang suci."],
   ["Air kencing bayi laki-laki di bawah 2 tahun yang hanya minum ASI termasuk najis …", "Mukhaffafah (ringan)", ["Mughallazhah (berat)", "Mutawassithah (sedang)", "Bukan najis"], "Cara menyucikannya cukup memercikkan air."],
   ["Salat Jumat hukumnya bagi laki-laki muslim yang memenuhi syarat adalah …", "Wajib (fardu ain)", ["Sunah muakadah", "Fardu kifayah", "Makruh"], "Salat Jumat fardu ain bagi laki-laki (QS Al-Jumu'ah: 9)."],
+];
+
+/* ================================================================
+   GENERATOR MATEMATIKA BARU — semua jawaban DIHITUNG dari parameter
+   soal (tidak ada kunci yang diketik manual), untuk TK–SMA Level 1–5.
+   ================================================================ */
+/* --- TK --- */
+const tkBeforeAfter: LGen = (level) => {
+  const max = 5 + level * 5;
+  const n = ri(2, max);
+  const before = Math.random() < 0.5;
+  const ans = before ? n - 1 : n + 1;
+  return mkNum(`Angka ${before ? "SEBELUM" : "SESUDAH"} ${n} adalah …`, ans, [ans - 1, ans + 1, n + (before ? 1 : -1) * 2].filter((x) => x >= 0 && x !== ans), `Urutannya: ${before ? `${ans}, ${n}` : `${n}, ${ans}`} — jadi ${before ? "sebelum" : "sesudah"} ${n} adalah ${ans}.`, "🔢", false);
+};
+const tkStoryCount: LGen = (level) => {
+  const name = pick(NAMES);
+  const item = pick(ITEMS_ID);
+  const a = ri(2, 4 + level * 2);
+  const b = ri(1, 3 + level);
+  if (Math.random() < 0.5) {
+    return mkNum(`${name} punya ${a} ${item}. Lalu diberi ${b} ${item} lagi. Sekarang ${item} ${name} ada …`, a + b, [a + b - 1, a + b + 1, a].filter((x) => x > 0), `${a} + ${b} = ${a + b} ${item}.`, "🎁", false);
+  }
+  const lost = Math.min(b, a - 1);
+  return mkNum(`${name} punya ${a} ${item}. Sebanyak ${lost} ${item} diberikan ke temannya. Sisa ${item} ${name} ada …`, a - lost, [a - lost + 1, a - lost - 1, a].filter((x) => x >= 0), `${a} − ${lost} = ${a - lost} ${item}.`, "🎁", false);
+};
+const TK_SHAPE_FACTS: readonly Fact[] = [
+  ["Bangun segitiga mempunyai … sisi", "3 sisi", ["2 sisi", "4 sisi"], "Segitiga: 3 sisi dan 3 sudut."],
+  ["Bangun persegi mempunyai … sisi yang sama panjang", "4 sisi", ["3 sisi", "5 sisi"], "Persegi: 4 sisi sama panjang."],
+  ["Bangun lingkaran mempunyai … sudut", "0 sudut", ["1 sudut", "4 sudut"], "Lingkaran melengkung, tidak punya sudut."],
+  ["Bangun segilima (pentagon) mempunyai … sisi", "5 sisi", ["4 sisi", "6 sisi"], "Segilima = 5 sisi."],
+  ["Bangun segienam (heksagon) mempunyai … sisi", "6 sisi", ["5 sisi", "8 sisi"], "Segienam = 6 sisi."],
+  ["Roda sepeda berbentuk …", "Lingkaran", ["Segitiga", "Persegi"], "Roda berbentuk lingkaran supaya bisa menggelinding."],
+  ["Rambu lalu lintas “berhenti” (stop) umumnya berbentuk …", "Segidelapan", ["Segitiga", "Lingkaran"], "Rambu STOP berbentuk segidelapan (oktagon)."],
+];
+/* --- SD --- */
+const sdRound: LGen = (level) => {
+  if (level < 2) return null;
+  if (level < 4) {
+    const n = ri(12, 995);
+    const rounded = Math.round(n / 10) * 10;
+    return mkNum(`Bilangan ${fmt(n)} dibulatkan ke puluhan terdekat menjadi …`, rounded, [rounded - 10, rounded + 10, Math.floor(n / 10) * 10 === rounded ? rounded + 10 : Math.floor(n / 10) * 10], `Angka satuan ${n % 10} ${n % 10 >= 5 ? "≥ 5, bulatkan ke atas" : "< 5, bulatkan ke bawah"} → ${fmt(rounded)}.`);
+  }
+  const n = ri(120, 9950);
+  const rounded = Math.round(n / 100) * 100;
+  return mkNum(`Bilangan ${fmt(n)} dibulatkan ke ratusan terdekat menjadi …`, rounded, [rounded - 100, rounded + 100, Math.floor(n / 100) * 100 === rounded ? rounded + 100 : Math.floor(n / 100) * 100], `Lihat angka puluhannya (${Math.floor(n / 10) % 10}) → dibulatkan menjadi ${fmt(rounded)}.`);
+};
+const sdPercent: LGen = (level) => {
+  if (level < 3) return null;
+  const pct = pick([10, 20, 25, 50, 75]);
+  const base = pick([100, 200, 240, 300, 400, 500, 600, 800, 1000]) * (level >= 5 ? ri(1, 3) : 1);
+  const v = (pct * base) / 100;
+  return mkNum(`Hasil dari ${pct}% dari ${fmt(base)} adalah …`, v, [v + base / 10, Math.max(1, v - base / 20), v * 2], `${pct}% × ${fmt(base)} = ${fmt(v)}.`);
+};
+const sdClock: LGen = (level) => {
+  if (level < 2) return null;
+  const h = ri(6, 15);
+  const m = pick([0, 15, 30, 45]);
+  const durH = level >= 4 ? ri(1, 3) : ri(1, 2);
+  const durM = level >= 3 ? pick([0, 15, 30, 45]) : 0;
+  const total = h * 60 + m + durH * 60 + durM;
+  const eh = Math.floor(total / 60) % 24;
+  const em = total % 60;
+  const ans = `${String(eh).padStart(2, "0")}.${String(em).padStart(2, "0")}`;
+  const wrongMin = (total + 30) % (24 * 60);
+  const wrong = [
+    `${String(Math.floor(wrongMin / 60)).padStart(2, "0")}.${String(wrongMin % 60).padStart(2, "0")}`,
+    `${String((eh + 1) % 24).padStart(2, "0")}.${String(em).padStart(2, "0")}`,
+    `${String(eh).padStart(2, "0")}.${String((em + 15) % 60).padStart(2, "0")}`,
+  ].filter((w) => w !== ans);
+  return mkq(`Sebuah kegiatan mulai pukul ${String(h).padStart(2, "0")}.${String(m).padStart(2, "0")} dan berlangsung ${durH} jam${durM ? ` ${durM} menit` : ""}. Kegiatan selesai pukul …`, ans, wrong, `${String(h).padStart(2, "0")}.${String(m).padStart(2, "0")} + ${durH} jam${durM ? ` ${durM} menit` : ""} = ${ans}.`);
+};
+const sdUnit: LGen = (level) => {
+  if (level < 2) return null;
+  const units: readonly (readonly [string, string, number])[] = [
+    ["km", "m", 1000], ["m", "cm", 100], ["kg", "g", 1000], ["jam", "menit", 60],
+    ["menit", "detik", 60], ["minggu", "hari", 7], ["tahun", "bulan", 12], ["lusin", "buah", 12],
+  ];
+  const u = pick(units);
+  const qty = ri(2, level >= 4 ? 25 : 12);
+  const ans = qty * u[2];
+  return mkNum(`Hasil dari ${qty} ${u[0]} = … ${u[1]}`, ans, [ans - u[2], ans + u[2], qty * (u[2] === 1000 ? 100 : u[2] * 10)], `1 ${u[0]} = ${fmt(u[2])} ${u[1]}, jadi ${qty} ${u[0]} = ${qty} × ${fmt(u[2])} = ${fmt(ans)} ${u[1]}.`);
+};
+const sdFracCompare: LGen = (level) => {
+  if (level < 3) return null;
+  const b = pick([3, 4, 5, 6, 8]);
+  const d = pick([3, 4, 5, 6, 8].filter((x) => x !== b));
+  const a = ri(1, b - 1);
+  const c = ri(1, d - 1);
+  const left = a * d;
+  const right = c * b;
+  if (left === right) return sdFracCompare(level);
+  const bigger = left > right ? `${a}/${b}` : `${c}/${d}`;
+  const smaller = left > right ? `${c}/${d}` : `${a}/${b}`;
+  return mkq(`Pecahan yang LEBIH BESAR antara ${a}/${b} dan ${c}/${d} adalah …`, bigger, [smaller, "Sama besar", `${a + c}/${b + d}`], `Samakan penyebut / kali silang: ${a}×${d}=${left} dibanding ${c}×${b}=${right}. Yang lebih besar adalah ${bigger}.`, undefined, false);
+};
+export const ROMAN_PAIRS: readonly (readonly [string, string])[] = [
+  ["1", "I"], ["2", "II"], ["3", "III"], ["4", "IV"], ["5", "V"], ["6", "VI"], ["7", "VII"], ["8", "VIII"],
+  ["9", "IX"], ["10", "X"], ["11", "XI"], ["12", "XII"], ["14", "XIV"], ["15", "XV"], ["19", "XIX"],
+  ["20", "XX"], ["24", "XXIV"], ["30", "XXX"], ["40", "XL"], ["50", "L"], ["90", "XC"], ["100", "C"],
+];
+/* --- SMP --- */
+const smpDiscount: LGen = (level) => {
+  if (level < 2) return null;
+  const price = pick([50000, 80000, 100000, 120000, 150000, 200000, 250000, 400000]);
+  const disc = pick([10, 20, 25, 30, 40, 50]);
+  const pay = price - (price * disc) / 100;
+  return mkNum(`Sebuah tas berharga Rp${fmt(price)} mendapat diskon ${disc}%. Harga yang harus dibayar adalah …`, pay, [price - disc * 1000, pay + price / 10, price], `Diskon = ${disc}% × ${fmt(price)} = Rp${fmt((price * disc) / 100)}. Bayar = ${fmt(price)} − ${fmt((price * disc) / 100)} = Rp${fmt(pay)}.`);
+};
+const smpProfit: LGen = (level) => {
+  if (level < 3) return null;
+  const buy = pick([20000, 25000, 40000, 50000, 80000, 100000]);
+  const pct = pick([5, 10, 20, 25, 40, 50]);
+  const profit = Math.random() < 0.6;
+  const sell = profit ? buy + (buy * pct) / 100 : buy - (buy * pct) / 100;
+  return mkq(`Pedagang membeli barang seharga Rp${fmt(buy)} lalu menjualnya seharga Rp${fmt(sell)}. Persentase ${profit ? "keuntungan" : "kerugian"}nya adalah …`, `${pct}%`, [`${pct - 5}%`, `${pct + 5}%`, `${pct * 2}%`].filter((w) => !w.startsWith("-") && w !== `${pct}%`), `${profit ? "Untung" : "Rugi"} = Rp${fmt(Math.abs(sell - buy))}; ${fmt(Math.abs(sell - buy))} : ${fmt(buy)} × 100% = ${pct}%.`);
+};
+const smpPythag: LGen = (level) => {
+  if (level < 3) return null;
+  const triples: readonly (readonly [number, number, number])[] = [[3, 4, 5], [6, 8, 10], [5, 12, 13], [8, 15, 17], [9, 12, 15], [7, 24, 25], [12, 16, 20], [10, 24, 26]];
+  const t = pick(triples);
+  const a = t[0]; const b = t[1]; const c = t[2];
+  if (Math.random() < 0.5) {
+    return mkNum(`Segitiga siku-siku mempunyai sisi tegak ${a} cm dan ${b} cm. Panjang sisi miringnya (hipotenusa) adalah … cm`, c, [c - 1, c + 2, a + b], `c = √(${a}² + ${b}²) = √${a * a + b * b} = ${c} cm.`);
+  }
+  return mkNum(`Segitiga siku-siku mempunyai sisi miring ${c} cm dan satu sisi tegak ${a} cm. Sisi tegak lainnya adalah … cm`, b, [b - 2, b + 1, c - a], `b = √(${c}² − ${a}²) = √${c * c - a * a} = ${b} cm.`);
+};
+const smpCircle: LGen = (level) => {
+  if (level < 2) return null;
+  const r = pick([7, 14, 21, 28, 35]);
+  if (Math.random() < 0.5) {
+    const k = 2 * (22 / 7) * r;
+    return mkNum(`Keliling lingkaran dengan jari-jari ${r} cm (π = 22/7) adalah … cm`, k, [k - 14, k + 22, (22 / 7) * r], `K = 2πr = 2 × 22/7 × ${r} = ${k} cm.`);
+  }
+  const area = (22 / 7) * r * r;
+  return mkNum(`Luas lingkaran dengan jari-jari ${r} cm (π = 22/7) adalah … cm²`, area, [area - 154, 2 * (22 / 7) * r, area + 154], `L = πr² = 22/7 × ${r}² = ${fmt(area)} cm².`);
+};
+const smpVolume: LGen = (level) => {
+  if (Math.random() < 0.5) {
+    const s = ri(3, 8 + level * 2);
+    return mkNum(`Volume kubus dengan rusuk ${s} cm adalah … cm³`, s * s * s, [s * s * 6, s * s, s * 12], `V = ${s}³ = ${fmt(s * s * s)} cm³.`);
+  }
+  const p = ri(4, 12 + level);
+  const l = ri(3, 9);
+  const t = ri(2, 8);
+  const v = p * l * t;
+  return mkNum(`Volume balok berukuran ${p} cm × ${l} cm × ${t} cm adalah … cm³`, v, [v + p * l, 2 * (p * l + p * t + l * t), v - t], `V = p×l×t = ${p}×${l}×${t} = ${fmt(v)} cm³.`);
+};
+const smpAngles: LGen = (_level) => {
+  const x = ri(15, 80);
+  if (Math.random() < 0.5) {
+    return mkNum(`Sudut yang berpenyiku (komplemen) dengan sudut ${x}° adalah …`, 90 - x, [90 - x + 10, 180 - x, x], `Dua sudut berpenyiku jumlahnya 90° → 90 − ${x} = ${90 - x}°.`);
+  }
+  const y = ri(95, 170);
+  return mkNum(`Sudut yang berpelurus (suplemen) dengan sudut ${y}° adalah …`, 180 - y, [180 - y + 10, 90 - (y - 90), y - 90], `Dua sudut berpelurus jumlahnya 180° → 180 − ${y} = ${180 - y}°.`);
+};
+const smpTwoVar: LGen = (level) => {
+  if (level < 4) return null;
+  const x = ri(3, 20);
+  const y = ri(2, x - 1);
+  const s = x + y;
+  const d = x - y;
+  return mkNum(`Jika x + y = ${s} dan x − y = ${d}, maka nilai x adalah …`, x, [y, x + 1, s - x + 2], `Jumlahkan kedua persamaan: 2x = ${s} + ${d} = ${s + d} → x = ${x}. (y = ${y})`);
+};
+/* --- SMA --- */
+const smaQuadratic: LGen = () => {
+  const r1 = pick([-9, -7, -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 6, 8]);
+  let r2 = pick([-8, -6, -4, -3, -2, -1, 1, 2, 3, 4, 5, 7, 9]);
+  if (r2 === r1) r2 = r1 + 2;
+  const sum = r1 + r2;
+  const prod = r1 * r2;
+  // Persamaan (x − r1)(x − r2) = x² − (sum)x + (prod), ditulis dengan tanda yang rapi.
+  const bTerm = sum === 0 ? "" : sum > 0 ? ` − ${sum}x` : ` + ${-sum}x`;
+  const cTerm = prod === 0 ? "" : prod > 0 ? ` + ${prod}` : ` − ${-prod}`;
+  const eq = `x²${bTerm}${cTerm} = 0`;
+  const mode = ri(0, 2);
+  if (mode === 0) return mkNum(`Jumlah akar-akar persamaan kuadrat ${eq} adalah …`, sum, [sum - 2, sum + 2, prod], `Faktornya (x − (${r1}))(x − (${r2})), akar-akarnya ${r1} dan ${r2}; jumlahnya ${r1} + ${r2} = ${sum}.`);
+  if (mode === 1) return mkNum(`Hasil kali akar-akar persamaan kuadrat ${eq} adalah …`, prod, [prod - r1, prod + r2, sum], `Akar-akarnya ${r1} dan ${r2}; hasil kalinya ${r1} × ${r2} = ${prod} (= c/a).`);
+  return mkNum(`Jika ${r1} dan ${r2} adalah akar-akar suatu persamaan kuadrat, maka nilai (${r1})² + (${r2})² adalah …`, r1 * r1 + r2 * r2, [sum * sum, prod * 2, r1 * r1 + r2 * r2 + 2], `(${r1})² + (${r2})² = ${r1 * r1} + ${r2 * r2} = ${r1 * r1 + r2 * r2}.`);
+};
+const smaGeomSeries: LGen = (level) => {
+  const a = ri(1, 6);
+  const r = pick([2, 3]);
+  const n = ri(4, 7);
+  const un = a * r ** (n - 1);
+  if (level >= 4 && Math.random() < 0.5) {
+    const sn = (a * (r ** n - 1)) / (r - 1);
+    return mkNum(`Jumlah ${n} suku pertama deret geometri ${a}, ${a * r}, ${a * r * r}, … adalah …`, sn, [sn - un, un * n, sn + a], `Sn = a(rⁿ−1)/(r−1) = ${a}×(${r ** n}−1)/${r - 1} = ${fmt(sn)}.`);
+  }
+  return mkNum(`Suku ke-${n} barisan geometri ${a}, ${a * r}, ${a * r * r}, … adalah …`, un, [a * r ** (n - 2), un + a, un * r], `Un = a·rⁿ⁻¹ = ${a}×${r}^${n - 1} = ${fmt(un)}.`);
+};
+const smaDet: LGen = (level) => {
+  if (level < 2) return null;
+  const a = ri(1, 6); const b = ri(1, 6); const c = ri(1, 6); const d = ri(1, 6);
+  const det = a * d - b * c;
+  return mkNum(`Determinan matriks [[${a}, ${b}], [${c}, ${d}]] adalah …`, det, [a * d + b * c, det + b, det - c], `det = ${a}×${d} − ${b}×${c} = ${a * d} − ${b * c} = ${det}.`);
+};
+const smaPerm: LGen = (level) => {
+  if (level < 3) return null;
+  if (Math.random() < 0.5) {
+    const n = ri(4, 7);
+    let f = 1; for (let i = 2; i <= n; i++) f *= i;
+    return mkNum(`Nilai dari ${n}! (faktorial) adalah …`, f, [f / 2, f + n, f * 2], `${n}! = ${Array.from({ length: n }, (_, i) => i + 1).join(" × ")} = ${fmt(f)}.`);
+  }
+  const n = ri(5, 9);
+  const r = pick([2, 3]);
+  let p = 1; for (let i = 0; i < r; i++) p *= n - i;
+  return mkNum(`Banyak susunan (permutasi) ${r} orang dari ${n} orang yang tersedia adalah …`, p, [p / (n - r + 1) * r, p + n, p - n], `P(${n},${r}) = ${Array.from({ length: r }, (_, i) => n - i).join(" × ")} = ${fmt(p)}.`);
+};
+const TRIG_FACTS: readonly Fact[] = [
+  ["Nilai sin 30° adalah …", "1/2", ["√3/2", "1", "0"], "Sudut istimewa: sin 30° = 1/2, cos 30° = √3/2."],
+  ["Nilai cos 60° adalah …", "1/2", ["√3/2", "√2/2", "0"], "cos 60° = 1/2 (pasangan sin 30°)."],
+  ["Nilai tan 45° adalah …", "1", ["1/2", "√3", "1/√3"], "tan 45° = sin/cos = (√2/2)/(√2/2) = 1."],
+  ["Nilai sin 90° adalah …", "1", ["0", "1/2", "√3/2"], "sin mencapai maksimum 1 pada 90°."],
+  ["Nilai cos 0° adalah …", "1", ["0", "1/2", "-1"], "cos 0° = 1; sin 0° = 0."],
+  ["Nilai sin 60° adalah …", "√3/2", ["1/2", "√2/2", "1"], "sin 60° = √3/2 ≈ 0,866."],
+  ["Nilai tan 30° adalah …", "1/√3", ["1", "√3", "1/2"], "tan 30° = (1/2)/(√3/2) = 1/√3."],
+  ["Nilai sin²x + cos²x untuk setiap x adalah …", "1", ["0", "2", "Bergantung pada x"], "Identitas Pythagoras: sin²x + cos²x = 1."],
 ];
 
 /* ---------- registry ---------- */
@@ -1172,23 +1530,369 @@ const jawaGens = (jenjang: JenjangId): LGen[] => [
   ...(jenjang !== "TK" ? [pairGenL({ pairs: JAWA_AKSARA, askA: (a) => `Aksara Jawa untuk bunyi “${a}” adalah …`, askB: (b) => `Aksara Jawa “${b}” dibaca …`, exA: (a, b) => `Bunyi “${a}” ditulis ${b} (hanacaraka).`, exB: (a, b) => `${b} dibaca “${a}”.` })] : []),
 ];
 
+/** Set generator Bahasa Arab per jenjang — bank kosakata besar + angka prosedural + nahwu. */
+const arabGens = (jenjang: JenjangId): LGen[] => {
+  const gens: LGen[] = [
+    pairGenL({ pairs: ARAB_VOCAB, askA: (a) => `Kata “${a}” artinya …`, askB: (b) => `Bahasa Arab dari “${b}” adalah …`, exA: (a, b) => `${a} artinya ${b}.`, exB: (a, b) => `“${b}” dalam Bahasa Arab: ${a}.` }),
+    pairGenL({ pairs: ARAB_VOCAB2, askA: (a) => `Kata “${a}” artinya …`, askB: (b) => `Bahasa Arab dari “${b}” adalah …`, exA: (a, b) => `${a} artinya ${b}.`, exB: (a, b) => `“${b}” dalam Bahasa Arab: ${a}.` }),
+    pairGenL({ pairs: DHAMIR, askA: (a) => `Dhamir “${a}” artinya …`, askB: (b) => `Dhamir untuk “${b}” adalah …`, exA: (a, b) => `${a} = ${b}.`, exB: (a, b) => `“${b}” = ${a}.` }),
+    pairGenL({ pairs: ARAB_WARNA, askA: (a) => `Warna “${a}” artinya …`, askB: (b) => `Bahasa Arab dari warna “${b}” adalah …`, exA: (a, b) => `${a} = ${b}.`, exB: (a, b) => `Warna ${b}: ${a}.` }),
+    pairGenL({ pairs: ARAB_KELUARGA, askA: (a) => `Kata “${a}” artinya …`, askB: (b) => `Bahasa Arab dari “${b}” adalah …`, exA: (a, b) => `${a} artinya ${b}.`, exB: (a, b) => `“${b}” dalam Bahasa Arab: ${a}.` }),
+    arabNumGen,
+  ];
+  if (jenjang !== "SD") {
+    gens.push(
+      pairGenL({ pairs: ARAB_HARI, askA: (a) => `“${a}” adalah nama hari …`, askB: (b) => `Bahasa Arab dari “${b}” adalah …`, exA: (a, b) => `${a} = ${b}.`, exB: (a, b) => `${b} dalam Bahasa Arab: ${a}.` }),
+      pairGenL({ pairs: ARAB_LAWAN, askA: (a) => `Kata sifat “${a}” artinya …`, askB: (b) => `Bahasa Arab dari kata sifat “${b}” adalah …`, exA: (a, b) => `${a} artinya ${b}.`, exB: (a, b) => `“${b}” dalam Bahasa Arab: ${a}.` }),
+      pairGenL({ pairs: ARAB_KERJA, askA: (a) => `Fi'il “${a}” artinya …`, askB: (b) => `Bahasa Arab dari “${b}” adalah …`, exA: (a, b) => `${a} artinya ${b}.`, exB: (a, b) => `“${b}” dalam Bahasa Arab: ${a}.` }),
+      arabIsyarahGen,
+      factGenL(ARAB_FACTS_BESAR),
+    );
+  }
+  return gens;
+};
+
+/* ============ KOMPUTER / INFORMATIKA — semua jenjang ============ */
+const TK_KOMPUTER_PAIRS: readonly (readonly [string, string])[] = [
+  ["Mouse", "Menggerakkan panah (kursor) di layar"],
+  ["Keyboard", "Mengetik huruf dan angka"],
+  ["Monitor / layar", "Menampilkan gambar dan tulisan"],
+  ["Speaker", "Mengeluarkan suara dan musik"],
+  ["Printer", "Mencetak gambar dan tulisan ke kertas"],
+  ["Tablet", "Layar sentuh untuk belajar dan bermain"],
+  ["Kamera", "Mengambil foto dan video"],
+  ["Charger", "Mengisi daya baterai gawai"],
+];
+const TK_KOMPUTER_FACTS: Fact[] = [
+  ["Sebelum bermain HP atau tablet, kita harus …", "Minta izin orang tua", ["Langsung mengambil diam-diam", "Bermain sampai tengah malam"], "Selalu minta izin orang tua sebelum memakai gawai."],
+  ["Bermain gawai terlalu lama bisa membuat …", "Mata lelah dan badan pegal", ["Badan makin kuat", "Cepat tinggi"], "Istirahatkan mata dan bergeraklah setelah bermain gawai."],
+  ["Jika ada orang asing mengajak bicara lewat game atau internet, kita harus …", "Memberi tahu orang tua", ["Membalas ajakannya", "Memberikan alamat rumah"], "Jangan bicara dengan orang asing di internet; beri tahu orang tua."],
+  ["Setelah selesai bermain gawai, sebaiknya kita …", "Istirahat dan bermain di luar", ["Langsung bermain lagi", "Tidak tidur"], "Seimbangkan waktu layar dengan bermain dan bergerak."],
+  ["Bagian komputer yang penuh huruf untuk mengetik adalah …", "Keyboard", ["Mouse", "Speaker"], "Keyboard dipakai mengetik huruf dan angka."],
+  ["Untuk mendengar suara dari komputer kita memakai …", "Speaker / headphone", ["Printer", "Mouse"], "Speaker mengeluarkan suara."],
+];
+const IO_CLASSIFY: { item: string; cat: string }[] = [
+  ...["Keyboard", "Mouse", "Scanner", "Mikrofon", "Webcam", "Joystick", "Layar sentuh"].map((x) => ({ item: x, cat: "Perangkat masukan (input)" })),
+  ...["Monitor", "Printer", "Speaker", "Proyektor", "Headphone"].map((x) => ({ item: x, cat: "Perangkat keluaran (output)" })),
+  ...["Flashdisk", "Hard disk", "SSD", "Kartu memori", "CD / DVD"].map((x) => ({ item: x, cat: "Penyimpanan (storage)" })),
+];
+const SD_TIK_FACTS: Fact[] = [
+  ["Dokumen teks Microsoft Word biasanya berakhiran (ekstensi) …", ".docx", [".jpg", ".mp3", ".mp4"], "Ekstensi menunjukkan jenis file: .docx dokumen, .jpg gambar, .mp3 lagu, .mp4 video."],
+  ["Aplikasi yang dipakai mengetik surat dan cerita disebut aplikasi …", "Pengolah kata", ["Pengolah gambar", "Pemutar musik", "Kalkulator"], "Pengolah kata (mis. Microsoft Word) untuk mengetik dokumen."],
+  ["Kata sandi (password) yang baik adalah yang …", "Panjang dan sulit ditebak orang", ["Sama dengan tanggal lahir", "123456 saja", "Nama sendiri"], "Password kuat: panjang, campuran huruf-angka-simbol, dan rahasia."],
+  ["Jika menemukan gambar atau tulisan tidak pantas di internet, kita harus …", "Menutupnya dan memberi tahu guru / orang tua", ["Membagikannya ke teman", "Menyimpannya diam-diam", "Mengklik semua tautannya"], "Internet sehat: tutup konten tidak pantas dan laporkan ke orang dewasa."],
+  ["Otak komputer yang memproses semua perintah adalah …", "CPU (prosesor)", ["Monitor", "Kabel", "Kipas"], "CPU = Central Processing Unit, pusat pemrosesan."],
+  ["Tempat mengelompokkan file-file di komputer disebut …", "Folder", ["Ikon", "Kertas", "Layar"], "Folder mengelompokkan file agar rapi dan mudah dicari."],
+  ["Mengetik dengan sepuluh jari tanpa melihat keyboard disebut …", "Mengetik sentuh (touch typing)", ["Mengetik satu jari", "Mengetik cepat asal-asalan", "Menyalin"], "Touch typing membuat mengetik cepat dan akurat."],
+  ["Perangkat lunak dalam bahasa Inggris disebut …", "Software", ["Hardware", "Brainware", "Firmware"], "Software = perangkat lunak; hardware = perangkat keras."],
+  ["Jaringan raksasa yang menghubungkan komputer di seluruh dunia adalah …", "Internet", ["Intranet sekolah", "Kabel LAN", "Bluetooth"], "Internet menghubungkan jaringan-jaringan di seluruh dunia."],
+];
+const FLOW_PAIRS: readonly (readonly [string, string])[] = [
+  ["Oval (terminator)", "Mulai dan selesai"],
+  ["Persegi panjang", "Proses / langkah pengerjaan"],
+  ["Belah ketupat", "Keputusan (pilihan ya / tidak)"],
+  ["Jajar genjang", "Input dan output data"],
+  ["Panah (garis alir)", "Arah aliran proses"],
+];
+const MALWARE_PAIRS: readonly (readonly [string, string])[] = [
+  ["Virus", "Menempel pada file dan menyebar saat file dibuka"],
+  ["Worm", "Menyebar sendiri lewat jaringan tanpa bantuan file"],
+  ["Trojan", "Menyamar sebagai program baik padahal jahat"],
+  ["Ransomware", "Mengunci data korban dan meminta tebusan"],
+  ["Spyware", "Mengintip aktivitas pengguna secara diam-diam"],
+  ["Phishing", "Menipu korban agar memberikan data pribadi"],
+];
+const SMP_TIK_FACTS: Fact[] = [
+  ["Tugas utama sistem operasi (operating system) adalah …", "Mengatur perangkat keras dan menjalankan aplikasi", ["Mengetik dokumen", "Memutar musik saja", "Mencetak foto"], "OS seperti Windows, Linux, Android mengatur seluruh kerja komputer."],
+  ["Dalam spreadsheet, rumus untuk menjumlahkan data adalah …", "=SUM", ["=TOTAL", "=JUMLAHKAN", "=PLUS"], "Rumus spreadsheet diawali tanda =. =SUM menjumlahkan."],
+  ["Dalam spreadsheet, rumus untuk nilai rata-rata adalah …", "=AVERAGE", ["=MEAN", "=RATA", "=SUM"], "=AVERAGE menghitung rata-rata."],
+  ["Pertemuan antara baris dan kolom dalam spreadsheet disebut …", "Sel (cell)", ["Tabel", "Grafik", "Halaman"], "Sel adalah kotak pertemuan baris (angka) dan kolom (huruf)."],
+  ["Urutan langkah logis untuk menyelesaikan masalah disebut …", "Algoritma", ["Program jadi", "Data", "Kesalahan"], "Algoritma = langkah-langkah logis; program adalah wujud kodenya."],
+  ["Diagram alir yang menggambarkan algoritma dengan simbol disebut …", "Flowchart", ["Mind map", "Diagram batang", "Poster"], "Flowchart memakai simbol standar: terminator, proses, keputusan, input/output."],
+  ["Autentikasi dua langkah (2FA) membuat akun lebih aman karena …", "Butuh kode tambahan selain kata sandi", ["Kata sandi jadi pendek", "Tidak perlu kata sandi", "Akun jadi publik"], "2FA = kata sandi + kode sekali pakai dari perangkatmu."],
+  ["Jaringan komputer di lingkungan satu sekolah/gedung disebut …", "LAN", ["WAN", "MAN", "Internet"], "LAN = Local Area Network (lokal); MAN = kota; WAN = wilayah luas."],
+];
+const smaTrace: LGen = () => {
+  const kind = ri(0, 3);
+  if (kind === 0) {
+    const a = ri(2, 20), b = ri(2, 20);
+    const ans = a + b;
+    return mkNum(`Perhatikan potongan program:\nx = ${a}\ny = ${b}\nx = x + y\ncetak x\nNilai yang dicetak adalah …`, ans, [ans + 1, ans - 1, a * b], `x terakhir = ${a} + ${b} = ${ans}.`);
+  }
+  if (kind === 1) {
+    const n = ri(3, 8);
+    const ans = (n * (n + 1)) / 2;
+    return mkNum(`Perhatikan potongan program:\ntotal = 0\nuntuk i dari 1 sampai ${n}:\n    total = total + i\ncetak total\nNilai yang dicetak adalah …`, ans, [ans + n, ans - 1, n * n], `total = 1+2+…+${n} = ${ans}.`);
+  }
+  if (kind === 2) {
+    const n = ri(3, 9);
+    const ans = 2 * n;
+    return mkNum(`Perhatikan potongan program:\nhitung = 0\nuntuk i dari 1 sampai ${n}:\n    hitung = hitung + 2\ncetak hitung\nNilai yang dicetak adalah …`, ans, [ans + 2, n, ans - 2], `Perulangan ${n} kali, tiap kali +2 → ${ans}.`);
+  }
+  const words = ["komputer", "informatika", "algoritma", "internet", "program", "data", "siber", "jaringan"] as const;
+  const w = pick(words);
+  return mkNum(`Dalam program, kata = "${w}". Nilai dari panjang(kata) adalah …`, w.length, [w.length + 1, w.length - 1, w.length + 2], `"${w}" punya ${w.length} huruf.`);
+};
+const SMA_TIK_FACTS: Fact[] = [
+  ["Perintah SQL untuk mengambil / menampilkan data dari tabel adalah …", "SELECT", ["INSERT", "DELETE", "UPDATE"], "SELECT membaca data; INSERT menambah; UPDATE mengubah; DELETE menghapus."],
+  ["Dalam basis data, satu baris data lengkap disebut …", "Record", ["Field", "Tabel", "Kunci"], "Baris = record; kolom = field/atribut."],
+  ["Kunci yang menghubungkan satu tabel dengan tabel lain disebut …", "Foreign key", ["Primary key", "Kandidat key", "Super key"], "Foreign key menunjuk primary key di tabel lain."],
+  ["DNS dalam jaringan berfungsi untuk …", "Menerjemahkan nama domain menjadi alamat IP", ["Mengenkripsi semua data", "Mempercepat prosesor", "Menyimpan kata sandi"], "DNS = buku telepon internet: nama → alamat IP."],
+  ["Alamat IPv4 terdiri dari 4 angka yang masing-masing bernilai …", "0 sampai 255", ["0 sampai 100", "1 sampai 10", "0 sampai 999"], "Setiap oktet IPv4 = 8 bit → 0–255."],
+  ["Berpikir komputasional yang berarti memecah masalah besar menjadi bagian-bagian kecil disebut …", "Dekomposisi", ["Abstraksi", "Pengenalan pola", "Debugging"], "Empat pilar: dekomposisi, pengenalan pola, abstraksi, algoritma."],
+  ["Berpikir komputasional yang berarti fokus pada hal penting dan mengabaikan detail yang tidak relevan disebut …", "Abstraksi", ["Dekomposisi", "Pengenalan pola", "Kompilasi"], "Abstraksi menyaring hal yang penting saja."],
+  ["VPN membuat koneksi internet lebih aman karena …", "Membuat jalur terenkripsi antara perangkat dan server", ["Menghapus semua virus", "Membuat internet gratis", "Mematikan iklan saja"], "VPN mengenkripsi lalu lintas data lewat terowongan aman."],
+];
+const SD_TIK_PAIRS: readonly (readonly [string, string])[] = [
+  ["CPU (prosesor)", "Otak komputer yang memproses semua perintah"],
+  ["RAM", "Ingatan sementara saat komputer bekerja"],
+  ["Hard disk / SSD", "Menyimpan data secara permanen"],
+  ["Modem", "Menghubungkan komputer ke jaringan internet"],
+  ["Webcam", "Kamera untuk panggilan video"],
+  ["Scanner", "Memindai dokumen atau foto menjadi file"],
+  ["Proyektor", "Menampilkan gambar ke layar besar / dinding"],
+  ["Flashdisk", "Alat simpan kecil yang mudah dibawa"],
+  ["Mikrofon", "Merekam suara kita"],
+  ["Headphone", "Mendengar suara tanpa mengganggu orang lain"],
+  ["Touchpad", "Pengganti mouse pada laptop"],
+  ["Baterai", "Sumber daya laptop dan gawai"],
+  ["Monitor", "Menampilkan gambar dan tulisan dari komputer"],
+  ["Keyboard", "Mengetik huruf, angka, dan simbol"],
+];
+const SD_TIK_FACTS2: Fact[] = [
+  ["Untuk mencari informasi di internet kita memakai …", "Mesin pencari (search engine)", ["Kalkulator", "Pemutar musik", "Kamera"], "Mesin pencari seperti Google membantu menemukan informasi."],
+  ["Surat elektronik yang dikirim lewat internet disebut …", "Email", ["SMS biasa", "Surat pos", "Telegram"], "Email = electronic mail, surat lewat internet."],
+  ["Semua yang kita lakukan di internet meninggalkan …", "Jejak digital", ["Jejak kaki", "Bayangan", "Tidak ada jejak"], "Jejak digital sulit dihapus — hati-hati sebelum mengunggah."],
+  ["Karya orang lain di internet tidak boleh kita …", "Akui sebagai karya kita sendiri", ["Pelajari dengan izin", "Sebutkan sumbernya", "Hargai"], "Mengakui karya orang lain = plagiat. Sebutkan sumbernya!"],
+  ["Sebelum mengunduh aplikasi atau game baru, sebaiknya …", "Minta izin dan cek bersama orang tua / guru", ["Langsung unduh semuanya", "Klik iklan yang muncul", "Matikan antivirus"], "Unduhan sembarangan bisa berisi virus. Selalu izin dulu."],
+  ["Jarak mata yang baik dari layar komputer adalah sekitar …", "50–70 cm (sejauh lengan)", ["5 cm", "Sedekat mungkin", "3 meter"], "Jaga jarak pandang dan istirahatkan mata tiap 20 menit."],
+  ["Wi-Fi adalah teknologi untuk menghubungkan perangkat …", "Tanpa kabel (nirkabel)", ["Dengan kabel panjang", "Lewat kertas", "Dengan tali"], "Wi-Fi memakai gelombang radio, tanpa kabel."],
+  ["Komputer pada awalnya diciptakan terutama untuk membantu …", "Menghitung", ["Bermain game", "Menonton film", "Menggambar"], "Komputer awal adalah mesin hitung raksasa."],
+];
+const SHORTCUT_PAIRS: readonly (readonly [string, string])[] = [
+  ["Ctrl + C", "Menyalin (copy) teks atau file"],
+  ["Ctrl + V", "Menempel (paste) hasil salinan"],
+  ["Ctrl + X", "Memotong (cut) teks atau file"],
+  ["Ctrl + Z", "Membatalkan aksi terakhir (undo)"],
+  ["Ctrl + S", "Menyimpan dokumen"],
+  ["Ctrl + A", "Memilih semua isi dokumen"],
+  ["Ctrl + P", "Mencetak dokumen"],
+  ["Ctrl + F", "Mencari kata dalam dokumen / halaman"],
+];
+const JARINGAN_PAIRS: readonly (readonly [string, string])[] = [
+  ["Switch", "Menghubungkan perangkat-perangkat dalam satu jaringan lokal"],
+  ["Access point", "Memancarkan sinyal Wi-Fi untuk perangkat nirkabel"],
+  ["Server", "Komputer penyedia layanan dan data bagi komputer lain"],
+  ["ISP", "Perusahaan penyedia layanan internet"],
+  ["Kabel fiber optik", "Mengirim data dengan cahaya, sangat cepat"],
+  ["Bluetooth", "Menghubungkan perangkat jarak dekat tanpa kabel"],
+];
+const SMP_TIK_FACTS2: Fact[] = [
+  ["Menyimpan data di server internet agar bisa diakses dari mana saja disebut …", "Komputasi awan (cloud)", ["Fogging", "Offline storage", "Floppy disk"], "Cloud: data tersimpan di pusat data dan diakses via internet."],
+  ["File berekstensi .zip adalah …", "Arsip terkompresi berisi satu / banyak file", ["File gambar", "File lagu", "Program virus pasti"], ".zip mengecilkan dan menggabungkan file."],
+  ["Tes 'Saya bukan robot' (CAPTCHA) bertujuan untuk …", "Memastikan pengguna adalah manusia, bukan bot", ["Mempercepat internet", "Menghapus virus", "Menguji kecepatan mengetik"], "CAPTCHA menyaring bot otomatis."],
+  ["Mode penyamaran (incognito) pada peramban …", "Tidak menyimpan riwayat di perangkat itu, tapi aktivitas tetap terlihat oleh jaringan", ["Membuat kita benar-benar anonim", "Menghapus semua jejak di internet", "Memblokir semua iklan"], "Incognito hanya lokal; ISP/situs tetap bisa melihat aktivitas."],
+  ["Memperbarui (update) aplikasi dan sistem operasi penting karena …", "Menambal celah keamanan dan memperbaiki bug", ["Membuat baterai awet selamanya", "Menghapus semua data", "Tidak ada gunanya"], "Update rutin adalah pertahanan keamanan dasar."],
+  ["Satuan kecepatan internet 'Mbps' adalah singkatan dari …", "Megabit per detik", ["Megabyte per satuan", "Meter per detik", "Mega pixel"], "Mbps = megabit per second (perhatikan: bit, bukan byte)."],
+];
+const PROTOKOL_PAIRS: readonly (readonly [string, string])[] = [
+  ["HTTP", "Transfer halaman web tanpa enkripsi"],
+  ["HTTPS", "Transfer halaman web terenkripsi (aman)"],
+  ["FTP", "Transfer file antar komputer"],
+  ["SMTP", "Mengirim email keluar dari pengirim"],
+  ["POP3", "Mengunduh email dari server ke perangkat"],
+  ["IMAP", "Mengakses email yang tetap tersimpan di server"],
+  ["TCP", "Pengiriman data yang andal dan berurutan"],
+  ["UDP", "Pengiriman data cepat tanpa jaminan urutan"],
+];
+const SMA_TIK_FACTS2: Fact[] = [
+  ["Enkripsi asimetris memakai sepasang kunci, yaitu …", "Kunci publik dan kunci privat", ["Kunci tunggal bersama", "Kata sandi saja", "Sidik jari"], "Kunci publik mengenkripsi; kunci privat (rahasia) mendekripsi."],
+  ["Hashing berbeda dari enkripsi karena hashing bersifat …", "Satu arah — tidak bisa dikembalikan ke data asal", ["Dua arah seperti enkripsi", "Hanya untuk gambar", "Selalu bisa ditebak"], "Hash dipakai memeriksa integritas & menyimpan sidik kata sandi."],
+  ["Firewall dalam jaringan berfungsi untuk …", "Menyaring lalu lintas data yang masuk dan keluar", ["Mempercepat prosesor", "Menyimpan file cadangan", "Mendinginkan server"], "Firewall adalah gerbang penjaga jaringan."],
+  ["Internet of Things (IoT) adalah konsep …", "Benda sehari-hari terhubung ke internet dan saling bertukar data", ["Internet hanya untuk komputer", "Jaringan khusus satelit", "Game daring"], "Contoh IoT: lampu pintar, CCTV daring, sensor pertanian."],
+  ["Dalam pembelajaran mesin (machine learning), komputer belajar dari …", "Data latih dalam jumlah besar", ["Perintah yang diketik satu-satu", "Buku manual", "Tebakan acak"], "Model ML menemukan pola dari data latih."],
+  ["Layanan perangkat lunak lewat internet tanpa instalasi (mis. dokumen daring) disebut …", "SaaS (Software as a Service)", ["PaaS", "IaaS", "Firmware"], "SaaS: pakai langsung lewat peramban, dikelola penyedia."],
+];
+function tikGens(jenjang: JenjangId): LGen[] {
+  if (jenjang === "TK") {
+    return [
+      pairGenL({ pairs: TK_KOMPUTER_PAIRS, askA: (a) => `${a} berguna untuk …`, askB: (b) => `Alat yang berguna untuk “${b.toLowerCase()}” adalah …`, exA: (a, b) => `${a}: ${b.toLowerCase()}.`, exB: (a, _b) => `Itu adalah ${a}.`, four: false }),
+      factGenL(TK_KOMPUTER_FACTS, false),
+    ];
+  }
+  if (jenjang === "SD") {
+    return [
+      classifyGen(INF_CLASSIFY.map((x) => ({ item: x.item, cat: x.cat })), (i) => `${i} termasuk kelompok …`, (i, c) => `${i} adalah ${c.toLowerCase()}.`),
+      classifyGen(IO_CLASSIFY.map((x) => ({ item: x.item, cat: x.cat })), (i) => `${i} termasuk kelompok …`, (i, c) => `${i} adalah ${c.toLowerCase()}.`),
+      pairGenL({ pairs: SD_TIK_PAIRS, askA: (a) => `${a} berfungsi untuk …`, askB: (b) => `Perangkat yang berfungsi “${b.toLowerCase()}” adalah …`, exA: (a, b) => `${a}: ${b.toLowerCase()}.`, exB: (a, _b) => `Itu adalah ${a}.` }),
+      factGenL(SD_TIK_FACTS),
+      factGenL(SD_TIK_FACTS2),
+    ];
+  }
+  if (jenjang === "SMP") {
+    // Melengkapi generator informatika SMP yang sudah terdaftar (biner, klasifikasi, fakta OS/jaringan).
+    return [
+      pairGenL({ pairs: FLOW_PAIRS, askA: (a) => `Dalam flowchart, simbol ${a.toLowerCase()} berarti …`, askB: (b) => `“${b}” dalam flowchart dilambangkan dengan …`, exA: (a, b) => `${a}: ${b.toLowerCase()}.`, exB: (a, _b) => `Itu simbol ${a.toLowerCase()}.` }),
+      pairGenL({ pairs: MALWARE_PAIRS, askA: (a) => `Perangkat jahat “${a}” adalah …`, askB: (b) => `“${b}” — itu ciri …`, exA: (a, b) => `${a}: ${b.toLowerCase()}.`, exB: (a, _b) => `Itu adalah ${a}.` }),
+      pairGenL({ pairs: SHORTCUT_PAIRS, askA: (a) => `Pintasan keyboard ${a} berfungsi untuk …`, askB: (b) => `Untuk “${b.toLowerCase()}”, tekan …`, exA: (a, b) => `${a}: ${b.toLowerCase()}.`, exB: (a, _b) => `Tekan ${a}.` }),
+      pairGenL({ pairs: JARINGAN_PAIRS, askA: (a) => `${a} dalam jaringan komputer berfungsi untuk …`, askB: (b) => `“${b}” — itu adalah …`, exA: (a, b) => `${a}: ${b.toLowerCase()}.`, exB: (a, _b) => `Itu adalah ${a}.` }),
+      factGenL(SMP_TIK_FACTS),
+      factGenL(SMP_TIK_FACTS2),
+    ];
+  }
+  // SMA: melengkapi OSI, serangan siber, biner, dan fakta yang sudah terdaftar.
+  return [
+    pairGenL({ pairs: MALWARE_PAIRS, askA: (a) => `Perangkat jahat “${a}” adalah …`, askB: (b) => `“${b}” — itu ciri …`, exA: (a, b) => `${a}: ${b.toLowerCase()}.`, exB: (a, _b) => `Itu adalah ${a}.` }),
+    pairGenL({ pairs: PROTOKOL_PAIRS, askA: (a) => `Protokol ${a} berfungsi untuk …`, askB: (b) => `“${b}” adalah fungsi protokol …`, exA: (a, b) => `${a}: ${b.toLowerCase()}.`, exB: (a, _b) => `Itu protokol ${a}.` }),
+    pairGenL({ pairs: SHORTCUT_PAIRS, askA: (a) => `Pintasan keyboard ${a} berfungsi untuk …`, askB: (b) => `Untuk “${b.toLowerCase()}”, tekan …`, exA: (a, b) => `${a}: ${b.toLowerCase()}.`, exB: (a, _b) => `Tekan ${a}.` }),
+    smaTrace,
+    factGenL(SMA_TIK_FACTS),
+    factGenL(SMA_TIK_FACTS2),
+  ];
+}
+
+/* ============ SEJARAH — mapel penuh semua jenjang ============ */
+const KERAJAAN: readonly (readonly [string, string])[] = [
+  ["Sriwijaya", "Palembang — kerajaan maritim terbesar di Nusantara"],
+  ["Majapahit", "Trowulan, Jawa Timur — dipersatukan oleh Gajah Mada"],
+  ["Kutai", "Muara Kaman, Kalimantan Timur — prasasti Yupa"],
+  ["Tarumanagara", "Bogor, Jawa Barat — prasasti Ciaruteun"],
+  ["Mataram Kuno", "Jawa Tengah — membangun Candi Borobudur"],
+  ["Demak", "Pesisir Jawa Tengah — kerajaan Islam pertama di Jawa"],
+  ["Singasari", "Malang, Jawa Timur — didirikan oleh Ken Arok"],
+  ["Kediri", "Kediri, Jawa Timur — terkenal ramalan Jayabaya"],
+  ["Pajajaran", "Pakuan Bogor — dipimpin Prabu Siliwangi"],
+  ["Aceh Darussalam", "Banda Aceh — masa kejayaan Sultan Iskandar Muda"],
+  ["Banten", "Banten — dipimpin Sultan Ageng Tirtayasa"],
+  ["Gowa", "Makassar — dipimpin Sultan Hasanuddin"],
+];
+const PERISTIWA_ID: readonly (readonly [string, string])[] = [
+  ["Proklamasi Kemerdekaan Indonesia", "17 Agustus 1945"],
+  ["Sumpah Pemuda", "28 Oktober 1928"],
+  ["Berdirinya Budi Utomo (Kebangkitan Nasional)", "20 Mei 1908"],
+  ["Berdirinya VOC", "Tahun 1602"],
+  ["Jepang mulai menduduki Indonesia", "Tahun 1942"],
+  ["Konferensi Meja Bundar", "Tahun 1949"],
+  ["Pemilu pertama Indonesia", "Tahun 1955"],
+  ["Dekrit Presiden kembali ke UUD 1945", "5 Juli 1959"],
+  ["Supersemar", "11 Maret 1966"],
+  ["Soeharto berhenti sebagai presiden (awal Reformasi)", "21 Mei 1998"],
+];
+const PERISTIWA_DUNIA: readonly (readonly [string, string])[] = [
+  ["Kemerdekaan Amerika Serikat", "4 Juli 1776"],
+  ["Revolusi Prancis", "Tahun 1789"],
+  ["Perang Dunia I dimulai", "Tahun 1914"],
+  ["Perang Dunia II dimulai", "Tahun 1939"],
+  ["Jatuhnya Konstantinopel ke Turki Utsmani", "Tahun 1453"],
+  ["Manusia pertama terbang ke luar angkasa (Yuri Gagarin)", "Tahun 1961"],
+  ["Manusia pertama mendarat di Bulan", "Tahun 1969"],
+  ["Runtuhnya Tembok Berlin", "Tahun 1989"],
+  ["Bubarnya Uni Soviet (akhir Perang Dingin)", "Tahun 1991"],
+];
+const TK_SEJARAH_PAIRS: readonly (readonly [string, string])[] = [
+  ["Ir. Soekarno", "Presiden pertama Indonesia"],
+  ["Moh. Hatta", "Wakil presiden pertama Indonesia"],
+  ["Ibu Fatmawati", "Menjahit bendera pusaka"],
+  ["Garuda Pancasila", "Lambang negara Indonesia"],
+  ["Indonesia Raya", "Lagu kebangsaan Indonesia"],
+  ["Merah Putih", "Bendera negara Indonesia"],
+  ["Monas", "Tugu tinggi di Jakarta"],
+  ["17 Agustus", "Hari Kemerdekaan Indonesia"],
+];
+const TK_SEJARAH_FACTS: Fact[] = [
+  ["Warna bendera negara kita Indonesia adalah …", "Merah dan putih", ["Biru dan kuning", "Hijau dan hitam"], "Bendera Indonesia: merah di atas, putih di bawah. Merah berani, putih suci."],
+  ["Lagu kebangsaan negara kita adalah …", "Indonesia Raya", ["Garuda Pancasila", "Maju Tak Gentar"], "Indonesia Raya diciptakan oleh Wage Rudolf Supratman."],
+  ["Hari Kemerdekaan Indonesia dirayakan setiap tanggal …", "17 Agustus", ["1 Juni", "20 Mei"], "Indonesia merdeka pada 17 Agustus 1945."],
+  ["Lambang negara Indonesia adalah …", "Garuda Pancasila", ["Banteng", "Pohon beringin"], "Garuda Pancasila adalah lambang negara kita."],
+  ["Presiden pertama Indonesia adalah …", "Ir. Soekarno", ["Moh. Hatta", "Soeharto"], "Ir. Soekarno presiden pertama; Moh. Hatta wakil presiden pertama."],
+  ["Pahlawan adalah orang yang …", "Berani dan baik, membela negara", ["Suka berkelahi", "Paling kaya"], "Pahlawan berjuang untuk negara dan rakyatnya."],
+  ["Ibu kota negara Indonesia adalah …", "Jakarta", ["Bandung", "Surabaya"], "Jakarta adalah ibu kota negara (pemerintahan berangsur pindah ke Nusantara/IKN)."],
+];
+const SEJ_SD_FACTS: Fact[] = [
+  ["Teks Proklamasi Kemerdekaan dibacakan oleh …", "Ir. Soekarno", ["Moh. Hatta", "Sutan Sjahrir"], "Soekarno membacakan proklamasi didampingi Moh. Hatta, 17 Agustus 1945 di Jakarta."],
+  ["Bendera Merah Putih yang dikibarkan saat proklamasi dijahit oleh …", "Ibu Fatmawati", ["Ibu Kartini", "Cut Nyak Dien"], "Fatmawati, istri Soekarno, menjahit Bendera Pusaka."],
+  ["Perusahaan dagang Belanda yang menjajah Indonesia adalah …", "VOC", ["PBB", "KNIL", "BPUPKI"], "VOC (1602) adalah kongsi dagang Belanda yang memonopoli rempah."],
+  ["Perang terbesar melawan Belanda di Jawa dipimpin oleh …", "Pangeran Diponegoro", ["Pattimura", "Imam Bonjol"], "Perang Diponegoro / Perang Jawa berlangsung 1825–1830."],
+  ["Sistem tanam paksa (cultuurstelsel) membuat rakyat sengsara karena …", "Dipaksa menanam tanaman ekspor untuk Belanda", ["Dilarang pergi ke sekolah", "Harus pindah pulau", "Dilarang berdagang selamanya"], "Tanam paksa (1830) memaksa rakyat menanam kopi, tebu, dll. untuk Belanda."],
+  ["Sumpah Pemuda berisi janji bertanah air, berbangsa, dan berbahasa satu, yaitu …", "Indonesia", ["Melayu", "Jawa"], "Sumpah Pemuda 28 Oktober 1928: satu tanah air, bangsa, dan bahasa Indonesia."],
+  ["Lagu Indonesia Raya pertama kali dikumandangkan pada peristiwa …", "Sumpah Pemuda 1928", ["Proklamasi 1945", "Kongres Perempuan", "Pemilu 1955"], "W.R. Supratman memainkan Indonesia Raya dengan biola pada Kongres Pemuda II, 1928."],
+  ["Kerajaan maritim terbesar yang menguasai Selat Malaka adalah …", "Sriwijaya", ["Majapahit", "Kutai"], "Sriwijaya berpusat di Palembang, kuat di laut dan perdagangan."],
+  ["Sumpah Palapa yang terkenal diucapkan oleh …", "Gajah Mada", ["Hayam Wuruk", "Ken Arok"], "Gajah Mada, mahapatih Majapahit, mengucapkan Sumpah Palapa."],
+  ["Hari Pahlawan 10 November memperingati pertempuran besar di …", "Surabaya", ["Jakarta", "Medan"], "Pertempuran Surabaya 10 November 1945 melawan Sekutu."],
+];
+const SEJ_SMP_FACTS: Fact[] = [
+  ["Bangsa Eropa pertama yang tiba dan menaklukkan Malaka (1511) adalah …", "Portugis", ["Belanda", "Inggris"], "Portugis dipimpin Alfonso de Albuquerque merebut Malaka tahun 1511."],
+  ["Ekspedisi Belanda pertama tiba di Banten (1596) dipimpin oleh …", "Cornelis de Houtman", ["Jan Pieterszoon Coen", "Daendels"], "De Houtman tiba 1596; VOC berdiri 1602."],
+  ["Gubernur Jenderal yang membangun jalan raya Anyer–Panarukan adalah …", "Herman Willem Daendels", ["Raffles", "Van den Bosch"], "Daendels (1808–1811) membangun Jalan Raya Pos dengan kerja paksa."],
+  ["Gubernur Jenderal Inggris yang menulis buku History of Java adalah …", "Thomas Stamford Raffles", ["Daendels", "Janssens"], "Raffles memerintah 1811–1816 dan menulis History of Java."],
+  ["Sistem tanam paksa (1830) diterapkan oleh Gubernur Jenderal …", "Johannes van den Bosch", ["Daendels", "Raffles"], "Van den Bosch memulai cultuurstelsel tahun 1830."],
+  ["Organisasi pergerakan nasional pertama, Budi Utomo, didirikan atas gagasan …", "dr. Wahidin Sudirohusodo", ["Ir. Soekarno", "HOS Tjokroaminoto"], "Budi Utomo berdiri 20 Mei 1908; ketuanya dr. Sutomo."],
+  ["Tokoh yang dijuluki 'Raja Jawa Tanpa Mahkota' dan memimpin Sarekat Islam adalah …", "HOS Tjokroaminoto", ["Ki Hajar Dewantara", "Douwes Dekker"], "Tjokroaminoto memimpin Sarekat Islam; Soekarno pernah indekos di rumahnya."],
+  ["Jepang mulai menduduki Indonesia setelah Belanda menyerah di … (1942)", "Kalijati, Subang", ["Jakarta", "Surabaya"], "Belanda menyerah tanpa syarat kepada Jepang di Kalijati, 8 Maret 1942."],
+  ["Badan yang dibentuk Jepang untuk mempersiapkan kemerdekaan Indonesia adalah …", "BPUPKI", ["PPKI saja", "KNIP", "DPR"], "BPUPKI (1945) merumuskan dasar negara; PPKI mengesahkan UUD 1945 pada 18 Agustus 1945."],
+  ["Peristiwa membakar kota sendiri agar tidak dikuasai Sekutu (1946) dikenal sebagai …", "Bandung Lautan Api", ["Puputan Margarana", "Serangan Umum"], "Bandung Lautan Api: 24 Maret 1946, warga membakar Bandung selatan."],
+  ["Perang Puputan Margarana di Bali (1946) dipimpin oleh …", "I Gusti Ngurah Rai", ["Sultan Hasanuddin", "Untung Surapati"], "Ngurah Rai dan pasukannya gugur dalam Puputan Margarana."],
+  ["Serangan Umum 1 Maret 1949 terjadi di kota …", "Yogyakarta", ["Jakarta", "Semarang"], "Serangan Umum merebut Yogyakarta selama 6 jam, membuktikan RI masih ada."],
+  ["Hasil Konferensi Meja Bundar (1949) adalah …", "Belanda mengakui kedaulatan Indonesia", ["Indonesia jadi provinsi Belanda", "Perang dilanjutkan", "Ibu kota pindah"], "KMB di Den Haag: Belanda mengakui kedaulatan RIS pada 27 Desember 1949."],
+];
+const SEJ_SMA_FACTS: Fact[] = [
+  ["Sistem pemerintahan pada masa Demokrasi Terpimpin (1959–1965) berpusat pada kepemimpinan …", "Presiden Soekarno", ["Parlemen", "Militer sepenuhnya", "Raja"], "Dekrit 5 Juli 1959 membuka era Demokrasi Terpimpin."],
+  ["Peristiwa 30 September 1965 (G30S) menewaskan …", "Enam jenderal dan satu perwira TNI AD", ["Presiden Soekarno", "Seluruh kabinet", "Tidak ada korban"], "Tujuh perwira TNI AD menjadi korban; jenazah ditemukan di Lubang Buaya. Peristiwa ini faktual dan menjadi titik balik sejarah Indonesia."],
+  ["Surat perintah yang menjadi dasar peralihan kekuasaan dari Soekarno ke Soeharto (11 Maret 1966) disebut …", "Supersemar", ["Dekrit", "Maklumat", "Tritura"], "Supersemar = Surat Perintah Sebelas Maret 1966."],
+  ["Program pembangunan lima tahunan pada masa Orde Baru disebut …", "Repelita", ["Renstra", "Pembangunan Semesta", "Pelita Bangsa"], "Repelita = Rencana Pembangunan Lima Tahun, dimulai 1969."],
+  ["Reformasi 1998 ditandai dengan berhentinya Presiden Soeharto dan digantikan oleh …", "B.J. Habibie", ["Abdurrahman Wahid", "Megawati Soekarnoputri"], "Soeharto berhenti 21 Mei 1998; Wakil Presiden B.J. Habibie dilantik menjadi presiden."],
+  ["Pemilu pertama pada era Reformasi diselenggarakan pada tahun …", "1999", ["1997", "2004", "2009"], "Pemilu 7 Juni 1999 adalah pemilu demokratis pertama setelah Orde Baru."],
+  ["Perang Dunia I (1914–1918) dipicu oleh pembunuhan putra mahkota Austria, Franz Ferdinand, di kota …", "Sarajevo", ["Berlin", "Wina"], "Pembunuhan di Sarajevo, 28 Juni 1914, memicu PD I."],
+  ["Perang Dunia II di Eropa dimulai dengan invasi Jerman ke negara …", "Polandia", ["Prancis", "Belanda"], "Invasi 1 September 1939 memulai PD II."],
+  ["Serangan Jepang ke pangkalan Amerika Serikat di Pearl Harbor terjadi pada tahun …", "1941", ["1939", "1943"], "Pearl Harbor diserang 7 Desember 1941; AS masuk PD II."],
+  ["Kota Jepang yang dijatuhi bom atom pertama dan kedua (Agustus 1945) adalah …", "Hiroshima dan Nagasaki", ["Tokyo dan Osaka", "Kyoto dan Kobe"], "Hiroshima 6 Agustus, Nagasaki 9 Agustus 1945; Jepang menyerah 15 Agustus 1945."],
+  ["Perang Dingin adalah ketegangan tanpa perang langsung antara …", "Amerika Serikat dan Uni Soviet", ["Jerman dan Prancis", "Inggris dan Jepang"], "Blok Barat (AS) vs Blok Timur (Uni Soviet), ±1947–1991."],
+  ["Aliansi militer Blok Barat yang dibentuk tahun 1949 adalah …", "NATO", ["Pakta Warsawa", "ASEAN", "SEATO"], "NATO 1949; Pakta Warsawa (1955) adalah tandingan Blok Timur."],
+  ["Peradaban Mesopotamia berkembang di antara dua sungai, yaitu …", "Tigris dan Eufrat", ["Nil dan Niger", "Gangsa dan Yamuna"], "Mesopotamia (kini Irak) di antara Tigris & Eufrat — tempat tulisan kuneiform lahir."],
+  ["Revolusi Industri pertama kali dimulai di negara … dengan penemuan mesin uap", "Inggris", ["Prancis", "Jerman"], "Revolusi Industri mulai di Inggris abad ke-18; mesin uap disempurnakan James Watt."],
+  ["Kekosongan kekuasaan (vacuum of power) yang mempercepat Proklamasi 1945 terjadi karena …", "Jepang telah menyerah kepada Sekutu", ["Belanda datang kembali", "BPUPKI dibubarkan rakyat", "Soekarno ditangkap"], "Jepang menyerah 15 Agustus 1945; golongan muda mendesak proklamasi segera (Peristiwa Rengasdengklok)."],
+];
+function sejarahGens(jenjang: JenjangId): LGen[] {
+  if (jenjang === "TK") return [
+    pairGenL({ pairs: TK_SEJARAH_PAIRS, askA: (a) => `${a} adalah …`, askB: (b) => `“${b}” — itu adalah …`, exA: (a, b) => `${a}: ${b.toLowerCase()}.`, exB: (a, _b) => `Itu adalah ${a}.`, four: false }),
+    factGenL(TK_SEJARAH_FACTS, false),
+  ];
+  const base: LGen[] = [
+    pairGenL({ pairs: KERAJAAN, askA: (a) => `Kerajaan ${a} dikenal dengan …`, askB: (b) => `“${b}” adalah ciri kerajaan …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `Itu adalah Kerajaan ${a}.` }),
+    pairGenL({ pairs: PAHLAWAN, askA: (a) => `Pahlawan ${a} berasal dari …`, askB: (b) => `Pahlawan yang berasal dari ${b} adalah …`, exA: (a, b) => `${a} berasal dari ${b}.`, exB: (a, b) => `Dari ${b}: ${a}.` }),
+    pairGenL({ pairs: PERISTIWA_ID, askA: (a) => `${a} terjadi pada …`, askB: (b) => `Peristiwa yang terjadi pada ${b.toLowerCase()} adalah …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, b) => `Pada ${b}: ${a}.` }),
+    factGenL(SEJ_SD_FACTS),
+  ];
+  if (jenjang === "SD") return base;
+  const mid: LGen[] = [
+    ...base,
+    pairGenL({ pairs: PERISTIWA_DUNIA, askA: (a) => `${a} terjadi pada …`, askB: (b) => `Peristiwa dunia yang terjadi pada ${b.toLowerCase()} adalah …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, b) => `Pada ${b}: ${a}.` }),
+    factGenL(SEJ_SMP_FACTS),
+  ];
+  if (jenjang === "SMP") return mid;
+  return [...mid, factGenL(SEJ_SMA_FACTS)];
+}
+
 export const GENERATORS: Partial<Record<JenjangId, Record<string, LGen[]>>> = {
   TK: {
     inggris: [pairGenL({ pairs: TK_ENG_PAIRS, askA: (a) => `What is “${a}” in Indonesian? / “${a}” artinya …`, askB: (b) => `Bahasa Inggris dari “${b}” adalah …`, exA: (a, b) => `“${a}” artinya ${b}.`, exB: (a, b) => `“${a}” dalam Bahasa Inggris adalah ${b}.`, four: false }), tkEngArrange, tkCompare],
-    matematika: [tkCount, tkAddSub, tkCompare, tkMissing],
+    matematika: [tkCount, tkAddSub, tkCompare, tkMissing, tkBeforeAfter, tkStoryCount, factGenL(TK_SHAPE_FACTS, false)],
     sains: [pairGenL({ pairs: TK_SAINS_PAIRS, askA: (a) => `${a} hidup terutama di …`, askB: (b) => `Hewan yang hidup di ${b.toLowerCase()} adalah …`, exA: (a, b) => `${a} hidup di ${b.toLowerCase()}.`, exB: (a, b) => `Yang hidup di ${b.toLowerCase()} adalah ${a}.`, four: false }), factGenL(TK_SAINS_FACTS, false)],
     pai: [factGenL(TK_PAI_FACTS, false),
-      pairGenL({ pairs: MALAIKAT, askA: (a) => `Tugas Malaikat ${a} adalah …`, askB: (b) => `Malaikat yang bertugas “${b.toLowerCase()}” adalah …`, exA: (a, b) => `${a}: ${b.toLowerCase()}.`, exB: (a, b) => `Itu tugas Malaikat ${a}.`, four: false }),
+      pairGenL({ pairs: MALAIKAT, askA: (a) => `Tugas Malaikat ${a} adalah …`, askB: (b) => `Malaikat yang bertugas “${b.toLowerCase()}” adalah …`, exA: (a, b) => `${a}: ${b.toLowerCase()}.`, exB: (a, _b) => `Itu tugas Malaikat ${a}.`, four: false }),
       pairGenL({ pairs: KITAB_NABI, askA: (a) => `Kitab ${a} diturunkan kepada …`, askB: (b) => `Kitab yang diturunkan kepada ${b} adalah …`, exA: (a, b) => `${a} → ${b}.`, exB: (a, b) => `${b} menerima kitab ${a}.`, four: false })],
     kristen: [factGenL(TK_KRISTEN_FACTS, false),
-      pairGenL({ pairs: TOKOH_KRISTEN, askA: (a) => `Tokoh Alkitab ${a} dikenal karena …`, askB: (b) => `Tokoh yang dikenal “${b.toLowerCase()}” adalah …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, b) => `Itu adalah ${a}.`, four: false }),
-      pairGenL({ pairs: PERAYAAN_KRISTEN, askA: (a) => `Perayaan ${a} memperingati …`, askB: (b) => `Peringatan “${b}” disebut …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, b) => `Itu perayaan ${a}.`, four: false })],
+      pairGenL({ pairs: TOKOH_KRISTEN, askA: (a) => `Tokoh Alkitab ${a} dikenal karena …`, askB: (b) => `Tokoh yang dikenal “${b.toLowerCase()}” adalah …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `Itu adalah ${a}.`, four: false }),
+      pairGenL({ pairs: PERAYAAN_KRISTEN, askA: (a) => `Perayaan ${a} memperingati …`, askB: (b) => `Peringatan “${b}” disebut …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `Itu perayaan ${a}.`, four: false })],
     korea: langVocabGensL(KOREA_VOCAB, "Korea", "TK"),
     jepang: [...langVocabGensL(JEPANG_VOCAB, "Jepang", "TK"), pairGenL({ pairs: JEPANG_KANA.slice(0, 15), askA: (a) => `Hiragana untuk bunyi “${a}” adalah …`, askB: (b) => `Hiragana “${b}” dibaca …`, exA: (a, b) => `Bunyi “${a}” ditulis ${b}.`, exB: (a, b) => `${b} dibaca “${a}”.`, four: false })],
     mandarin: langVocabGensL(MANDARIN_VOCAB, "Mandarin", "TK"),
+    informatika: tikGens("TK"),
+    sejarah: sejarahGens("TK"),
   },
   SD: {
-    matematika: [sdAddSub, sdMulDiv, sdMixed, sdFraction, sdFpbKpk, sdGeometry, sdAverage, sdSequence, sdWordProblem],
+    matematika: [sdAddSub, sdMulDiv, sdMixed, sdFraction, sdFpbKpk, sdGeometry, sdAverage, sdSequence, sdWordProblem, sdRound, sdPercent, sdClock, sdUnit, sdFracCompare,
+      pairGenL({ pairs: ROMAN_PAIRS, askA: (a) => `Bilangan Romawi dari ${a} adalah …`, askB: (b) => `Angka Romawi “${b}” bernilai …`, exA: (a, b) => `${a} dalam angka Romawi adalah ${b}.`, exB: (a, b) => `${b} bernilai ${a}.` })],
     inggris: [
       pairGenL({ pairs: EN_VOCAB, askA: (a) => `“${a}” artinya …`, askB: (b) => `Bahasa Inggris dari “${b}” adalah …`, exA: (a, b) => `“${a}” artinya ${b}.`, exB: (a, b) => `“${a}” dalam Bahasa Inggris: ${b}.` }),
       pairGenL({ pairs: EN_OPPOSITES, askA: (a) => `The opposite of “${a}” is …`, askB: (b) => `Kata yang berlawanan arti dengan “${b}” adalah …`, exA: (a, b) => `${a} >< ${b}.`, exB: (a, b) => `Lawan kata ${b} adalah ${a}.` }),
@@ -1203,24 +1907,22 @@ export const GENERATORS: Partial<Record<JenjangId, Record<string, LGen[]>>> = {
     indonesia: [
       pairGenL({ pairs: ANTONIM_ID, askA: (a) => `Antonim (lawan kata) dari “${a}” adalah …`, askB: (b) => `Kata yang berlawanan arti dengan “${b}” adalah …`, exA: (a, b) => `${a} >< ${b}.`, exB: (a, b) => `Lawan kata ${b} adalah ${a}.` }),
       pairGenL({ pairs: SINONIM_ID, askA: (a) => `Sinonim (persamaan kata) dari “${a}” adalah …`, askB: (b) => `Kata yang semakna dengan “${b}” adalah …`, exA: (a, b) => `${a} ≈ ${b}.`, exB: (a, b) => `${b} semakna dengan ${a}.` }),
-      pairGenL({ pairs: PERIBAHASA, askA: (a) => `Peribahasa “${a}” artinya …`, askB: (b) => `Peribahasa yang berarti “${b}” adalah …`, exA: (a, b) => `Artinya: ${b}.`, exB: (a, b) => `Peribahasanya: “${a}”.` }),
+      pairGenL({ pairs: PERIBAHASA, askA: (a) => `Peribahasa “${a}” artinya …`, askB: (b) => `Peribahasa yang berarti “${b}” adalah …`, exA: (_a, b) => `Artinya: ${b}.`, exB: (a, _b) => `Peribahasanya: “${a}”.` }),
     ],
     ips: [
       pairGenL({ pairs: PROVINSI_IBUKOTA, askA: (a) => `Ibu kota Provinsi ${a} adalah …`, askB: (b) => `${b} adalah ibu kota Provinsi …`, exA: (a, b) => `Ibu kota ${a} adalah ${b}.`, exB: (a, b) => `${b} ibu kota Provinsi ${a}.` }),
       pairGenL({ pairs: PAHLAWAN, askA: (a) => `${a} adalah pahlawan yang berasal/berjuang di daerah …`, askB: (b) => `Pahlawan dari daerah ${b} adalah …`, exA: (a, b) => `${a} berasal dari ${b}.`, exB: (a, b) => `Dari ${b}: ${a}.` }),
     ],
     ppkn: [
-      pairGenL({ pairs: SILA, askA: (a) => `${a} Pancasila berbunyi …`, askB: (b) => `“${b}” adalah bunyi …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, b) => `Itu adalah ${a}.` }),
+      pairGenL({ pairs: SILA, askA: (a) => `${a} Pancasila berbunyi …`, askB: (b) => `“${b}” adalah bunyi …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `Itu adalah ${a}.` }),
       pairGenL({ pairs: SILA_LAMBANG, askA: (a) => `Lambang ${a.toLowerCase()} Pancasila adalah …`, askB: (b) => `Lambang “${b}” adalah milik …`, exA: (a, b) => `${a} berlambang ${b}.`, exB: (a, b) => `${b} adalah lambang ${a}.` }),
     ],
-    informatika: [classifyGen(INF_CLASSIFY.map((x) => ({ item: x.item, cat: x.cat })), (i) => `${i} termasuk kelompok …`, (i, c) => `${i} adalah ${c.toLowerCase()}.`)],
+    informatika: tikGens("SD"),
+    sejarah: sejarahGens("SD"),
     jawa: jawaGens("SD"),
-    arab: [
-      pairGenL({ pairs: ARAB_VOCAB, askA: (a) => `Kata “${a}” artinya …`, askB: (b) => `Bahasa Arab dari “${b}” adalah …`, exA: (a, b) => `${a} artinya ${b}.`, exB: (a, b) => `“${b}” dalam Bahasa Arab: ${a}.` }),
-      pairGenL({ pairs: DHAMIR, askA: (a) => `Dhamir “${a}” artinya …`, askB: (b) => `Dhamir untuk “${b}” adalah …`, exA: (a, b) => `${a} = ${b}.`, exB: (a, b) => `“${b}” = ${a}.` }),
-    ],
+    arab: arabGens("SD"),
     pai: [
-      pairGenL({ pairs: MALAIKAT, askA: (a) => `Tugas Malaikat ${a} adalah …`, askB: (b) => `Malaikat yang bertugas “${b.toLowerCase()}” adalah …`, exA: (a, b) => `${a}: ${b.toLowerCase()}.`, exB: (a, b) => `Itu tugas Malaikat ${a}.` }),
+      pairGenL({ pairs: MALAIKAT, askA: (a) => `Tugas Malaikat ${a} adalah …`, askB: (b) => `Malaikat yang bertugas “${b.toLowerCase()}” adalah …`, exA: (a, b) => `${a}: ${b.toLowerCase()}.`, exB: (a, _b) => `Itu tugas Malaikat ${a}.` }),
       pairGenL({ pairs: KITAB_NABI, askA: (a) => `Kitab ${a} diturunkan kepada …`, askB: (b) => `Kitab suci yang diturunkan kepada ${b} adalah …`, exA: (a, b) => `${a} → ${b}.`, exB: (a, b) => `${b} menerima kitab ${a}.` }),
       PAI_ORDER_GEN, rakaatGen, factGenL(paiFactsSD),
     ],
@@ -1240,10 +1942,10 @@ export const GENERATORS: Partial<Record<JenjangId, Record<string, LGen[]>>> = {
         ["Saat berpuasa, “makan karena benar-benar lupa” hukumnya …", "Tidak membatalkan puasa", ["Membatalkan puasa", "Membatalkan wudu", "Membatalkan salat"], "Makan karena lupa tidak membatalkan puasa — itu rezeki dari Allah; lanjutkan puasanya."],
       ] as Fact[])],
     quranhadis: [factGenL(qhFacts),
-      pairGenL({ pairs: SURAH_ARTI, askA: (a) => `Surah ${a} artinya / dikenal sebagai …`, askB: (b) => `“${b}” adalah arti/gelar dari surah …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, b) => `Itu adalah surah ${a}.` })],
+      pairGenL({ pairs: SURAH_ARTI, askA: (a) => `Surah ${a} artinya / dikenal sebagai …`, askB: (b) => `“${b}” adalah arti/gelar dari surah …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `Itu adalah surah ${a}.` })],
     kristen: [
-      pairGenL({ pairs: TOKOH_KRISTEN, askA: (a) => `Tokoh Alkitab ${a} dikenal karena …`, askB: (b) => `Tokoh yang dikenal “${b.toLowerCase()}” adalah …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, b) => `Itu adalah ${a}.` }),
-      pairGenL({ pairs: PERAYAAN_KRISTEN, askA: (a) => `Perayaan ${a} memperingati …`, askB: (b) => `Peringatan “${b}” disebut …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, b) => `Itu adalah perayaan ${a}.` }),
+      pairGenL({ pairs: TOKOH_KRISTEN, askA: (a) => `Tokoh Alkitab ${a} dikenal karena …`, askB: (b) => `Tokoh yang dikenal “${b.toLowerCase()}” adalah …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `Itu adalah ${a}.` }),
+      pairGenL({ pairs: PERAYAAN_KRISTEN, askA: (a) => `Perayaan ${a} memperingati …`, askB: (b) => `Peringatan “${b}” disebut …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `Itu adalah perayaan ${a}.` }),
     ],
     "cambridge-eng": [
       pairGenL({ pairs: EN_VOCAB, askA: (a) => `What does “${a}” mean in Indonesian?`, askB: (b) => `The English word for “${b}” is …`, exA: (a, b) => `“${a}” means ${b}.`, exB: (a, b) => `“${b}” in English is ${a}.` }),
@@ -1251,7 +1953,7 @@ export const GENERATORS: Partial<Record<JenjangId, Record<string, LGen[]>>> = {
       pairGenL({ pairs: EN_PAST, askA: (a) => `The past tense of “${a}” is …`, askB: (b) => `The base form (V1) of “${b}” is …`, exA: (a, b) => `${a} → ${b}.`, exB: (a, b) => `${b} comes from ${a}.` }),
     ],
     "cambridge-sci": [
-      pairGenL({ pairs: CAM_SCI_PAIRS, askA: (a) => `In science, the ${a.toLowerCase()} …`, askB: (b) => `“${b}” — this describes the …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, b) => `That is the ${a}.` }),
+      pairGenL({ pairs: CAM_SCI_PAIRS, askA: (a) => `In science, the ${a.toLowerCase()} …`, askB: (b) => `“${b}” — this describes the …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `That is the ${a}.` }),
       factGenL(SD_SAINS_FACTS),
     ],
     "cambridge-math": [camMath],
@@ -1260,7 +1962,7 @@ export const GENERATORS: Partial<Record<JenjangId, Record<string, LGen[]>>> = {
     mandarin: langVocabGensL(MANDARIN_VOCAB, "Mandarin", "SD", MANDARIN_FACTS),
   },
   SMP: {
-    matematika: [smpNegOps, smpEquation, smpSequence, smpGradient, smpProbability, smpScale, smpPhysics],
+    matematika: [smpNegOps, smpEquation, smpSequence, smpGradient, smpProbability, smpScale, smpPhysics, smpDiscount, smpProfit, smpPythag, smpCircle, smpVolume, smpAngles, smpTwoVar],
     inggris: [
       pairGenL({ pairs: EN_OPPOSITES, askA: (a) => `The synonym/antonym check — the opposite of “${a}” is …`, askB: (b) => `The word opposite in meaning to “${b}” is …`, exA: (a, b) => `${a} >< ${b}.`, exB: (a, b) => `Opposite of ${b}: ${a}.` }),
       pairGenL({ pairs: EN_PAST, askA: (a) => `The past tense (V2) of “${a}” is …`, askB: (b) => `“${b}” is the past tense of …`, exA: (a, b) => `${a} → ${b}.`, exB: (a, b) => `${b} ← ${a}.` }),
@@ -1273,16 +1975,16 @@ export const GENERATORS: Partial<Record<JenjangId, Record<string, LGen[]>>> = {
       ] as Fact[]),
     ],
     sains: [factGenL(SMP_SAINS_FACTS), smpPhysics, phGen,
-      pairGenL({ pairs: ORGANEL, askA: (a) => `Fungsi organel ${a.toLowerCase()} adalah …`, askB: (b) => `Organel yang berfungsi “${b.toLowerCase()}” adalah …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, b) => `Itu adalah ${a}.` })],
+      pairGenL({ pairs: ORGANEL, askA: (a) => `Fungsi organel ${a.toLowerCase()} adalah …`, askB: (b) => `Organel yang berfungsi “${b.toLowerCase()}” adalah …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `Itu adalah ${a}.` })],
     indonesia: [factGenL(indoFactsSMP),
       pairGenL({ pairs: KATA_BAKU, askA: (a) => `Bentuk baku dari kata “${a}” adalah …`, askB: (b) => `Kata tidak baku dari “${b}” adalah …`, exA: (a, b) => `Baku: ${b} (bukan ${a}).`, exB: (a, b) => `${a} adalah bentuk tidak baku dari ${b}.` }),
-      pairGenL({ pairs: PERIBAHASA, askA: (a) => `Peribahasa “${a}” artinya …`, askB: (b) => `Peribahasa yang berarti “${b}” adalah …`, exA: (a, b) => `Artinya: ${b}.`, exB: (a, b) => `Peribahasanya: “${a}”.` })],
+      pairGenL({ pairs: PERIBAHASA, askA: (a) => `Peribahasa “${a}” artinya …`, askB: (b) => `Peribahasa yang berarti “${b}” adalah …`, exA: (_a, b) => `Artinya: ${b}.`, exB: (a, _b) => `Peribahasanya: “${a}”.` })],
     ips: [
       pairGenL({ pairs: EVENT_YEAR, askA: (a) => `${a} terjadi pada …`, askB: (b) => `Peristiwa yang terjadi pada ${b} adalah …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, b) => `Pada ${b}: ${a}.` }),
-      pairGenL({ pairs: SMP_IPS_PAIRS, askA: (a) => `${a} adalah …`, askB: (b) => `“${b}” — itu adalah …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, b) => `Itu adalah ${a}.` }),
+      pairGenL({ pairs: SMP_IPS_PAIRS, askA: (a) => `${a} adalah …`, askB: (b) => `“${b}” — itu adalah …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `Itu adalah ${a}.` }),
       pairGenL({ pairs: PROVINSI_IBUKOTA, askA: (a) => `Ibu kota Provinsi ${a} adalah …`, askB: (b) => `${b} adalah ibu kota Provinsi …`, exA: (a, b) => `Ibu kota ${a}: ${b}.`, exB: (a, b) => `${b} ibu kota ${a}.` }),
     ],
-    ppkn: [pairGenL({ pairs: LEMBAGA, askA: (a) => `Tugas/wewenang utama ${a} adalah …`, askB: (b) => `“${b}” adalah tugas/wewenang …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, b) => `Itu wewenang ${a}.` })],
+    ppkn: [pairGenL({ pairs: LEMBAGA, askA: (a) => `Tugas/wewenang utama ${a} adalah …`, askB: (b) => `“${b}” adalah tugas/wewenang …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `Itu wewenang ${a}.` })],
     informatika: [binaryGen,
       classifyGen(INF_CLASSIFY.map((x) => ({ item: x.item, cat: x.cat })), (i) => `${i} termasuk kelompok …`, (i, c) => `${i} adalah ${c.toLowerCase()}.`),
       factGenL([
@@ -1295,11 +1997,10 @@ export const GENERATORS: Partial<Record<JenjangId, Record<string, LGen[]>>> = {
         ["Sistem operasi yang bersifat open source adalah …", "Linux", ["Windows", "macOS", "iOS"], "Linux open source; Windows & macOS berpemilik (proprietary)."],
         ["1 Kilobyte (KB) sama dengan … byte", "1.024 byte", ["1.000 byte", "8 byte", "1.000.000 byte"], "Dalam komputasi, 1 KB = 1.024 byte (2¹⁰)."],
         ["Ekstensi file untuk gambar hasil foto umumnya adalah …", ".jpg / .png", [".docx", ".mp3", ".exe"], ".docx dokumen, .mp3 audio, .exe program."],
-      ] as Fact[])],
+      ] as Fact[]), ...tikGens("SMP")],
+    sejarah: sejarahGens("SMP"),
     jawa: jawaGens("SMP"),
-    arab: [
-      pairGenL({ pairs: ARAB_VOCAB, askA: (a) => `Kata “${a}” artinya …`, askB: (b) => `Bahasa Arab dari “${b}” adalah …`, exA: (a, b) => `${a} artinya ${b}.`, exB: (a, b) => `“${b}” dalam Bahasa Arab: ${a}.` }),
-      pairGenL({ pairs: DHAMIR, askA: (a) => `Dhamir “${a}” artinya …`, askB: (b) => `Dhamir untuk “${b}” adalah …`, exA: (a, b) => `${a} = ${b}.`, exB: (a, b) => `“${b}” = ${a}.` }),
+    arab: [...arabGens("SMP"),
       factGenL([
         ["Kata “اِذْهَبْ” (idzhab) pada kalimat “اِذْهَبْ إِلَى الْمَدْرَسَةِ” adalah fi'il …", "Amr (perintah)", ["Madhi", "Mudhari'", "Nahi"], "اِذْهَبْ = pergilah! → fi'il amr."],
         ["Lawan kata dari “كَبِيرٌ” (besar) adalah …", "صَغِيرٌ (kecil)", ["طَوِيلٌ (panjang)", "جَدِيدٌ (baru)", "قَرِيبٌ (dekat)"], "كَبِيرٌ >< صَغِيرٌ."],
@@ -1312,20 +2013,20 @@ export const GENERATORS: Partial<Record<JenjangId, Record<string, LGen[]>>> = {
       pairGenL({ pairs: ASMAUL, askA: (a) => `Asmaul Husna “${a}” artinya Allah Maha …`, askB: (b) => `Nama Allah yang berarti “${b}” adalah …`, exA: (a, b) => `${a} = ${b}.`, exB: (a, b) => `“${b}” adalah ${a}.` }),
     ],
     fikih: [factGenL(fikihFacts), fikihZakat,
-      pairGenL({ pairs: HAJI_PAIRS, askA: (a) => `Dalam ibadah haji, ${a} adalah …`, askB: (b) => `“${b}” — itu adalah istilah haji …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, b) => `Itu adalah ${a}.` })],
+      pairGenL({ pairs: HAJI_PAIRS, askA: (a) => `Dalam ibadah haji, ${a} adalah …`, askB: (b) => `“${b}” — itu adalah istilah haji …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `Itu adalah ${a}.` })],
     quranhadis: [factGenL(qhFacts),
-      pairGenL({ pairs: HADIS_CLASS, askA: (a) => `Hadis ${a} adalah hadis yang …`, askB: (b) => `“${b}” — itu adalah hadis …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, b) => `Itu hadis ${a}.` })],
+      pairGenL({ pairs: HADIS_CLASS, askA: (a) => `Hadis ${a} adalah hadis yang …`, askB: (b) => `“${b}” — itu adalah hadis …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `Itu hadis ${a}.` })],
     ski: [khalifahGen,
       pairGenL({ pairs: DINASTI, askA: (a) => `Pusat pemerintahan ${a} adalah kota …`, askB: (b) => `Dinasti/kesultanan yang berpusat di ${b} adalah …`, exA: (a, b) => `${a} berpusat di ${b}.`, exB: (a, b) => `Yang berpusat di ${b}: ${a}.` }),
       factGenL(skiFactsSMA)],
     kristen: [factGenL(kristenFactsAdv),
-      pairGenL({ pairs: TOKOH_KRISTEN, askA: (a) => `Tokoh Alkitab ${a} dikenal karena …`, askB: (b) => `Tokoh yang dikenal “${b.toLowerCase()}” adalah …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, b) => `Itu adalah ${a}.` })],
+      pairGenL({ pairs: TOKOH_KRISTEN, askA: (a) => `Tokoh Alkitab ${a} dikenal karena …`, askB: (b) => `Tokoh yang dikenal “${b.toLowerCase()}” adalah …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `Itu adalah ${a}.` })],
     "cambridge-eng": [
       pairGenL({ pairs: EN_PAST, askA: (a) => `The past tense (V2) of “${a}” is …`, askB: (b) => `“${b}” is the past tense of …`, exA: (a, b) => `${a} → ${b}.`, exB: (a, b) => `${b} ← ${a}.` }),
       pairGenL({ pairs: EN_OPPOSITES, askA: (a) => `The opposite of “${a}” is …`, askB: (b) => `The antonym of “${b}” is …`, exA: (a, b) => `${a} >< ${b}.`, exB: (a, b) => `Opposite of ${b}: ${a}.` }),
     ],
     "cambridge-sci": [
-      pairGenL({ pairs: CAM_SCI_PAIRS, askA: (a) => `In science, the ${a.toLowerCase()} …`, askB: (b) => `“${b}” — this describes the …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, b) => `That is the ${a}.` }),
+      pairGenL({ pairs: CAM_SCI_PAIRS, askA: (a) => `In science, the ${a.toLowerCase()} …`, askB: (b) => `“${b}” — this describes the …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `That is the ${a}.` }),
       pairGenL({ pairs: UNSUR_SIMBOL, askA: (a) => `The chemical symbol for ${a.toLowerCase()} is …`, askB: (b) => `The symbol “${b}” stands for the element …`, exA: (a, b) => `${a} = ${b}.`, exB: (a, b) => `${b} = ${a}.` }),
     ],
     "cambridge-math": [camMath, smpEquation],
@@ -1334,7 +2035,7 @@ export const GENERATORS: Partial<Record<JenjangId, Record<string, LGen[]>>> = {
     mandarin: langVocabGensL(MANDARIN_VOCAB, "Mandarin", "SMP", MANDARIN_FACTS),
   },
   SMA: {
-    matematika: [smaDerivative, smaLimit, smaLog, smaSeries, smaCombination],
+    matematika: [smaDerivative, smaLimit, smaLog, smaSeries, smaCombination, smaQuadratic, smaGeomSeries, smaDet, smaPerm, factGenL(TRIG_FACTS)],
     inggris: [
       factGenL([
         ["“Had I known about the traffic, I ___ earlier.”", "would have left", ["will leave", "would leave", "leave"], "Third conditional (inversi 'Had I…'): would have + V3."],
@@ -1345,8 +2046,8 @@ export const GENERATORS: Partial<Record<JenjangId, Record<string, LGen[]>>> = {
       pairGenL({ pairs: EN_PAST, askA: (a) => `The past participle check — the past tense of “${a}” is …`, askB: (b) => `“${b}” is the past form of …`, exA: (a, b) => `${a} → ${b}.`, exB: (a, b) => `${b} ← ${a}.` }),
     ],
     biologi: [smaGenetics,
-      pairGenL({ pairs: ENZIM, askA: (a) => `Enzim ${a} berfungsi …`, askB: (b) => `Enzim yang berfungsi “${b.toLowerCase()}” adalah …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, b) => `Itu adalah enzim ${a}.` }),
-      pairGenL({ pairs: ORGANEL, askA: (a) => `Fungsi organel ${a.toLowerCase()} adalah …`, askB: (b) => `Organel yang berfungsi “${b.toLowerCase()}” adalah …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, b) => `Itu adalah ${a}.` }),
+      pairGenL({ pairs: ENZIM, askA: (a) => `Enzim ${a} berfungsi …`, askB: (b) => `Enzim yang berfungsi “${b.toLowerCase()}” adalah …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `Itu adalah enzim ${a}.` }),
+      pairGenL({ pairs: ORGANEL, askA: (a) => `Fungsi organel ${a.toLowerCase()} adalah …`, askB: (b) => `Organel yang berfungsi “${b.toLowerCase()}” adalah …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `Itu adalah ${a}.` }),
       factGenL([
         ["Pada respirasi aerob, tahap penghasil ATP terbanyak adalah …", "Rantai transpor elektron", ["Glikolisis", "Siklus Krebs", "Fermentasi"], "Transpor elektron menghasilkan ±34 ATP."],
         ["Enzim yang menyambung fragmen Okazaki pada replikasi DNA adalah …", "DNA ligase", ["Helikase", "Primase", "Topoisomerase"], "DNA ligase menyambung fragmen Okazaki pada untai lagging."],
@@ -1360,8 +2061,8 @@ export const GENERATORS: Partial<Record<JenjangId, Record<string, LGen[]>>> = {
         ["Bilangan oksidasi S dalam H₂SO₄ adalah …", "+6", ["+2", "+4", "−2"], "2(+1) + S + 4(−2) = 0 → S = +6."],
         ["Larutan penyangga (buffer) terdiri dari …", "Asam lemah + basa konjugasinya", ["Asam kuat + basa kuat", "Garam + air saja", "Asam kuat + garamnya"], "Buffer: asam lemah + basa konjugasi (atau sebaliknya)."],
       ] as Fact[])],
-    indonesia: [classifyGen(majasClassify.map((x) => ({ item: `“${x.item}”`, cat: x.cat })), (i) => `Kalimat ${i} mengandung majas …`, (i, c) => `Kalimat itu bermajas ${c.toLowerCase()}.`),
-      pairGenL({ pairs: KATA_BAKU, askA: (a) => `Bentuk baku dari kata “${a}” adalah …`, askB: (b) => `Kata tidak baku dari “${b}” adalah …`, exA: (a, b) => `Baku: ${b}.`, exB: (a, b) => `${a} tidak baku dari ${b}.` }),
+    indonesia: [classifyGen(majasClassify.map((x) => ({ item: `“${x.item}”`, cat: x.cat })), (i) => `Kalimat ${i} mengandung majas …`, (_i, c) => `Kalimat itu bermajas ${c.toLowerCase()}.`),
+      pairGenL({ pairs: KATA_BAKU, askA: (a) => `Bentuk baku dari kata “${a}” adalah …`, askB: (b) => `Kata tidak baku dari “${b}” adalah …`, exA: (_a, b) => `Baku: ${b}.`, exB: (a, b) => `${a} tidak baku dari ${b}.` }),
       factGenL([
         ["Struktur teks eksposisi yang berisi penegasan kembali pendapat penulis disebut …", "Penegasan ulang", ["Tesis", "Argumentasi", "Orientasi"], "Eksposisi: tesis → argumentasi → penegasan ulang."],
         ["Kata berimbuhan yang bermakna kausatif (menyebabkan) adalah …", "Memperbesar", ["Terbesar", "Pembesaran", "Besar-besaran"], "“Memper-” pada memperbesar = menyebabkan menjadi besar."],
@@ -1374,23 +2075,23 @@ export const GENERATORS: Partial<Record<JenjangId, Record<string, LGen[]>>> = {
         ["Fungsi devisa bagi suatu negara antara lain untuk …", "Membayar impor dan utang luar negeri", ["Mencetak uang baru", "Menurunkan inflasi secara langsung", "Membayar gaji ASN"], "Devisa dipakai untuk transaksi luar negeri."],
         ["Konsep “Dwifungsi ABRI” dan stabilitas politik yang kuat adalah ciri masa …", "Orde Baru", ["Demokrasi Liberal", "Demokrasi Terpimpin", "Reformasi"], "Orde Baru (1966–1998)."],
       ] as Fact[])],
-    ppkn: [pairGenL({ pairs: LEMBAGA, askA: (a) => `Tugas/wewenang utama ${a} adalah …`, askB: (b) => `“${b}” adalah tugas/wewenang …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, b) => `Itu wewenang ${a}.` }),
+    ppkn: [pairGenL({ pairs: LEMBAGA, askA: (a) => `Tugas/wewenang utama ${a} adalah …`, askB: (b) => `“${b}” adalah tugas/wewenang …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `Itu wewenang ${a}.` }),
       factGenL([
         ["Menurut trias politica Montesquieu, kekuasaan yudikatif di Indonesia dijalankan oleh …", "MA dan MK", ["Presiden & DPR", "MPR", "KPK"], "Yudikatif: Mahkamah Agung & Mahkamah Konstitusi."],
         ["Amandemen UUD 1945 pertama kali dilakukan pada tahun …", "1999", ["1998", "2000", "2002"], "Amandemen I pada Sidang Umum MPR 1999; total 4 kali (1999–2002)."],
         ["Asas pemilu di Indonesia adalah …", "Luber dan jurdil", ["Cepat dan murah", "Terbuka dan rahasia penuh", "Langsung oleh MPR"], "Luber: langsung, umum, bebas, rahasia; Jurdil: jujur & adil."],
       ] as Fact[])],
     informatika: [
-      pairGenL({ pairs: OSI_PAIRS, askA: (a) => `Lapisan OSI ${a} berfungsi untuk …`, askB: (b) => `“${b}” adalah fungsi lapisan OSI …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, b) => `Itu fungsi ${a}.` }),
-      pairGenL({ pairs: ATTACK_PAIRS, askA: (a) => `Serangan siber “${a}” adalah …`, askB: (b) => `“${b}” — itu adalah serangan …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, b) => `Itu adalah ${a}.` }),
+      pairGenL({ pairs: OSI_PAIRS, askA: (a) => `Lapisan OSI ${a} berfungsi untuk …`, askB: (b) => `“${b}” adalah fungsi lapisan OSI …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `Itu fungsi ${a}.` }),
+      pairGenL({ pairs: ATTACK_PAIRS, askA: (a) => `Serangan siber “${a}” adalah …`, askB: (b) => `“${b}” — itu adalah serangan …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `Itu adalah ${a}.` }),
       binaryGen,
       factGenL([
         ["Kompleksitas waktu algoritma binary search adalah …", "O(log n)", ["O(n)", "O(n log n)", "O(n²)"], "Binary search membagi data jadi dua tiap langkah → O(log n)."],
         ["Dalam basis data relasional, atribut unik pengidentifikasi setiap baris disebut …", "Primary key", ["Foreign key", "Index biasa", "View"], "Primary key: unik & tidak boleh NULL."],
-      ] as Fact[])],
+      ] as Fact[]), ...tikGens("SMA")],
+    sejarah: sejarahGens("SMA"),
     jawa: jawaGens("SMA"),
-    arab: [
-      pairGenL({ pairs: ARAB_VOCAB, askA: (a) => `Kata “${a}” artinya …`, askB: (b) => `Bahasa Arab dari “${b}” adalah …`, exA: (a, b) => `${a} artinya ${b}.`, exB: (a, b) => `“${b}” dalam Bahasa Arab: ${a}.` }),
+    arab: [...arabGens("SMA"),
       factGenL([
         ["Jamak taksir dari “كِتَابٌ” adalah …", "كُتُبٌ", ["كِتَابَانِ", "كَاتِبُونَ", "مَكْتَبَاتٌ"], "كِتَابٌ → كُتُبٌ (jamak taksir)."],
         ["Huruf jar pada kalimat “ذَهَبْتُ إِلَى الْمَسْجِدِ” adalah …", "إِلَى", ["ذَهَبْتُ", "الْمَسْجِدِ", "Tidak ada"], "إِلَى adalah huruf jar; الْمَسْجِدِ majrur."],
@@ -1402,30 +2103,30 @@ export const GENERATORS: Partial<Record<JenjangId, Record<string, LGen[]>>> = {
       ["Jual beli yang mengandung ketidakjelasan (gharar) hukumnya …", "Dilarang / tidak sah", ["Wajib", "Sunnah", "Makruh saja"], "Rasulullah melarang jual beli gharar (HR. Muslim)."],
       ["Sumber hukum Islam kedua setelah Al-Qur'an adalah …", "Hadis / Sunnah", ["Ijma'", "Qiyas", "Ijtihad"], "Urutan: Al-Qur'an, Hadis, Ijma', Qiyas."],
     ] as Fact[]), factGenL(FARAID_FACTS), fikihZakat,
-      pairGenL({ pairs: ALIRAN, askA: (a) => `Aliran teologi ${a} berpendapat bahwa …`, askB: (b) => `“${b}” adalah pandangan aliran …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, b) => `Itu pandangan ${a}.` }),
-      pairGenL({ pairs: AKAD, askA: (a) => `Akad ${a} adalah …`, askB: (b) => `“${b}” — itu adalah akad …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, b) => `Itu akad ${a}.` })],
+      pairGenL({ pairs: ALIRAN, askA: (a) => `Aliran teologi ${a} berpendapat bahwa …`, askB: (b) => `“${b}” adalah pandangan aliran …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `Itu pandangan ${a}.` }),
+      pairGenL({ pairs: AKAD, askA: (a) => `Akad ${a} adalah …`, askB: (b) => `“${b}” — itu adalah akad …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `Itu akad ${a}.` })],
     akidah: [
-      pairGenL({ pairs: ALIRAN, askA: (a) => `Aliran teologi ${a} berpendapat bahwa …`, askB: (b) => `“${b}” adalah pandangan aliran …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, b) => `Itu pandangan ${a}.` }),
+      pairGenL({ pairs: ALIRAN, askA: (a) => `Aliran teologi ${a} berpendapat bahwa …`, askB: (b) => `“${b}” adalah pandangan aliran …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `Itu pandangan ${a}.` }),
       pairGenL({ pairs: SIFAT_WAJIB, askA: (a) => `Sifat wajib Allah “${a}” artinya …`, askB: (b) => `Sifat wajib Allah yang berarti “${b}” adalah …`, exA: (a, b) => `${a} = ${b}.`, exB: (a, b) => `“${b}” adalah sifat ${a}.` }),
     ],
     fikih: [
-      pairGenL({ pairs: AKAD, askA: (a) => `Akad ${a} adalah …`, askB: (b) => `“${b}” — itu adalah akad …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, b) => `Itu akad ${a}.` }),
+      pairGenL({ pairs: AKAD, askA: (a) => `Akad ${a} adalah …`, askB: (b) => `“${b}” — itu adalah akad …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `Itu akad ${a}.` }),
       fikihZakat,
     ],
     quranhadis: [factGenL(qhFacts),
-      pairGenL({ pairs: TAFSIR_PAIRS, askA: (a) => `Tafsir ${a} adalah tafsir yang …`, askB: (b) => `“${b}” — itu adalah tafsir …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, b) => `Itu tafsir ${a}.` }),
+      pairGenL({ pairs: TAFSIR_PAIRS, askA: (a) => `Tafsir ${a} adalah tafsir yang …`, askB: (b) => `“${b}” — itu adalah tafsir …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `Itu tafsir ${a}.` }),
       factGenL([
         ["Metode menafsirkan Al-Qur'an dengan Al-Qur'an & hadis disebut tafsir …", "Bil ma'tsur", ["Bil ra'yi", "Isyari", "Ilmi"], "Tafsir bil ma'tsur bersumber pada riwayat."],
         ["Hadis yang sanadnya bersambung hingga Rasulullah disebut hadis …", "Marfu'", ["Mauquf", "Maqthu'", "Mursal sahabi"], "Marfu' disandarkan kepada Nabi SAW."],
       ] as Fact[])],
     ski: [
-      pairGenL({ pairs: TOKOH_KARYA, askA: (a) => `${a} terkenal dengan karya/sumbangannya: …`, askB: (b) => `“${b}” adalah karya/sumbangan dari …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, b) => `Itu karya ${a}.` }),
+      pairGenL({ pairs: TOKOH_KARYA, askA: (a) => `${a} terkenal dengan karya/sumbangannya: …`, askB: (b) => `“${b}” adalah karya/sumbangan dari …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `Itu karya ${a}.` }),
       pairGenL({ pairs: DINASTI, askA: (a) => `Pusat pemerintahan ${a} adalah kota …`, askB: (b) => `Dinasti/kesultanan yang berpusat di ${b} adalah …`, exA: (a, b) => `${a} berpusat di ${b}.`, exB: (a, b) => `Yang berpusat di ${b}: ${a}.` }),
       factGenL(skiFactsSMA), khalifahGen,
     ],
     kristen: [factGenL(kristenFactsAdv),
-      pairGenL({ pairs: TOKOH_KRISTEN, askA: (a) => `Tokoh Alkitab ${a} dikenal karena …`, askB: (b) => `Tokoh yang dikenal “${b.toLowerCase()}” adalah …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, b) => `Itu adalah ${a}.` }),
-      pairGenL({ pairs: PERAYAAN_KRISTEN, askA: (a) => `Perayaan ${a} memperingati …`, askB: (b) => `Peringatan “${b}” disebut …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, b) => `Itu adalah perayaan ${a}.` })],
+      pairGenL({ pairs: TOKOH_KRISTEN, askA: (a) => `Tokoh Alkitab ${a} dikenal karena …`, askB: (b) => `Tokoh yang dikenal “${b.toLowerCase()}” adalah …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `Itu adalah ${a}.` }),
+      pairGenL({ pairs: PERAYAAN_KRISTEN, askA: (a) => `Perayaan ${a} memperingati …`, askB: (b) => `Peringatan “${b}” disebut …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `Itu adalah perayaan ${a}.` })],
     "cambridge-eng": [
       factGenL([
         ["Choose the correctly punctuated sentence:", "It's a shame that the team's losing.", ["Its a shame that the teams losing.", "Its a shame that the team's losing.", "It's a shame that the teams' losing."], "It's = it is; team's = possessive singular."],
@@ -1436,7 +2137,7 @@ export const GENERATORS: Partial<Record<JenjangId, Record<string, LGen[]>>> = {
     ],
     "cambridge-sci": [
       pairGenL({ pairs: UNSUR_SIMBOL, askA: (a) => `The chemical symbol for ${a.toLowerCase()} is …`, askB: (b) => `The symbol “${b}” stands for the element …`, exA: (a, b) => `${a} = ${b}.`, exB: (a, b) => `${b} = ${a}.` }),
-      pairGenL({ pairs: CAM_SCI_PAIRS, askA: (a) => `In science, the ${a.toLowerCase()} …`, askB: (b) => `“${b}” — this describes the …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, b) => `That is the ${a}.` }),
+      pairGenL({ pairs: CAM_SCI_PAIRS, askA: (a) => `In science, the ${a.toLowerCase()} …`, askB: (b) => `“${b}” — this describes the …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `That is the ${a}.` }),
       smaPhysics,
     ],
     "cambridge-math": [camMath, smaSeries],

@@ -1,5 +1,5 @@
-// Bank soal original ZIQVA OLIM — disusun mengikuti pola soal olimpiade
-// pada video contoh (pilihan ganda, listening, urutan gambar, pola bilangan)
+// Bank soal original ZIQVA OLIM — disusun mengikuti format standar
+// olimpiade (pilihan ganda, listening, urutan gambar, pola bilangan)
 // dan diperluas ke semua jenjang & mata pelajaran.
 //
 // Sesi soal TIDAK lagi memakai bank ini secara mentah: buildSession()
@@ -33,10 +33,10 @@ export interface SubjectDef {
 }
 
 export const SCHOOL_TYPES: { id: SchoolType; name: string; desc: string }[] = [
-  { id: "umum", name: "Umum / Negeri", desc: "SD • SMP • SMA • SMK negeri & swasta" },
-  { id: "madrasah", name: "Madrasah", desc: "MI • MTs • MA + mapel keislaman lengkap" },
-  { id: "kristen", name: "Sekolah Kristen", desc: "SD • SMP • SMA Kristen + Agama Kristen" },
-  { id: "cambridge", name: "Cambridge / Intl", desc: "Kurikulum Cambridge — soal berbahasa Inggris" },
+  { id: "umum", name: "Umum / Negeri", desc: "TK • SD • SMP • SMA • SMK negeri & swasta" },
+  { id: "madrasah", name: "Madrasah", desc: "RA (setara TK) • MI • MTs • MA + mapel keislaman lengkap" },
+  { id: "kristen", name: "Sekolah Kristen", desc: "TK • SD • SMP • SMA Kristen + Agama Kristen" },
+  { id: "cambridge", name: "Cambridge / Intl", desc: "TK / Early Years • Primary • Secondary — soal berbahasa Inggris" },
 ];
 
 export const JENJANG: { id: JenjangId; name: string; sub: string; ages: string; color: string }[] = [
@@ -56,7 +56,8 @@ export const SUBJECTS: SubjectDef[] = [
   { id: "indonesia", name: "Bahasa Indonesia", short: "BIN", color: "#C2255C", bg: "#FBE7EF", school: ["umum", "madrasah", "kristen"], jenjang: ["SD", "SMP", "SMA"] },
   { id: "ips", name: "IPS & Sejarah", short: "IPS", color: "#A0610B", bg: "#FBF0DA", school: "all", jenjang: ["SD", "SMP", "SMA"] },
   { id: "ppkn", name: "PPKn / Kewarganegaraan", short: "PKN", color: "#B02A37", bg: "#FAE7E9", school: ["umum", "madrasah", "kristen"], jenjang: ["SD", "SMP", "SMA"] },
-  { id: "informatika", name: "Informatika / Komputer", short: "INF", color: "#364FC7", bg: "#E7EBFC", school: "all", jenjang: ["SD", "SMP", "SMA"] },
+  { id: "informatika", name: "Komputer / Informatika", short: "INF", color: "#364FC7", bg: "#E7EBFC", school: "all", jenjang: ["TK", "SD", "SMP", "SMA"] },
+  { id: "sejarah", name: "Sejarah", short: "SEJ", color: "#8A5A2B", bg: "#F7EBD9", school: "all", jenjang: ["TK", "SD", "SMP", "SMA"] },
   { id: "jawa", name: "Bahasa Jawa", short: "JAW", color: "#8A5A12", bg: "#F7ECD4", school: ["umum", "madrasah", "kristen"], jenjang: ["SD", "SMP", "SMA"] },
   { id: "arab", name: "Bahasa Arab", short: "ARB", color: "#0B7285", bg: "#DFF6F9", school: ["madrasah"], jenjang: ["SD", "SMP", "SMA"] },
   { id: "pai", name: "Pend. Agama Islam (PAI)", short: "PAI", color: "#1E7A46", bg: "#E2F4E9", school: ["madrasah", "umum"], jenjang: ["TK", "SD", "SMP", "SMA"] },
@@ -105,8 +106,36 @@ export const BANK: Bank = {
       { q: "Hewan apa yang bisa terbang?", emoji: "🦋", options: ["Ikan", "Kupu-kupu", "Kucing"], answer: 1, explain: "Kupu-kupu punya sayap dan bisa terbang." },
       { q: "Kita melihat dengan …", emoji: "👀", options: ["Telinga", "Mata", "Hidung"], answer: 1, explain: "Mata adalah indera penglihatan." },
       { q: "Tanaman butuh apa supaya tumbuh?", emoji: "🌱", options: ["Air dan matahari", "Mainan", "Sepatu"], answer: 0, explain: "Tanaman butuh air dan cahaya matahari untuk tumbuh." },
-      { q: "Suara sapi adalah …", emoji: "🐄", options: ["Meong", "Moo / Embek sapi: “Moo”", "Guk guk"], answer: 1, explain: "Sapi bersuara “moo”." },
+      { q: "Suara sapi adalah …", emoji: "🐄", options: ["Meong", "Moo", "Guk guk"], answer: 1, explain: "Sapi bersuara “moo”." },
       { q: "Benda apa yang ada di langit pada malam hari?", emoji: "🌙", options: ["Matahari", "Bulan dan bintang", "Pelangi"], answer: 1, explain: "Malam hari kita melihat bulan dan bintang." },
+    ],
+    informatika: [
+      { q: "Alat kecil yang digerakkan tangan untuk memindahkan panah di layar adalah …", emoji: "🖱️", options: ["Mouse", "Buku", "Penggaris"], answer: 0, explain: "Mouse menggerakkan panah (kursor) di layar." },
+      { q: "Kita mengetik huruf dengan …", emoji: "⌨️", options: ["Speaker", "Keyboard", "Kipas"], answer: 1, explain: "Keyboard penuh huruf untuk mengetik." },
+      { q: "Gambar dan tulisan dari komputer tampil di …", emoji: "🖥️", options: ["Layar / monitor", "Bawah meja", "Dalam tas"], answer: 0, explain: "Monitor menampilkan gambar dan tulisan." },
+      { q: "Suara musik dari tablet keluar dari …", emoji: "🔊", options: ["Charger", "Speaker", "Kamera"], answer: 1, explain: "Speaker mengeluarkan suara." },
+      { q: "Tablet dan HP bisa dipakai dengan menyentuh …", emoji: "📱", options: ["Layarnya", "Kabelnya", "Kotaknya"], answer: 0, explain: "Tablet & HP memakai layar sentuh." },
+      { q: "Sebelum bermain HP, kita harus …", emoji: "🙋", options: ["Sembunyi-sembunyi", "Minta izin orang tua", "Bermain semalaman"], answer: 1, explain: "Selalu minta izin orang tua dulu." },
+      { q: "Kalau mata sudah lelah bermain gawai, kita harus …", emoji: "👀", options: ["Istirahat dan melihat jauh", "Makin dekat ke layar", "Tidak tidur"], answer: 0, explain: "Istirahatkan mata secara teratur." },
+      { q: "Ada orang asing mengajak bicara di game. Kita harus …", emoji: "🛡️", options: ["Memberi alamat rumah", "Ikut saja", "Beri tahu orang tua"], answer: 2, explain: "Jangan bicara dengan orang asing di internet; beri tahu orang tua." },
+      { q: "Alat untuk mencetak gambar ke kertas adalah …", emoji: "🖨️", options: ["Printer", "Mouse", "Monitor"], answer: 0, explain: "Printer mencetak ke kertas." },
+      { q: "Kalau baterai HP habis, kita mengisinya dengan …", emoji: "🔌", options: ["Air", "Charger", "Pasir"], answer: 1, explain: "Charger mengisi daya baterai." },
+    ],
+    sejarah: [
+      { q: "Bendera negara kita berwarna …", emoji: "🇮🇩", options: ["Merah dan putih", "Biru dan kuning", "Hijau dan hitam"], answer: 0, explain: "Bendera Indonesia merah di atas, putih di bawah." },
+      { q: "Lagu kebangsaan Indonesia adalah …", emoji: "🎵", options: ["Indonesia Raya", "Balonku", "Cicak di Dinding"], answer: 0, explain: "Indonesia Raya adalah lagu kebangsaan kita." },
+      { q: "Hari Kemerdekaan Indonesia adalah tanggal …", emoji: "🎉", options: ["1 Januari", "17 Agustus", "25 Desember"], answer: 1, explain: "Indonesia merdeka 17 Agustus 1945." },
+      { q: "Lambang negara Indonesia adalah …", emoji: "🦅", options: ["Garuda Pancasila", "Komodo", "Banteng"], answer: 0, explain: "Garuda Pancasila lambang negara kita." },
+      { q: "Presiden pertama Indonesia adalah …", emoji: "👨", options: ["Ir. Soekarno", "Joko Widodo", "B.J. Habibie"], answer: 0, explain: "Ir. Soekarno presiden pertama Indonesia." },
+      { q: "Wakil presiden pertama Indonesia adalah …", emoji: "👨", options: ["Moh. Hatta", "Soeharto", "Adam Malik"], answer: 0, explain: "Moh. Hatta adalah wakil presiden pertama." },
+      { q: "Bendera pusaka kemerdekaan dijahit oleh Ibu …", emoji: "🧵", options: ["Kartini", "Fatmawati", "Cut Nyak Dien"], answer: 1, explain: "Ibu Fatmawati menjahit Bendera Pusaka." },
+      { q: "Pahlawan adalah orang yang …", emoji: "🦸", options: ["Berani membela negara", "Suka marah-marah", "Paling kaya"], answer: 0, explain: "Pahlawan berani dan berjuang untuk negara." },
+      { q: "Bahasa persatuan kita adalah Bahasa …", emoji: "🗣️", options: ["Inggris", "Indonesia", "Belanda"], answer: 1, explain: "Bahasa Indonesia adalah bahasa persatuan." },
+      { q: "Ibu kota negara Indonesia adalah …", emoji: "🏙️", options: ["Jakarta", "Bandung", "Medan"], answer: 0, explain: "Jakarta adalah ibu kota negara." },
+      { q: "Tugu Monas yang tinggi ada di kota …", emoji: "🗼", options: ["Surabaya", "Jakarta", "Semarang"], answer: 1, explain: "Monas (Monumen Nasional) berdiri di Jakarta." },
+      { q: "Setiap tanggal 10 November kita memperingati Hari …", emoji: "🎖️", options: ["Pahlawan", "Ibu", "Anak"], answer: 0, explain: "10 November adalah Hari Pahlawan." },
+      { q: "Teks proklamasi kemerdekaan dibacakan oleh …", emoji: "📜", options: ["Ir. Soekarno", "Pangeran Diponegoro", "Gajah Mada"], answer: 0, explain: "Ir. Soekarno membacakan teks proklamasi pada 17 Agustus 1945." },
+      { q: "Warna merah pada bendera kita artinya …", emoji: "❤️", options: ["Berani", "Mengantuk", "Dingin"], answer: 0, explain: "Merah melambangkan keberanian, putih kesucian." },
     ],
     pai: [
       { q: "Siapa Tuhan kita?", emoji: "🌟", options: ["Allah SWT", "Matahari", "Bulan"], answer: 0, explain: "Tuhan kita adalah Allah SWT, Pencipta alam semesta." },
@@ -473,7 +502,7 @@ export const LEVELS: LevelDef[] = [
   { n: 4, name: "Sulit", desc: "Analisis dan penalaran multi-langkah; pilihan jawaban dibuat mirip-mirip." },
   { n: 5, name: "Ahli Olimpiade", desc: "Tantangan tersulit setara soal lomba olimpiade sungguhan. Berani coba?" },
 ];
-/** Jumlah soal per sesi — mengikuti tes olimpiade asli pada video contoh (20 soal, 1 menit per soal). */
+/** Jumlah soal per sesi — format standar olimpiade: 20 soal, 1 menit per soal. */
 export const SESSION_SIZE = 20;
 /** Skor minimum pada suatu level agar level berikutnya terbuka otomatis. */
 export const UNLOCK_SCORE = 80;

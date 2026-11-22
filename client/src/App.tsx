@@ -2,10 +2,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
 import {
-JENJANG, LEVELS, SCHOOL_TYPES, SUBJECTS, SESSION_SIZE, UNLOCK_SCORE, buildSession, medalFor, motivationFor, subjectsFor,
+BANK, JENJANG, LEVELS, SCHOOL_TYPES, SUBJECTS, SESSION_SIZE, UNLOCK_SCORE, buildSession, medalFor, motivationFor, subjectsFor,
 type JenjangId, type Question, type SchoolType,
 } from "./data/questions";
+
+/** Total soal inti tertulis di bank soal (di luar variasi acak generator). */
+const TOTAL_AUTHORED = Object.values(BANK).reduce(
+  (sum, bySubject) => sum + Object.values(bySubject ?? {}).reduce((a, qs) => a + (qs?.length ?? 0), 0),
+  0,
+);
 import { materialFor } from "./data/materials";
+import { modulesFor, moduleForQuestion, type LibraryModule } from "./data/library";
 import heroImg from "./assets/media-generation-hero-kids-olympiad-0-8efd557a-635d-47a5-88c3-3e408d6372e3.webp";
 import { actionFields } from "@hatch/space-sdk/fields" with { type: "macro" };
 import type { Actions } from "../../server/src/actions";
@@ -60,44 +67,102 @@ export function langForSubject(subjectId: string): string {
   return "id-ID";
 }
 
-function voicesReady(): Promise<SpeechSynthesisVoice[]> {
-  return new Promise((resolve) => {
-    const synth = window.speechSynthesis;
-    const existing = synth.getVoices();
-    if (existing.length) { resolve(existing); return; }
-    let done = false;
-    const finish = () => { if (!done) { done = true; resolve(synth.getVoices()); } };
-    try { synth.addEventListener("voiceschanged", finish, { once: true }); } catch { /* abaikan */ }
-    setTimeout(finish, 800);
-  });
+/* Cache daftar suara perangkat — dihangatkan sejak halaman dibuka dan pada
+   ketukan pertama, supaya saat tombol Dengarkan Soal diketuk, speak() dapat
+   dipanggil SINKRON di dalam handler klik yang sama. Di Android Chrome,
+   speak() yang dipanggil setelah await / jeda async sering gagal diam-diam. */
+let voiceCache: SpeechSynthesisVoice[] = [];
+function refreshVoices() {
+  try {
+    if ("speechSynthesis" in window) {
+      const v = window.speechSynthesis.getVoices();
+      if (v.length) voiceCache = v;
+    }
+  } catch { /* abaikan */ }
+}
+if (typeof window !== "undefined" && "speechSynthesis" in window) {
+  refreshVoices();
+  try { window.speechSynthesis.addEventListener("voiceschanged", refreshVoices); } catch { /* abaikan */ }
 }
 
-/** Ucapkan teks dengan suara sesuai bahasa. Mengembalikan false bila TTS tak didukung. */
-async function speakText(text: string, lang: string, setSpeaking: (b: boolean) => void): Promise<boolean> {
-  if (!("speechSynthesis" in window)) { setSpeaking(false); return false; }
+export interface SpeakOpts {
+  setSpeaking: (b: boolean) => void;
+  onStatus?: (msg: string) => void;
+}
+
+/**
+ * Ucapkan teks dengan pola paling andal di HP:
+ * - utterance dibuat & speak() dipanggil sinkron dari klik (tanpa await);
+ * - voice dipilih eksplisit dari getVoices(): utamakan yang cocok bahasanya;
+ *   bila voice bahasa tujuan TIDAK ada, pakai voice default perangkat dan
+ *   JANGAN paksa u.lang ke bahasa itu (penyebab umum TTS bisu di Android);
+ * - resume() dipanggil sebelum speak; cancel() hanya bila sedang berbicara,
+ *   dan speak berikutnya diberi jeda kecil agar antrean tidak macet;
+ * - bila TTS error, bunyi nada WebAudio singkat berbunyi sebagai indikator
+ *   bahwa tombol bekerja, dan pesan status tampil jelas di layar.
+ */
+function speakText(text: string, lang: string, opts: SpeakOpts): boolean {
+  const { setSpeaking, onStatus } = opts;
+  if (!("speechSynthesis" in window)) {
+    setSpeaking(false);
+    onStatus?.("Browser perangkat ini tidak mendukung suara bacaan (TTS). Coba buka dengan Chrome di Android atau Safari di iPhone, ya.");
+    return false;
+  }
   const synth = window.speechSynthesis;
   const clean = text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, "").replace(/\s+/g, " ").trim();
   if (!clean) { setSpeaking(false); return true; }
-  try { synth.cancel(); } catch { /* abaikan */ }
-  try { synth.resume(); } catch { /* abaikan */ }
-  const voices = await voicesReady();
-  const target = lang.toLowerCase();
-  const voice =
-    voices.find((v) => v.lang.toLowerCase() === target) ??
-    voices.find((v) => v.lang.toLowerCase().startsWith(target.split("-")[0] ?? target)) ??
-    voices.find((v) => v.default) ??
-    voices[0];
+  refreshVoices();
+  const voices = voiceCache;
+  const target = lang.toLowerCase().replace("_", "-");
+  const prefix = target.split("-")[0] ?? target;
+  let voice = voices.find((v) => v.lang.toLowerCase().replace("_", "-") === target)
+    ?? voices.find((v) => v.lang.toLowerCase().replace("_", "-").startsWith(prefix));
+  const matched = !!voice;
+  if (!voice) voice = voices.find((v) => v.default) ?? voices[0];
   const u = new SpeechSynthesisUtterance(clean);
-  if (voice) u.voice = voice;
-  u.lang = voice?.lang ?? lang;
+  if (voice) {
+    u.voice = voice;
+    u.lang = voice.lang; // pakai bahasa voice yang benar-benar ada di perangkat
+  }
   u.rate = 0.95;
   u.pitch = 1;
-  setSpeaking(true);
+  let started = false;
+  u.onstart = () => { started = true; setSpeaking(true); };
   u.onend = () => setSpeaking(false);
-  u.onerror = () => setSpeaking(false);
-  try { synth.resume(); } catch { /* abaikan */ }
-  synth.speak(u);
-  window.setTimeout(() => setSpeaking(false), Math.min(45000, 5000 + clean.length * 95));
+  u.onerror = (e) => {
+    setSpeaking(false);
+    if (e.error !== "canceled" && e.error !== "interrupted") {
+      sfxSelect(); // indikator bunyi: tombol bekerja walau TTS gagal
+      onStatus?.(`Suara bacaan gagal diputar di perangkat ini (${e.error}). Tombolnya bekerja — periksa volume media & mode senyap HP, lalu ketuk lagi.`);
+    }
+  };
+  const doSpeak = () => {
+    try { synth.resume(); } catch { /* abaikan */ }
+    try {
+      synth.speak(u);
+    } catch {
+      setSpeaking(false);
+      sfxSelect();
+      onStatus?.("Suara bacaan gagal dimulai. Periksa volume media HP, lalu coba ketuk lagi.");
+      return;
+    }
+    setSpeaking(true);
+    window.setTimeout(() => {
+      if (!started) onStatus?.("Bacaan belum terdengar? Cek: volume media HP naik, mode senyap mati, dan suara Google TTS terpasang (Pengaturan › Aksesibilitas / Bahasa). Lalu ketuk Dengarkan Soal sekali lagi.");
+    }, 2600);
+    window.setTimeout(() => setSpeaking(false), Math.min(45000, 5000 + clean.length * 95));
+  };
+  if (!matched && voices.length > 0 && prefix !== "id") {
+    onStatus?.("Suara untuk bahasa soal ini belum terpasang di HP — memakai suara bawaan perangkat, jadi pelafalannya mungkin berbeda.");
+  }
+  if (synth.speaking || synth.pending) {
+    // Antrean lama dibersihkan dulu; speak diberi jeda kecil sesudah cancel
+    // agar tidak macet seperti yang sering terjadi di Android Chrome.
+    try { synth.cancel(); } catch { /* abaikan */ }
+    window.setTimeout(doSpeak, 90);
+  } else {
+    doSpeak(); // sinkron di dalam handler klik — jalur paling andal
+  }
   return true;
 }
 
@@ -183,6 +248,8 @@ function QuizView(props: {
   jenjang: JenjangId; subjectName: string; subjectId: string; mode: Mode; levelLabel: string;
   soundOn: boolean; onToggleSound: () => void;
   questions: Question[]; onFinish: (answers: (number | null)[], usedSec: number) => void; onQuit: () => void;
+  onInfo?: (q: Question) => void;
+  quitSignal?: number;
 }) {
   const { questions, mode } = props;
   const totalTime = questions.length * 60;
@@ -191,6 +258,11 @@ function QuizView(props: {
   const [revealed, setRevealed] = useState<boolean[]>(() => questions.map(() => false));
   const [timeLeft, setTimeLeft] = useState(totalTime);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
+  const [confirmQuit, setConfirmQuit] = useState(false);
+  // Klik logo header saat sesi berjalan membuka konfirmasi keluar yang sama.
+  useEffect(() => {
+    if ((props.quitSignal ?? 0) > 0) setConfirmQuit(true);
+  }, [props.quitSignal]);
   const [speaking, setSpeaking] = useState(false);
   const [ttsMsg, setTtsMsg] = useState("");
   const startRef = useRef(Date.now());
@@ -227,7 +299,7 @@ function QuizView(props: {
   const handleListen = () => {
     if (!current) return;
     if (!props.soundOn) {
-      setTtsMsg("Suara sedang OFF. Nyalakan tombol 🔊 di atas untuk mendengarkan soal.");
+      setTtsMsg("Suara sedang OFF. Ketuk tombol “Suara: OFF” di samping tombol Dengarkan Soal untuk menyalakannya.");
       return;
     }
     if (!("speechSynthesis" in window)) {
@@ -235,7 +307,7 @@ function QuizView(props: {
       return;
     }
     setTtsMsg("");
-    void speakText(`${current.q}. Pilihan: ${current.options.join(". ")}`, langForSubject(props.subjectId), setSpeaking);
+    speakText(`${current.q}. Pilihan: ${current.options.join(". ")}`, langForSubject(props.subjectId), { setSpeaking, onStatus: setTtsMsg });
   };
 
   if (!current) return null;
@@ -258,7 +330,7 @@ function QuizView(props: {
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 pb-28">
-      {/* HUD ala video: progress + timer */}
+      {/* HUD kuis: progress + timer */}
       <div className="sticky top-[64px] z-20 -mx-4 px-4 py-2" style={{ background: "var(--bg)" }}>
         <div className="flex items-center gap-3 rounded-2xl px-4 py-3 shadow-sm" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
           <div className="text-center">
@@ -273,21 +345,31 @@ function QuizView(props: {
             <div className="text-[11px]" style={{ color: "var(--dim)" }}>{mode === "ujian" ? "Mode Ujian" : "Mode Latihan"}</div>
           </div>
           <button type="button" onClick={props.onToggleSound} aria-label={props.soundOn ? "Matikan semua suara" : "Nyalakan suara"} aria-pressed={props.soundOn} className="rounded-full px-3 py-2 text-sm font-bold" style={{ background: "var(--surface2)", color: "var(--dim)" }}>{props.soundOn ? "🔊" : "🔇"}</button>
-          <button type="button" onClick={props.onQuit} aria-label="Keluar dari kuis" className="rounded-full px-3 py-2 text-sm font-bold" style={{ background: "var(--surface2)", color: "var(--dim)" }}>✕</button>
+          <button type="button" onClick={() => setConfirmQuit(true)} aria-label="Keluar dari kuis" className="rounded-full px-3 py-2 text-sm font-bold" style={{ background: "var(--surface2)", color: "var(--dim)" }}>✕</button>
         </div>
       </div>
 
       <p className="mt-2 text-sm font-bold" style={{ color: "var(--dim)" }}>{props.jenjang} • {props.subjectName} • {props.levelLabel} • Soal {idx + 1} dari {questions.length}</p>
 
-      <div className="pop-in mt-2 rounded-3xl p-5 shadow-sm" key={idx} style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+      <div className="pop-in relative mt-2 rounded-3xl p-5 shadow-sm" key={idx} style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+        {mode === "latihan" && props.onInfo && <InfoIcon onClick={() => props.onInfo?.(current)} />}
         {current.emoji && <div className="floaty mb-2 text-5xl" aria-hidden>{current.emoji}</div>}
         {current.stimulus && <p className="mb-3 rounded-xl px-3 py-2 text-[15px] leading-relaxed" style={{ background: "var(--surface2)" }}>{current.stimulus}</p>}
-        <h2 className="text-lg leading-snug font-bold whitespace-pre-line">{current.q}</h2>
+        <h2 className="pr-8 text-lg leading-snug font-bold whitespace-pre-line">{current.q}</h2>
 
-        <button type="button" onClick={handleListen} aria-label="Dengarkan soal dibacakan" aria-live="polite"
-          className={`mt-4 inline-flex min-h-[44px] items-center gap-2 rounded-full px-4 py-2 text-sm font-bold text-white ${speaking ? "speaking" : ""}`} style={{ background: speaking ? "#C2255C" : "#E84393" }}>
-          {speaking ? "🔊 Sedang dibacakan…" : "▶ 🔊 Dengarkan Soal"}
-        </button>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <button type="button" onClick={handleListen} aria-label="Dengarkan soal dibacakan" aria-live="polite"
+            className={`inline-flex min-h-[44px] items-center gap-2 rounded-full px-4 py-2 text-sm font-bold text-white ${speaking ? "speaking" : ""}`} style={{ background: speaking ? "#C2255C" : "#E84393" }}>
+            {speaking ? "🔊 Sedang dibacakan…" : "▶ 🔊 Dengarkan Soal"}
+          </button>
+          <button type="button" onClick={props.onToggleSound} aria-pressed={props.soundOn}
+            aria-label={props.soundOn ? "Suara sedang ON — ketuk untuk mematikan semua suara" : "Suara sedang OFF — ketuk untuk menyalakan suara"}
+            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-bold"
+            style={{ background: props.soundOn ? "#E2F4E9" : "#FAE7E9", color: props.soundOn ? "#1E7A46" : "#B02A37", border: `2px solid ${props.soundOn ? "#1E7A46" : "#B02A37"}` }}>
+            {props.soundOn ? "🔊 Suara: ON" : "🔇 Suara: OFF"}
+          </button>
+        </div>
+        {!props.soundOn && <p className="mt-2 text-xs font-bold" style={{ color: "#B02A37" }}>Suara sedang OFF — ketuk tombol “Suara: OFF” di atas untuk menyalakan, lalu Dengarkan Soal akan berbunyi.</p>}
         {ttsMsg && <p className="mt-2 rounded-xl px-3 py-2 text-xs font-bold" style={{ background: "#FBF0DA", color: "#92600A" }} role="status">{ttsMsg}</p>}
 
         <div className="mt-4 grid gap-2.5">
@@ -349,6 +431,21 @@ function QuizView(props: {
           <button type="button" onClick={() => setConfirmSubmit(true)} className="sr-only">Kumpulkan</button>
         )}
       </div>
+
+      {confirmQuit && (
+        <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/50 p-4 sm:items-center" role="dialog" aria-modal="true" aria-label="Konfirmasi keluar dari sesi">
+          <div className="pop-in w-full max-w-sm rounded-3xl p-6" style={{ background: "var(--surface)" }}>
+            <h3 className="font-display text-xl font-bold">Keluar dari sesi ini?</h3>
+            <p className="mt-2 text-sm" style={{ color: "var(--dim)" }}>
+              Kamu sudah menjawab {answeredCount} dari {questions.length} soal. Jika keluar sekarang, progres sesi ini hilang dan tidak tersimpan. Lanjutkan mengerjakan?
+            </p>
+            <div className="mt-5 grid gap-2">
+              <button type="button" onClick={() => setConfirmQuit(false)} className="min-h-[52px] rounded-2xl font-display text-base font-bold text-white" style={{ background: "var(--accent)" }}>Lanjut Mengerjakan ✏️</button>
+              <button type="button" onClick={props.onQuit} className="min-h-[52px] rounded-2xl font-display text-base font-bold" style={{ background: "var(--surface2)", color: "#B02A37" }}>Ya, Keluar ke Beranda</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {confirmSubmit && (
         <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/50 p-4 sm:items-center" role="dialog" aria-modal="true" aria-label="Konfirmasi kumpulkan">
@@ -653,31 +750,45 @@ function MonitorView(props: { token: string; user: SessionUser; onLogout: () => 
   );
 }
 
-/* ---------------- BAHAN BELAJAR ---------------- */
+/* ---------------- PERPUSTAKAAN BELAJAR ---------------- */
 function BelajarView(props: {
   jenjang: JenjangId;
-  subjects: { id: string; name: string; short: string; color: string; bg: string }[];
   initialSubject: string;
   onPractice: (subjectId: string) => void;
+  onOpenModule: (module: LibraryModule, jenjang: JenjangId, subjectId: string) => void;
 }) {
+  const [libJenjang, setLibJenjang] = useState<JenjangId>(props.jenjang);
+  const libSubjects = useMemo(() => SUBJECTS.filter((s) => s.jenjang.includes(libJenjang)), [libJenjang]);
   const [sel, setSel] = useState(props.initialSubject);
-  const active = props.subjects.find((s) => s.id === sel) ?? props.subjects[0];
+  const active = libSubjects.find((s) => s.id === sel) ?? libSubjects[0];
   const material = active ? materialFor(active.id) : null;
+  const modules = active ? modulesFor(libJenjang, active.id) : [];
   useEffect(() => { setSel(props.initialSubject); }, [props.initialSubject]);
+  useEffect(() => { setLibJenjang(props.jenjang); }, [props.jenjang]);
   if (!active) return null;
   return (
     <main className="mx-auto w-full max-w-5xl px-4 pb-10">
       <section className="mt-4 rounded-3xl p-5 shadow-sm" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-        <h1 className="font-display text-2xl font-extrabold">📚 Bahan Belajar — dari Dasar, Pelan-Pelan Naik</h1>
+        <h1 className="font-display text-2xl font-extrabold">📚 Perpustakaan Belajar — Modul per Jenjang &amp; Mapel</h1>
         <p className="mt-1 max-w-2xl text-[15px] leading-relaxed" style={{ color: "var(--dim)" }}>
-          Belajar itu seperti naik tangga: mulai dari konsep paling dasar, pahami contohnya, lalu tantang dirimu dengan soal.
-          Pilih mata pelajaran, baca materinya sebentar, lalu langsung latihan — rasa penasaranmu adalah bahan bakarnya! ✨
+          Perpustakaan lengkap untuk belajar dari dasar: pilih jenjang dan mata pelajaran, lalu buka modul topiknya —
+          ada penjelasan konsep, contoh dalam kehidupan sehari-hari, dan rangkuman. Khusus Sains/IPA, lingkupnya lengkap per jenjang:
+          makhluk hidup &amp; lingkungan, tubuh manusia, energi, bumi &amp; alam semesta, zat &amp; materi, gaya &amp; gerak, listrik &amp; magnet, ekosistem, sampai Fisika, Kimia, dan Biologi yang lebih dalam. ✨
         </p>
+        <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Pilih jenjang perpustakaan">
+          {JENJANG.map((j) => (
+            <button key={j.id} type="button" onClick={() => setLibJenjang(j.id)} aria-pressed={libJenjang === j.id} aria-label={`Perpustakaan jenjang ${j.name}`}
+              className="min-h-[44px] rounded-full px-4 font-display text-sm font-bold"
+              style={{ background: libJenjang === j.id ? "var(--accent)" : "var(--surface2)", color: libJenjang === j.id ? "#fff" : "var(--dim)", border: "1px solid var(--border)" }}>
+              {j.name}
+            </button>
+          ))}
+        </div>
       </section>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-[280px_1fr]">
         <nav className="grid grid-cols-2 gap-2 self-start sm:grid-cols-3 lg:grid-cols-1" aria-label="Pilih bahan belajar mata pelajaran">
-          {props.subjects.map((s) => (
+          {libSubjects.map((s) => (
             <button key={s.id} type="button" onClick={() => setSel(s.id)} aria-pressed={active.id === s.id} aria-label={`Bahan belajar ${s.name}`}
               className="rounded-2xl p-3 text-left transition"
               style={{ background: active.id === s.id ? s.bg : "var(--surface)", border: `2px solid ${active.id === s.id ? s.color : "var(--border)"}` }}>
@@ -699,7 +810,27 @@ function BelajarView(props: {
                   🎯 <strong>Fokus untuk jenjang {props.jenjang}:</strong> {material.focus[props.jenjang]}
                 </p>
               )}
-              <div className="mt-4 grid gap-4">
+              {modules.length > 0 && (
+                <section className="mt-5" aria-label={`Modul belajar ${active.name} jenjang ${libJenjang}`}>
+                  <h3 className="font-display text-base font-extrabold">🧩 Modul Topik — {active.name} • {JENJANG.find((j) => j.id === libJenjang)?.name}</h3>
+                  <p className="mt-0.5 text-sm" style={{ color: "var(--dim)" }}>Ketuk modul untuk membaca materi lengkapnya. Modul yang sama juga terbuka dari ikon <strong>i</strong> pada soal latihan yang topiknya sesuai.</p>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    {modules.map((m) => (
+                      <button key={m.id} type="button" onClick={() => props.onOpenModule(m, libJenjang, active.id)} aria-label={`Buka modul ${m.title}`}
+                        className="flex min-h-[64px] items-center gap-3 rounded-2xl p-3 text-left transition"
+                        style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
+                        <span className="text-3xl" aria-hidden>{m.emoji}</span>
+                        <span className="min-w-0">
+                          <span className="block font-display text-sm leading-tight font-bold">{m.title}</span>
+                          <span className="block text-xs font-semibold" style={{ color: "var(--dim)" }}>Konsep • Contoh nyata • Rangkuman →</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
+              <h3 className="font-display mt-5 text-base font-extrabold">📖 Materi Dasar {active.name}</h3>
+              <div className="mt-2 grid gap-4">
                 {material.sections.map((sec) => (
                   <section key={sec.h}>
                     <h3 className="font-display text-base font-bold" style={{ color: "var(--accent)" }}>{sec.h}</h3>
@@ -722,6 +853,86 @@ function BelajarView(props: {
         </article>
       </div>
     </main>
+  );
+}
+
+/* ---------------- IKON INFO MATERI (samar, target sentuh besar) ---------------- */
+function InfoIcon(props: { onClick: () => void }) {
+  return (
+    <button type="button" onClick={props.onClick} aria-label="Lihat materi pembahasan"
+      className="absolute top-1.5 right-1.5 z-10 flex h-11 w-11 items-start justify-end p-0"
+      style={{ background: "transparent" }}>
+      <span aria-hidden className="flex h-7 w-7 items-center justify-center rounded-full font-display text-sm font-extrabold italic transition"
+        style={{ background: "var(--surface2)", color: "var(--accent)", border: "1.5px solid var(--border)", opacity: 0.5 }}>
+        i
+      </span>
+    </button>
+  );
+}
+
+/* ---------------- HALAMAN MODUL BELAJAR ---------------- */
+function ModuleView(props: {
+  module: LibraryModule;
+  jenjang: JenjangId;
+  subjectName: string;
+  question?: Question;
+  backLabel: string;
+  onBack: () => void;
+  onPractice?: () => void;
+}) {
+  const m = props.module;
+  const q = props.question;
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto" style={{ background: "var(--bg)" }} role="dialog" aria-modal="true" aria-label={`Modul belajar ${m.title}`}>
+      <main className="mx-auto w-full max-w-3xl px-4 pb-12">
+        <div className="sticky top-0 z-10 -mx-4 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3" style={{ background: "var(--bg)" }}>
+          <button type="button" onClick={props.onBack} aria-label={props.backLabel}
+            className="font-display min-h-[48px] rounded-full px-5 text-base font-extrabold text-white shadow" style={{ background: "var(--accent)" }}>
+            ← {props.backLabel}
+          </button>
+        </div>
+
+        {q && (
+          <section className="pop-in mt-2 rounded-3xl p-5" style={{ background: "#FFF8EC", border: "2px solid var(--gold)" }} aria-label="Soal yang sedang dipelajari">
+            <h2 className="font-display text-sm font-extrabold tracking-wide" style={{ color: "#92600A" }}>🧐 SOAL YANG SEDANG KAMU PELAJARI</h2>
+            <p className="mt-2 font-bold whitespace-pre-line">{q.emoji ? `${q.emoji} ` : ""}{q.q}</p>
+            <p className="mt-2 text-sm">Jawaban benar: <strong>{LETTERS[q.answer]}. {q.options[q.answer]}</strong></p>
+            <p className="mt-2 rounded-xl px-3 py-2 text-sm leading-relaxed" style={{ background: "var(--surface)" }}><strong>Pembahasan soal:</strong> {q.explain}</p>
+            <p className="mt-2 text-sm" style={{ color: "var(--dim)" }}>Di bawah ini materi lengkap topik soal tersebut — baca pelan-pelan, lalu kembali dan coba lagi. Kamu pasti bisa! 💪</p>
+          </section>
+        )}
+
+        <article className="mt-4 rounded-3xl p-5 shadow-sm sm:p-6" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+          <div className="text-5xl" aria-hidden>{m.emoji}</div>
+          <h1 className="font-display mt-2 text-2xl leading-snug font-extrabold">{m.title}</h1>
+          <p className="mt-1 text-sm font-bold" style={{ color: "var(--dim)" }}>{props.subjectName} • Jenjang {JENJANG.find((j) => j.id === props.jenjang)?.name ?? props.jenjang} • Modul Perpustakaan Belajar</p>
+
+          <section className="mt-5">
+            <h2 className="font-display text-lg font-extrabold" style={{ color: "var(--accent)" }}>📖 Konsep dari Dasar</h2>
+            <p className="mt-1 text-[15px] leading-relaxed">{m.concept}</p>
+          </section>
+          <section className="mt-5">
+            <h2 className="font-display text-lg font-extrabold" style={{ color: "var(--accent)" }}>🏠 Contoh dalam Kehidupan Sehari-hari</h2>
+            <p className="mt-1 rounded-2xl px-4 py-3 text-[15px] leading-relaxed" style={{ background: "var(--surface2)" }}>{m.example}</p>
+          </section>
+          <section className="mt-5 rounded-2xl px-4 py-3" style={{ background: "#E2F4E9", border: "1px solid #1E7A46" }}>
+            <h2 className="font-display text-base font-extrabold">📝 Rangkuman — Ingat Ini Saja</h2>
+            <p className="mt-1 text-[15px] leading-relaxed font-semibold">{m.summary}</p>
+          </section>
+
+          <div className="mt-6 grid gap-2">
+            <button type="button" onClick={props.onBack} className="font-display min-h-[54px] rounded-2xl text-lg font-extrabold text-white" style={{ background: "var(--accent)" }} aria-label={props.backLabel}>
+              ← {props.backLabel}
+            </button>
+            {props.onPractice && (
+              <button type="button" onClick={props.onPractice} className="font-display min-h-[54px] rounded-2xl text-lg font-extrabold" style={{ background: "var(--gold)", color: "#2B2440" }} aria-label={`Latihan soal ${props.subjectName}`}>
+                🎯 Uji Pemahaman: Latihan {props.subjectName} →
+              </button>
+            )}
+          </div>
+        </article>
+      </main>
+    </div>
   );
 }
 
@@ -849,6 +1060,33 @@ export function App() {
   const activeSubject = subjects.find((s) => s.id === subjectId) ?? subjects[0];
   const questions = sessionQ;
 
+  // Perpustakaan Belajar: konteks modul yang sedang dibuka (overlay di atas
+  // tampilan apa pun, jadi sesi kuis & posisi review tidak hilang).
+  const [moduleCtx, setModuleCtx] = useState<{
+    module: LibraryModule; jenjang: JenjangId; subjectId: string; subjectName: string;
+    question?: Question; backLabel: string; fromLibrary: boolean;
+  } | null>(null);
+
+  const openModuleForQuestion = (q: Question, backLabel: string) => {
+    if (!activeSubject) return;
+    const m = moduleForQuestion(jenjang, activeSubject.id, q);
+    if (!m) return;
+    setModuleCtx({ module: m, jenjang, subjectId: activeSubject.id, subjectName: activeSubject.name, question: q, backLabel, fromLibrary: false });
+  };
+  // Logo header: kembali ke Beranda dari halaman mana pun. Bila sedang di
+  // tengah sesi kuis, logo memicu dialog konfirmasi keluar yang sama dengan
+  // tombol ✕ di dalam kuis (sinyal diteruskan ke QuizView).
+  const [quitSignal, setQuitSignal] = useState(0);
+  const handleLogoClick = () => {
+    if (view === "quiz") { setQuitSignal((s) => s + 1); return; }
+    setView("home");
+    window.scrollTo({ top: 0 });
+  };
+  const openModuleFromLibrary = (m: LibraryModule, j: JenjangId, sid: string) => {
+    const subj = SUBJECTS.find((s) => s.id === sid);
+    setModuleCtx({ module: m, jenjang: j, subjectId: sid, subjectName: subj?.name ?? sid, backLabel: "Kembali ke Perpustakaan", fromLibrary: true });
+  };
+
   useEffect(() => {
     if (activeSubject && activeSubject.id !== subjectId) setSubjectId(activeSubject.id);
   }, [activeSubject, subjectId]);
@@ -859,6 +1097,15 @@ export function App() {
     const t = window.setTimeout(() => setShowWelcome(false), 12000);
     return () => window.clearTimeout(t);
   }, [showWelcome]);
+
+  // Hangatkan mesin suara pada ketukan pertama di mana pun: daftar voice TTS
+  // dimuat lebih awal dan AudioContext dibangunkan, supaya tombol Dengarkan
+  // Soal & efek klik langsung berbunyi saat diketuk (kebijakan audio HP).
+  useEffect(() => {
+    const warm = () => { refreshVoices(); ensureAudioCtx(); };
+    window.addEventListener("pointerdown", warm, { once: true });
+    return () => window.removeEventListener("pointerdown", warm);
+  }, []);
 
   const toggleSound = () => {
     setSoundOn((prev) => {
@@ -965,20 +1212,21 @@ export function App() {
     <div className="min-h-screen" style={{ background: "var(--bg)", color: "var(--text)" }}>
       <header className="sticky top-0 z-30 pt-safe" style={{ background: "var(--accent)" }}>
         <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-3 px-4 py-3">
-          <div className="flex items-center gap-2">
+          <button type="button" onClick={handleLogoClick} aria-label="Kembali ke Beranda" title="Kembali ke Beranda"
+            className="flex cursor-pointer items-center gap-2 rounded-2xl text-left transition hover:opacity-90">
             <span className="flex h-10 w-10 items-center justify-center rounded-2xl text-xl" style={{ background: "var(--gold)" }} aria-hidden>🏆</span>
-            <div className="leading-none">
-              <div className="font-display text-xl font-extrabold tracking-wide text-white">ZIQVA <span style={{ color: "var(--gold)" }}>OLIM</span></div>
-              <div className="text-[11px] font-semibold text-white/70">Latihan Olimpiade TK – SMA</div>
-            </div>
-          </div>
+            <span className="leading-none">
+              <span className="font-display block text-xl font-extrabold tracking-wide text-white">ZIQVA <span style={{ color: "var(--gold)" }}>OLIM</span></span>
+              <span className="block text-[11px] font-semibold text-white/70">Latihan Olimpiade TK – SMA</span>
+            </span>
+          </button>
           <nav className="ml-auto flex flex-wrap gap-2" aria-label="Navigasi utama">
             <button type="button" onClick={() => setView("home")} aria-label="Ke beranda"
               className="min-h-[40px] rounded-full px-4 font-display text-sm font-bold"
               style={{ background: view === "home" ? "var(--gold)" : "rgba(255,255,255,.15)", color: view === "home" ? "#2B2440" : "#fff" }}>Beranda</button>
-            <button type="button" onClick={() => setView("belajar")} aria-label="Buka bahan belajar"
+            <button type="button" onClick={() => setView("belajar")} aria-label="Buka perpustakaan belajar"
               className="min-h-[40px] rounded-full px-4 font-display text-sm font-bold"
-              style={{ background: view === "belajar" ? "var(--gold)" : "rgba(255,255,255,.15)", color: view === "belajar" ? "#2B2440" : "#fff" }}>📚 Belajar</button>
+              style={{ background: view === "belajar" ? "var(--gold)" : "rgba(255,255,255,.15)", color: view === "belajar" ? "#2B2440" : "#fff" }}>📚 Perpustakaan</button>
             <button type="button" onClick={() => setView("history")} aria-label="Lihat riwayat dan prestasiku"
               className="min-h-[40px] rounded-full px-4 font-display text-sm font-bold"
               style={{ background: view === "history" ? "var(--gold)" : "rgba(255,255,255,.15)", color: view === "history" ? "#2B2440" : "#fff" }}>🏅 Prestasiku</button>
@@ -989,7 +1237,7 @@ export function App() {
             </button>
             <button type="button" onClick={toggleSound} aria-label={soundOn ? "Matikan semua suara (bacaan soal dan efek klik)" : "Nyalakan suara"} aria-pressed={soundOn}
               className="min-h-[40px] rounded-full px-3 font-display text-sm font-bold"
-              style={{ background: "rgba(255,255,255,.15)", color: "#fff" }}>{soundOn ? "🔊 Suara" : "🔇 Mati"}</button>
+              style={{ background: "rgba(255,255,255,.15)", color: "#fff" }}>{soundOn ? "🔊 Suara ON" : "🔇 Suara OFF"}</button>
           </nav>
         </div>
       </header>
@@ -1014,12 +1262,14 @@ export function App() {
         <QuizView jenjang={jenjang} subjectName={activeSubject.name} subjectId={activeSubject.id} mode={mode}
           levelLabel={`Level ${sessionLevel} · ${LEVELS[sessionLevel - 1]?.name ?? ""}`}
           soundOn={soundOn} onToggleSound={toggleSound}
-          questions={questions} onFinish={handleFinish} onQuit={() => setView("home")} />
+          questions={questions} onFinish={handleFinish} onQuit={() => setView("home")} quitSignal={quitSignal}
+          onInfo={(q) => openModuleForQuestion(q, "Kembali ke Soal")} />
       )}
 
       {view === "belajar" && (
-        <BelajarView jenjang={jenjang} subjects={subjects} initialSubject={activeSubject?.id ?? subjects[0]?.id ?? "matematika"}
-          onPractice={(sid) => { setSubjectId(sid); setView("home"); window.scrollTo({ top: 0 }); }} />
+        <BelajarView jenjang={jenjang} initialSubject={activeSubject?.id ?? subjects[0]?.id ?? "matematika"}
+          onPractice={(sid) => { setSubjectId(sid); setView("home"); window.scrollTo({ top: 0 }); }}
+          onOpenModule={openModuleFromLibrary} />
       )}
 
       {view === "home" && (
@@ -1048,11 +1298,11 @@ export function App() {
               </p>
               <div className="fade-up mt-4 flex flex-wrap justify-center gap-2" style={{ animationDelay: ".5s" }}>
                 <button type="button" onClick={() => setShowWelcome(false)} className="font-display min-h-[48px] rounded-full px-5 font-bold text-white" style={{ background: "var(--accent)" }}>🚀 Ayo Mulai!</button>
-                <button type="button" onClick={() => { setShowWelcome(false); setView("belajar"); }} className="font-display min-h-[48px] rounded-full px-5 font-bold" style={{ background: "#fff", border: "2px solid var(--gold)", color: "#92600A" }}>📚 Bahan Belajar Dulu</button>
+                <button type="button" onClick={() => { setShowWelcome(false); setView("belajar"); }} className="font-display min-h-[48px] rounded-full px-5 font-bold" style={{ background: "#fff", border: "2px solid var(--gold)", color: "#92600A" }}>📚 Jelajahi Perpustakaan</button>
                 <button type="button" onClick={() => {
-                    if (!soundOn) { setWelcomeMsg("Suara sedang OFF — nyalakan tombol 🔊 Suara di bagian atas halaman dulu, ya."); return; }
+                    if (!soundOn) { setWelcomeMsg("Suara sedang OFF — nyalakan tombol 🔊 Suara ON di bagian atas halaman dulu, ya."); return; }
                     setWelcomeMsg("");
-                    void speakText("Selamat datang di ZIQVA OLIM! Ayo belajar dari dasar, kumpulkan bintang dan lencana, dan taklukkan soal olimpiade dari Level 1 sampai Level 5. Semangat, Pejuang Olimpiade!", "id-ID", setWelcomeSpeaking);
+                    speakText("Selamat datang di ZIQVA OLIM! Ayo belajar dari dasar, kumpulkan bintang dan lencana, dan taklukkan soal olimpiade dari Level 1 sampai Level 5. Semangat, Pejuang Olimpiade!", "id-ID", { setSpeaking: setWelcomeSpeaking, onStatus: setWelcomeMsg });
                   }} aria-label="Dengarkan sambutan dengan suara"
                   className={`font-display min-h-[48px] rounded-full px-5 font-bold text-white ${welcomeSpeaking ? "speaking" : ""}`} style={{ background: "#E84393" }}>
                   {welcomeSpeaking ? "🔊 Sedang menyapa…" : "🔊 Dengarkan Sambutan"}
@@ -1064,14 +1314,19 @@ export function App() {
           <section className="mt-4 overflow-hidden rounded-3xl shadow-sm" style={{ border: "1px solid var(--border)" }}>
             <img src={heroImg} alt="Ilustrasi anak-anak Indonesia dari TK sampai SMA merayakan kemenangan olimpiade dengan piala dan medali" className="h-44 w-full object-cover object-top sm:h-64" />
             <div className="p-5 sm:p-6" style={{ background: "var(--surface)" }}>
-              <h1 className="font-display text-2xl leading-tight font-extrabold sm:text-3xl">Berlatih seperti di Olimpiade Nasional — dari TK sampai SMA 🏅</h1>
+              <h1 className="font-display text-2xl leading-tight font-extrabold sm:text-3xl">Latihan Olimpiade Interaktif — dari TK/PAUD sampai SMA/SMK/MA 🏅</h1>
               <p className="mt-2 max-w-2xl text-[15px] leading-relaxed" style={{ color: "var(--dim)" }}>
-                Formatnya meniru video contoh Olimpiade PAUD/TK: soal pilihan ganda, tombol <strong>“Dengarkan Soal”</strong>, penghitung waktu,
-                indikator progres, dan skor besar di akhir — kini untuk <strong>semua jenjang &amp; semua mata pelajaran</strong>:
-                Matematika, Bahasa Inggris, IPA/Sains, Sejarah, Bahasa Jawa, Bahasa Arab, PAI, Akidah, Fikih, Qur'an Hadis, SKI, Agama Kristen, kelas Cambridge,
-                sampai Bahasa Korea, Bahasa Jepang, dan Bahasa Mandarin. Setiap sesi berisi <strong>{SESSION_SIZE} soal acak yang selalu baru</strong> (dicoba seratus kali pun tetap fresh),
+                Platform latihan olimpiade interaktif untuk semua jenjang, dari TK/PAUD hingga SMA/SMK/MA: <strong>{SESSION_SIZE} soal pilihan ganda dalam {SESSION_SIZE} menit</strong> dengan
+                audio soal lewat tombol <strong>“Dengarkan Soal”</strong>, penghitung waktu, indikator progres, dan skor akhir — untuk Matematika, Bahasa Inggris, IPA/Sains, Sejarah,
+                Bahasa Jawa, Bahasa Arab, PAI, Akidah Akhlak, Fikih, Qur'an Hadis, SKI, Agama Kristen, hingga kelas Cambridge, ditambah Bahasa Korea, Bahasa Jepang, dan Bahasa Mandarin.
+                Setiap sesi berisi <strong>{SESSION_SIZE} soal acak yang selalu baru</strong> (dicoba seratus kali pun tetap fresh),
                 berjenjang dari <strong>Level 1 Pemula sampai Level 5 Ahli Olimpiade</strong> — skor {UNLOCK_SCORE}+ membuka level berikutnya!
               </p>
+              <div className="mt-4 flex flex-wrap gap-2 text-sm font-bold">
+                <span className="rounded-full px-3 py-1.5" style={{ background: "var(--surface2)" }}>📚 Total {TOTAL_AUTHORED} soal inti tertulis</span>
+                <span className="rounded-full px-3 py-1.5" style={{ background: "var(--surface2)" }}>🎲 298.000+ variasi soal acak dari generator</span>
+                <span className="rounded-full px-3 py-1.5" style={{ background: "var(--surface2)" }}>🗂️ {SUBJECTS.length} mapel • 4 jenjang • 5 level</span>
+              </div>
               {stats && stats.total_attempts > 0 && (
                 <div className="mt-4 flex flex-wrap gap-2 text-sm font-bold">
                   <span className="rounded-full px-3 py-1.5" style={{ background: "var(--surface2)" }}>🎯 {stats.total_attempts}× latihan</span>
@@ -1212,7 +1467,7 @@ export function App() {
               <button type="button" onClick={() => setMode("ujian")} aria-pressed={mode === "ujian"} aria-label="Mode ujian seperti olimpiade asli"
                 className="rounded-2xl p-4 text-left" style={{ background: mode === "ujian" ? "#1E2A78" : "var(--surface2)", color: mode === "ujian" ? "#fff" : "var(--text)", border: "2px solid var(--border)" }}>
                 <div className="font-display font-bold">🏆 Mode Ujian</div>
-                <div className="mt-0.5 text-xs leading-snug" style={{ color: mode === "ujian" ? "rgba(255,255,255,.75)" : "var(--dim)" }}>Seperti video: timer berjalan, jawaban terkunci, skor &amp; review di akhir.</div>
+                <div className="mt-0.5 text-xs leading-snug" style={{ color: mode === "ujian" ? "rgba(255,255,255,.75)" : "var(--dim)" }}>Format ujian resmi: timer berjalan, jawaban terkunci, skor &amp; review di akhir.</div>
               </button>
               <button type="button" onClick={() => setMode("latihan")} aria-pressed={mode === "latihan"} aria-label="Mode latihan dengan pembahasan langsung"
                 className="rounded-2xl p-4 text-left" style={{ background: mode === "latihan" ? "#1E7A46" : "var(--surface2)", color: mode === "latihan" ? "#fff" : "var(--text)", border: "2px solid var(--border)" }}>
@@ -1224,19 +1479,19 @@ export function App() {
               className="font-display mt-4 min-h-[60px] w-full rounded-2xl text-xl font-extrabold text-white shadow disabled:opacity-40" style={{ background: "var(--gold)", color: "#2B2440" }}>
               🚀 Mulai — {activeSubject?.name} • {jenjang} • Level {level} ({SESSION_SIZE} soal acak)
             </button>
-            <p className="mt-2 text-center text-xs" style={{ color: "var(--dim)" }}>⏱ Waktu: 1 menit per soal ({SESSION_SIZE} soal = {SESSION_SIZE} menit) • 🔊 Gunakan tombol “Dengarkan Soal” untuk soal listening seperti di video • 📚 Belum paham materinya? Buka menu <strong>Belajar</strong> di atas</p>
+            <p className="mt-2 text-center text-xs" style={{ color: "var(--dim)" }}>⏱ Waktu: 1 menit per soal ({SESSION_SIZE} soal = {SESSION_SIZE} menit) • 🔊 Gunakan tombol “Dengarkan Soal” untuk mendengar soal dibacakan • 📚 Belum paham materinya? Buka menu <strong>Perpustakaan</strong> di atas, atau ketuk ikon <strong>i</strong> pada soal saat Mode Latihan</p>
           </section>
 
-          {/* Analisa video */}
+          {/* Format standar olimpiade */}
           <section className="mt-5 rounded-3xl p-5" style={{ background: "var(--surface2)", border: "1px dashed var(--border)" }}>
-            <h2 className="font-display text-base font-bold">🎬 Pola dari Video Contoh (Olimpiade Nasional PAUD/TK)</h2>
+            <h2 className="font-display text-base font-bold">🏅 Format Standar Olimpiade di ZIQVA OLIM</h2>
             <ul className="mt-2 grid gap-1.5 text-sm leading-relaxed sm:grid-cols-2" style={{ color: "var(--dim)" }}>
               <li>✅ 20 soal pilihan ganda dengan batas waktu &amp; indikator progres (0/20)</li>
               <li>✅ Setiap soal punya audio listening yang bisa diputar ulang</li>
-              <li>✅ Tipe soal TK: angka terkecil, menyusun huruf jadi kata, melengkapi kata, angka di antara, urutan gambar kegiatan harian</li>
-              <li>✅ Di akhir muncul skor besar (contoh: 60 = 12/20 benar) + pesan penyemangat</li>
+              <li>✅ Tipe soal TK: angka terkecil, menyusun huruf jadi kata, melengkapi kata, angka di antara, urutan kegiatan harian</li>
+              <li>✅ Di akhir muncul skor besar (misalnya skor 60 berarti 12 dari 20 soal benar), pesan penyemangat, dan pembahasan tiap soal</li>
             </ul>
-            <p className="mt-2 text-sm" style={{ color: "var(--dim)" }}>ZIQVA OLIM memakai pola persis itu, lalu menaikkannya bertingkat: soal makin menantang dari TK → SD → SMP → SMA sesuai kurikulum tiap jenjang &amp; jenis sekolah.</p>
+            <p className="mt-2 text-sm" style={{ color: "var(--dim)" }}>Soal disusun bertingkat sesuai kurikulum: makin menantang dari TK → SD → SMP → SMA, untuk sekolah umum, madrasah, sekolah Kristen, dan Cambridge.</p>
           </section>
 
           {/* Reset semua — untuk orang tua / guru yang baru coba-coba */}
@@ -1321,8 +1576,9 @@ export function App() {
               const user = lastResult.answers[i];
               const right = user === q.answer;
               return (
-                <article key={i} className="rounded-2xl p-4" style={{ background: "var(--surface)", border: `2px solid ${right ? "#1E7A46" : "#D6336C"}` }}>
-                  <p className="font-bold whitespace-pre-line"><span style={{ color: right ? "#1E7A46" : "#D6336C" }}>{right ? "✓" : "✕"} Soal {i + 1}.</span> {q.emoji ? `${q.emoji} ` : ""}{q.q}</p>
+                <article key={i} className="relative rounded-2xl p-4" style={{ background: "var(--surface)", border: `2px solid ${right ? "#1E7A46" : "#D6336C"}` }}>
+                  <InfoIcon onClick={() => openModuleForQuestion(q, "Kembali ke Review & Pembahasan")} />
+                  <p className="pr-8 font-bold whitespace-pre-line"><span style={{ color: right ? "#1E7A46" : "#D6336C" }}>{right ? "✓" : "✕"} Soal {i + 1}.</span> {q.emoji ? `${q.emoji} ` : ""}{q.q}</p>
                   <p className="mt-1.5 text-sm">Jawabanmu: <strong>{user === null || user === undefined ? "— (kosong)" : `${LETTERS[user]}. ${q.options[user]}`}</strong></p>
                   {!right && <p className="text-sm">Jawaban benar: <strong>{LETTERS[q.answer]}. {q.options[q.answer]}</strong></p>}
                   <p className="mt-1.5 rounded-xl px-3 py-2 text-sm leading-relaxed" style={{ background: "var(--surface2)" }}><strong>Pembahasan:</strong> {q.explain}</p>
@@ -1469,7 +1725,7 @@ export function App() {
               {sessionUser && <li>• 👀 Daftar pantau {sessionUser.name} dikosongkan &amp; kamu keluar dari akun pantau di perangkat ini</li>}
             </ul>
             <p className="mt-3 rounded-xl px-3 py-2 text-xs leading-relaxed font-bold" style={{ background: "#FBF0DA", color: "#92600A" }}>
-              Yang TIDAK ikut terhapus: bank soal, Bahan Belajar, dan akun Guru/Ortu (tetap bisa dipakai masuk lagi). Reset ini hanya membersihkan perangkat ini — perangkat lain tidak terpengaruh.
+              Yang TIDAK ikut terhapus: bank soal, Perpustakaan Belajar, dan akun Guru/Ortu (tetap bisa dipakai masuk lagi). Reset ini hanya membersihkan perangkat ini — perangkat lain tidak terpengaruh.
             </p>
             <div className="mt-4">
               <label htmlFor="reset-confirm" className="font-display text-sm font-bold">Ketik <span style={{ color: "#D6336C" }}>RESET</span> untuk memastikan</label>
@@ -1490,6 +1746,13 @@ export function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {moduleCtx && (
+        <ModuleView module={moduleCtx.module} jenjang={moduleCtx.jenjang} subjectName={moduleCtx.subjectName}
+          question={moduleCtx.question} backLabel={moduleCtx.backLabel}
+          onBack={() => setModuleCtx(null)}
+          onPractice={moduleCtx.fromLibrary ? () => { const sid = moduleCtx.subjectId; setModuleCtx(null); setSubjectId(sid); setView("home"); window.scrollTo({ top: 0 }); } : undefined} />
       )}
 
       <footer className="mx-auto max-w-5xl px-4 pb-8 text-center text-xs" style={{ color: "var(--dim)" }}>
