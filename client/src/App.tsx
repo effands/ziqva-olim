@@ -120,6 +120,11 @@ export interface SpeakOpts {
   setSpeaking: (b: boolean) => void;
   onStatus?: (msg: string) => void;
   onStart?: () => void;
+  /** Paksa rate ini untuk SEMUA potongan (dipakai Dengarkan Soal: 1,1 rata
+      untuk semua bahasa, termasuk potongan Inggris yang dulu diperlambat).
+      Bila tidak diisi, berlaku rate per bahasa (rateForLang) + perlambatan
+      potongan `slow` — jalur sambutan Beranda & Tes Suara, tidak berubah. */
+  rate?: number;
 }
 
 /* ---------- Pemilihan voice PALING NATURAL + parameter ramah anak ----------
@@ -231,32 +236,50 @@ function splitByQuotes(text: string): { text: string; quoted: boolean }[] {
 }
 
 /**
- * Susun potongan-potongan bacaan untuk satu soal (batang soal + pilihan):
- * - Cambridge (english): satu potongan full Bahasa Inggris, seperti dulu.
- * - Mapel bahasa asing lain (Arab/Korea/Jepang/Mandarin/Jawa): satu
- *   potongan bahasa mapelnya, seperti dulu.
+ * Susun potongan-potongan bacaan untuk satu soal. STRUKTUR SELALU SAMA di
+ * semua mapel/jenjang/jenis sekolah/mode, supaya bacaan tidak pernah
+ * berhenti di tengah: (1) stimulus (bila ada) + batang soal, (2) potongan
+ * "Pilihan:"/"Choices:" SENDIRI, (3) SETIAP pilihan jawaban sebagai
+ * potongan SENDIRI berawalan hurufnya ("A. …", "B. …", …) — pilihan tidak
+ * pernah digabung menjadi satu blob dengan batang soal, jadi rantai
+ * bacaan punya tautan terpisah untuk tiap pilihan sampai pilihan
+ * terakhir selesai dibacakan.
+ * Bahasa tiap potongan mengikuti segmentasi sadar bahasa:
+ * - Cambridge (english): semua potongan full Bahasa Inggris.
+ * - Mapel bahasa asing lain (Arab/Korea/Jepang/Mandarin/Jawa): semua
+ *   potongan bahasa mapelnya.
  * - Mapel Bahasa Inggris non-Cambridge: pengantar Indonesia → id-ID; kata/
  *   frasa Inggris (di dalam kutip maupun batang soal berbahasa Inggris)
- *   → en-US sedikit lebih lambat; pilihan jawaban berbahasa Inggris →
- *   en-US (awalan "Pilihan:" tetap Indonesia). Arah soal menentukan
- *   bahasa pilihan: "Bahasa Inggris dari …" → pilihan Inggris; "…
- *   artinya …" → pilihan Indonesia.
+ *   → en-US; pilihan jawaban berbahasa Inggris → en-US (awalan "Pilihan:"
+ *   tetap Indonesia). Arah soal menentukan bahasa pilihan: "Bahasa
+ *   Inggris dari …" → pilihan Inggris; "… artinya …" → pilihan Indonesia.
  * - Mapel lain: batang soal Indonesia, kecuali potongan dalam tanda kutip
- *   yang jelas berbahasa Inggris (istilah) → en-US sedikit lebih lambat.
+ *   yang jelas berbahasa Inggris (istilah) → en-US.
  */
-function buildQuestionSpeech(question: string, options: string[], subjectId: string, english: boolean): SpeechSegment[] {
-  if (english) return [{ text: `${question}. Choices: ${options.join(". ")}`, lang: "en-US" }];
+function buildQuestionSpeech(question: string, options: string[], subjectId: string, english: boolean, stimulus?: string): SpeechSegment[] {
+  const letter = (i: number) => LETTERS[i] ?? `${i + 1}`;
+  const stim = (stimulus ?? "").replace(/\s+/g, " ").trim();
+  const stemText = stim ? (/[.!?…]$/.test(stim) ? `${stim} ${question}` : `${stim}. ${question}`) : question;
+  /** Tiap pilihan = satu potongan sendiri berawalan hurufnya. */
+  const optionSegs = (lang: string, slow = false): SpeechSegment[] =>
+    options.map((opt, i) => {
+      const t = opt.replace(/\s+/g, " ").trim();
+      return { text: `${letter(i)}. ${/[.!?…]$/.test(t) ? t : `${t}.`}`, lang, slow };
+    });
+  if (english) {
+    return [{ text: stemText, lang: "en-US" }, { text: "Choices:", lang: "en-US" }, ...optionSegs("en-US")];
+  }
   const isEnglishSubject = subjectId.includes("inggris") || subjectId.startsWith("cambridge-eng");
   const base = langForSubject(subjectId);
   if (!isEnglishSubject && base !== "id-ID") {
-    return [{ text: `${question}. Pilihan: ${options.join(". ")}`, lang: base }];
+    return [{ text: stemText, lang: base }, { text: "Pilihan:", lang: base }, ...optionSegs(base)];
   }
   const lower = question.toLowerCase();
-  const parts = splitByQuotes(question);
+  const parts = splitByQuotes(stemText);
   // Bahasa pilihan jawaban mengikuti arah soal.
   let answerEnglish: boolean;
   if (/bahasa inggris dari/.test(lower)) answerEnglish = true;
-  else if (/\bartinya\b/.test(lower)) answerEnglish = false;
+  else if (/\bartinya\b/.test(lower) || /\barti kata\b/.test(lower) || /\barti dari\b/.test(lower)) answerEnglish = false;
   else {
     const frameGuess = guessLang(parts.filter((p) => !p.quoted).map((p) => p.text).join(" "));
     answerEnglish = frameGuess === "en" ? true : isEnglishSubject;
@@ -297,13 +320,12 @@ function buildQuestionSpeech(question: string, options: string[], subjectId: str
   // Tutup batang soal dengan titik agar ada jeda sebelum daftar pilihan.
   const lastStem = segs[segs.length - 1];
   if (lastStem && !/[.!?…]$/.test(lastStem.text)) lastStem.text += ".";
-  if (answerEnglish) {
-    push("Pilihan:", "id-ID");
-    for (const opt of options) push(`${opt}.`, "en-US", true);
-  } else {
-    push(`Pilihan: ${options.join(". ")}`, "id-ID");
-  }
-  return segs.length ? segs : [{ text: `${question}. Pilihan: ${options.join(". ")}`, lang: "id-ID" }];
+  // "Pilihan:" adalah potongan SENDIRI (tidak digabung ke potongan batang
+  // soal lewat push), lalu tiap pilihan satu potongan sendiri berawalan
+  // hurufnya — rantai bacaan wajib berlanjut sampai pilihan terakhir.
+  segs.push({ text: "Pilihan:", lang: "id-ID" });
+  segs.push(...optionSegs(answerEnglish ? "en-US" : "id-ID", answerEnglish));
+  return segs.length > 1 ? segs : [{ text: stemText, lang: "id-ID" }, { text: "Pilihan:", lang: "id-ID" }, ...optionSegs("id-ID")];
 }
 
 /**
@@ -313,17 +335,28 @@ function buildQuestionSpeech(question: string, options: string[], subjectId: str
  *   bila voice bahasa tujuan TIDAK ada, pakai voice default perangkat dan
  *   JANGAN paksa u.lang ke bahasa itu (penyebab umum TTS bisu di Android);
  * - teks dipecah per kalimat (splitSentences) dan diucapkan berurutan;
- * - pitch 1,1 & rate 0,92–0,95 (rateForLang) agar hangat dan jelas;
+ * - pitch 1,1; rate bawaan 0,92–0,95 (rateForLang), KECUALI bila pemanggil
+ *   memberi opts.rate — Dengarkan Soal memberi 1,1 RATA untuk semua
+ *   potongan bahasa (permintaan user: bacaan 0,92–0,95 terasa terlalu
+ *   lambat), termasuk potongan Inggris yang dulu diperlambat (slow);
  * - resume() dipanggil sebelum speak; cancel() hanya bila sedang berbicara,
  *   dan speak berikutnya diberi jeda kecil agar antrean tidak macet;
- * - bila TTS error, bunyi nada WebAudio singkat berbunyi sebagai indikator
- *   bahwa tombol bekerja, dan pesan status tampil jelas di layar.
+ * - RANTAI TIDAK BOLEH PUTUS DI TENGAH: sebagian mesin TTS HP kadang
+ *   gagal menembakkan onend untuk satu utterance (bacaan berhenti diam-
+ *   diam sesudah batang soal, pilihan tidak terbaca) atau menembakkan
+ *   onerror untuk satu potongan saja. Karena itu tiap potongan punya
+ *   watchdog: bila onend/onerror tak kunjung datang melewati perkiraan
+ *   durasi ucapnya, bacaan DIPAKSA lanjut ke potongan berikutnya; dan
+ *   onerror satu potongan (selain cancel/interrupted dari user) hanya
+ *   melewati potongan itu, tidak menghentikan seluruh bacaan. Pesan
+ *   gagal + nada indikator hanya tampil bila SEMUA potongan gagal dan
+ *   tidak ada satu pun yang sempat mulai.
  *
  * Versi multi-potongan (speakSegments): tiap SpeechSegment diucapkan
  * dengan voice & rate bahasanya sendiri; di titik GANTI BAHASA antar
  * potongan disisipkan jeda ±320 ms agar perpindahan suaranya terasa
  * natural, tidak menyambung paksa; potongan bertanda slow (kata target
- * Bahasa Inggris) dibacakan ±15% lebih lambat agar jelas terdengar anak.
+ * Bahasa Inggris) dibacakan ±15% lebih lambat pada jalur rate bawaan.
  */
 interface SpeechChunk { text: string; voice?: SpeechSynthesisVoice; lang: string; rate: number; langSwitch: boolean }
 function speakSegments(segments: SpeechSegment[], opts: SpeakOpts): boolean {
@@ -351,7 +384,7 @@ function speakSegments(segments: SpeechSegment[], opts: SpeakOpts): boolean {
     totalLen += clean.length;
     const picked = pickVoice(seg.lang);
     if (!picked.matched && voiceCache.length > 0) anyUnmatched = true;
-    const rate = rateForLang(seg.lang) * (seg.slow ? 0.85 : 1);
+    const rate = opts.rate !== undefined ? opts.rate : rateForLang(seg.lang) * (seg.slow ? 0.85 : 1);
     for (const piece of splitSentences(clean)) {
       const prev = chunks[chunks.length - 1];
       chunks.push({ text: piece, voice: picked.voice, lang: seg.lang, rate, langSwitch: !!prev && prev.lang !== seg.lang });
@@ -361,11 +394,43 @@ function speakSegments(segments: SpeechSegment[], opts: SpeakOpts): boolean {
   let started = false;
   let stopped = false;
   let ci = 0;
+  let failCount = 0;
+  let lastError = "";
+  /** Rantai selesai: matikan indikator; pesan gagal hanya bila TIDAK ADA
+      satu pun potongan yang sempat dibacakan dan memang ada yang error. */
+  const finishChain = () => {
+    setSpeaking(false);
+    if (!started && failCount > 0) {
+      sfxSelect(); // indikator bunyi: tombol bekerja walau TTS gagal
+      onStatus?.(`Suara bacaan gagal diputar di perangkat ini${lastError ? ` (${lastError})` : ""}. Ketuk tombol 🔊 Tes Suara untuk melihat diagnosa lengkapnya.`);
+    }
+  };
   const speakChunk = () => {
     if (stopped) return;
     if (gen !== speechGeneration) { stopped = true; setSpeaking(false); return; }
-    if (ci >= chunks.length) { setSpeaking(false); return; }
-    const chunk = chunks[ci] as SpeechChunk;
+    if (ci >= chunks.length) { finishChain(); return; }
+    const myIndex = ci;
+    const chunk = chunks[myIndex] as SpeechChunk;
+    // `settled` menandai utterance potongan INI sudah ditangani (selesai,
+    // error, atau dipaksa lanjut oleh watchdog) — callback terlambat dari
+    // utterance yang sama (mis. onerror "canceled" akibat cancel watchdog)
+    // tidak boleh mengutak-atik rantai lagi.
+    let settled = false;
+    let watchdog: number | undefined;
+    const advance = (delay: number) => {
+      if (settled) return;
+      settled = true;
+      if (watchdog !== undefined) window.clearTimeout(watchdog);
+      if (stopped || gen !== speechGeneration) { setSpeaking(false); return; }
+      ci = myIndex + 1;
+      if (ci >= chunks.length) { finishChain(); return; }
+      const next = chunks[ci];
+      // Jeda singkat yang natural di titik ganti bahasa, supaya suara
+      // Indonesia dan suara Inggris tidak terdengar menyambung paksa.
+      const d = next?.langSwitch ? Math.max(delay, 320) : delay;
+      if (d > 0) window.setTimeout(speakChunk, d);
+      else speakChunk();
+    };
     const u = new SpeechSynthesisUtterance(chunk.text);
     if (chunk.voice) {
       u.voice = chunk.voice;
@@ -373,33 +438,42 @@ function speakSegments(segments: SpeechSegment[], opts: SpeakOpts): boolean {
     }
     u.rate = chunk.rate;
     u.pitch = 1.1; // sedikit lebih tinggi & hangat — ramah anak, tidak kaku
-    u.onstart = () => { if (ci === 0) { started = true; opts.onStart?.(); } setSpeaking(true); };
-    u.onend = () => {
-      ci += 1;
-      const next = chunks[ci];
-      if (next?.langSwitch) {
-        // Jeda singkat yang natural di titik ganti bahasa, supaya suara
-        // Indonesia dan suara Inggris tidak terdengar menyambung paksa.
-        window.setTimeout(speakChunk, 320);
-      } else {
-        speakChunk();
-      }
-    };
+    u.onstart = () => { if (myIndex === 0) { started = true; opts.onStart?.(); } setSpeaking(true); };
+    u.onend = () => advance(0);
     u.onerror = (e) => {
-      if (e.error === "canceled" || e.error === "interrupted") { stopped = true; setSpeaking(false); return; }
-      stopped = true;
-      setSpeaking(false);
-      sfxSelect(); // indikator bunyi: tombol bekerja walau TTS gagal
-      onStatus?.(`Suara bacaan gagal diputar di perangkat ini (${e.error}). Ketuk tombol 🔊 Tes Suara untuk melihat diagnosa lengkapnya.`);
+      if (settled) return; // callback terlambat dari potongan yang sudah dilewati
+      if (e.error === "canceled" || e.error === "interrupted") {
+        // Cancel dari stopSpeaking()/pindah soal (generasi sudah berganti)
+        // menghentikan rantai; cancel lain (mis. dari watchdog potongan
+        // sebelumnya) tidak boleh mematikan bacaan — lanjutkan saja.
+        if (gen !== speechGeneration) { settled = true; if (watchdog !== undefined) window.clearTimeout(watchdog); stopped = true; setSpeaking(false); return; }
+        advance(0);
+        return;
+      }
+      // Satu potongan error TIDAK menghentikan seluruh bacaan: catat dan
+      // lanjut ke potongan berikutnya sampai pilihan terakhir selesai.
+      failCount += 1;
+      lastError = e.error;
+      advance(0);
     };
+    // Watchdog per potongan: perkiraan durasi ucap (panjang teks ÷ rate)
+    // ditambah margin besar. Bila onend/onerror tak kunjung datang —
+    // kegagalan diam yang membuat bacaan berhenti sesudah batang soal —
+    // potong paksa utterance itu dan lanjutkan rantai ke potongan
+    // berikutnya, apa pun isinya (termasuk pilihan terakhir).
+    const estMs = Math.min(30000, Math.max(4000, 2500 + (chunk.text.length * 110) / Math.max(0.5, chunk.rate)));
+    watchdog = window.setTimeout(() => {
+      if (settled || stopped || gen !== speechGeneration) return;
+      try { synth.cancel(); } catch { /* abaikan */ }
+      advance(120);
+    }, estMs);
     try { synth.resume(); } catch { /* abaikan */ }
     try {
       synth.speak(u);
     } catch {
-      stopped = true;
-      setSpeaking(false);
-      sfxSelect();
-      onStatus?.("Suara bacaan gagal dimulai. Ketuk tombol 🔊 Tes Suara untuk melihat diagnosa lengkapnya.");
+      failCount += 1;
+      lastError = "gagal dimulai";
+      advance(0);
     }
   };
   const doSpeak = () => {
@@ -409,7 +483,7 @@ function speakSegments(segments: SpeechSegment[], opts: SpeakOpts): boolean {
     window.setTimeout(() => {
       if (!started && !stopped && gen === speechGeneration) onStatus?.("Bacaan belum juga mulai — mesin suara (TTS) di browser ini tampaknya tidak aktif. Ketuk tombol 🔊 Tes Suara untuk diagnosa lengkap, atau buka ZIQVA OLIM dengan Chrome dan pastikan Speech Services by Google aktif.");
     }, 2800);
-    window.setTimeout(() => setSpeaking(false), Math.min(60000, 6000 + totalLen * 110));
+    window.setTimeout(() => setSpeaking(false), Math.min(150000, 8000 + totalLen * 170));
   };
   if (anyUnmatched) {
     onStatus?.("Suara untuk bahasa soal ini belum terpasang di HP — memakai suara bawaan perangkat, jadi pelafalannya mungkin berbeda.");
@@ -673,10 +747,13 @@ function QuizView(props: {
       return;
     }
     setTtsMsg("");
-    // Bacaan sadar bahasa per potongan: pengantar Indonesia dibacakan
-    // suara Indonesia, kata target & pilihan Bahasa Inggris dibacakan
-    // suara Inggris (lihat buildQuestionSpeech). Teks tampil tidak berubah.
-    speakSegments(buildQuestionSpeech(current.q, current.options, props.subjectId, !!props.english), { setSpeaking, onStatus: setTtsMsg });
+    // Bacaan LENGKAP & sadar bahasa per potongan: stimulus (bila ada) +
+    // batang soal, lalu "Pilihan:", lalu SETIAP pilihan A/B/C/D satu per
+    // satu sampai selesai (lihat buildQuestionSpeech) — pengantar
+    // Indonesia dibacakan suara Indonesia, kata target & pilihan Bahasa
+    // Inggris dibacakan suara Inggris. Teks tampil tidak berubah.
+    // Rate 1,1 rata untuk semua potongan (permintaan user).
+    speakSegments(buildQuestionSpeech(current.q, current.options, props.subjectId, !!props.english, current.stimulus), { setSpeaking, onStatus: setTtsMsg, rate: 1.1 });
   };
 
   const [testLines, setTestLines] = useState<string[]>([]);
