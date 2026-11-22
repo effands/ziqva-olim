@@ -29,6 +29,13 @@
       "when": 1795320386502,
       "tag": "0004_add_device_id_and_student_codes",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1795331018681,
+      "tag": "0005_add_presence_table_for_online_users",
+      "breakpoints": true
     }
   ]
 }

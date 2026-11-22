@@ -146,6 +146,21 @@
         total_sessions: rows.length, sessions: rows.length,
       };
     },
+    async heartbeat(args) {
+      var presence = read("ziqva_presence", {});
+      var now = Date.now();
+      if (args && args.device_id) presence[args.device_id] = now;
+      Object.keys(presence).forEach(function (k) { if (now - presence[k] > 90000) delete presence[k]; });
+      write("ziqva_presence", presence);
+      return { ok: true, online: Object.keys(presence).length };
+    },
+    async getOnlineCount(args) {
+      var presence = read("ziqva_presence", {});
+      var now = Date.now();
+      Object.keys(presence).forEach(function (k) { if (now - presence[k] > 90000) delete presence[k]; });
+      write("ziqva_presence", presence);
+      return { online: Object.keys(presence).length };
+    },
     async resetAllData(args) {
       var attempts = read(K.attempts, []);
       var mine = attempts.filter(function (a) { return a.device_id === (args.device_id || ""); });

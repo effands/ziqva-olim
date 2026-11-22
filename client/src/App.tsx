@@ -1358,6 +1358,15 @@ export function App() {
   const [resetDoneMsg, setResetDoneMsg] = useState("");
   const [monitorCode, setMonitorCode] = useState("");
   const history = useQuery({ queryKey: ["attempts", deviceId], queryFn: () => api.listAttempts({ limit: 30, device_id: deviceId }) });
+  // Kehadiran online: heartbeat berkala menandai perangkat ini sedang aktif;
+  // server membalas jumlah perangkat yang heartbeat-nya masih segar (online).
+  const onlineQ = useQuery({
+    queryKey: ["online", deviceId],
+    queryFn: () => api.heartbeat({ device_id: deviceId }),
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
+  });
+  const onlineCount = onlineQ.data?.online;
   const saveAttempt = useMutation({
     mutationFn: api.saveAttempt,
     onSuccess: (r) => { setMonitorCode(r.monitor_code); queryClient.invalidateQueries({ queryKey: ["attempts"] }); queryClient.invalidateQueries({ queryKey: ["leaderboard"] }); },
@@ -1596,6 +1605,12 @@ export function App() {
               <span className="block text-[11px] font-semibold text-white/70">Latihan Olimpiade TK – SMA</span>
             </span>
           </button>
+          <span className="flex min-h-[32px] items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold text-white"
+            style={{ background: "rgba(255,255,255,.15)" }} role="status"
+            aria-label={onlineCount != null ? `${onlineCount} pemakai sedang online sekarang` : "Menghitung pemakai yang sedang online"}>
+            <span className="online-dot inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: "#4ADE80" }} aria-hidden />
+            {onlineCount != null ? `${onlineCount} online` : "… online"}
+          </span>
           <nav className="ml-auto flex flex-wrap gap-2" aria-label="Navigasi utama">
             <button type="button" onClick={() => setView("home")} aria-label="Ke beranda"
               className="min-h-[40px] rounded-full px-4 font-display text-sm font-bold"
@@ -1727,6 +1742,11 @@ export function App() {
                 <span className="rounded-full px-3 py-1.5" style={{ background: "var(--surface2)" }}>📚 Total {TOTAL_AUTHORED} soal inti tertulis</span>
                 <span className="rounded-full px-3 py-1.5" style={{ background: "var(--surface2)" }}>🎲 298.000+ variasi soal acak dari generator</span>
                 <span className="rounded-full px-3 py-1.5" style={{ background: "var(--surface2)" }}>🗂️ {SUBJECTS.length} mapel • 4 jenjang • 5 level</span>
+                <span className="flex items-center gap-2 rounded-full px-3 py-1.5" style={{ background: "var(--surface2)" }} role="status"
+                  aria-label={onlineCount != null ? `${onlineCount} pemakai sedang online sekarang` : "Menghitung pemakai yang sedang online"}>
+                  <span className="online-dot inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: "#22C55E" }} aria-hidden />
+                  {onlineCount != null ? `${onlineCount} pemakai online sekarang` : "Menghitung pemakai online…"}
+                </span>
               </div>
               {stats && stats.total_attempts > 0 && (
                 <div className="mt-4 flex flex-wrap gap-2 text-sm font-bold">

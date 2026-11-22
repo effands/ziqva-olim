@@ -1,5 +1,5 @@
 import { defineAction, z, type ActionsModule, type Ctx } from "@hatch/space-sdk";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, gte, lt } from "drizzle-orm";
 import * as schema from "./schema";
 
 async function hashPassword(password: string, salt: string) {
@@ -67,6 +67,19 @@ async function ensureStudentCode(ctx: Ctx, studentName: string) {
   const code = makeMonitorCode();
   await db.insert(schema.studentCodes).values({ studentName: studentName.trim(), nameKey: key, code });
   return code;
+}
+
+// Jendela "online": perangkat dihitung sedang online bila heartbeat terakhirnya
+// masuk dalam 90 detik terakhir (klien mengirim heartbeat tiap ±30 detik).
+const ONLINE_WINDOW_MS = 90_000;
+
+async function countOnline(ctx: Ctx): Promise<number> {
+  const db = ctx.db<typeof schema>();
+  const cutoff = new Date(Date.now() - ONLINE_WINDOW_MS);
+  const rows = await db.select({ id: schema.presence.id })
+    .from(schema.presence)
+    .where(gte(schema.presence.lastSeen, cutoff));
+  return rows.length;
 }
 
 const attemptShape = z.object({
@@ -448,6 +461,38 @@ export const Actions = {
     },
   }),
 
+  heartbeat: defineAction({
+    description: "Records this device as currently present (online) and returns how many devices are online right now.",
+    request: z.object({ device_id: z.string().trim().min(1).max(100) }),
+    response: z.object({ online: z.number() }),
+    async handler(ctx, args) {
+      const db = ctx.db<typeof schema>();
+      const now = new Date();
+      const existing = await db.select().from(schema.presence)
+        .where(eq(schema.presence.deviceId, args.device_id)).limit(1);
+      if (existing[0]) {
+        await db.update(schema.presence)
+          .set({ lastSeen: now })
+          .where(eq(schema.presence.deviceId, args.device_id));
+      } else {
+        await db.insert(schema.presence).values({ deviceId: args.device_id, lastSeen: now });
+      }
+      // Bersihkan baris kehadiran yang sudah lama mati agar tabel tetap kecil.
+      await db.delete(schema.presence)
+        .where(lt(schema.presence.lastSeen, new Date(Date.now() - 24 * 60 * 60 * 1000)));
+      return { online: await countOnline(ctx) };
+    },
+  }),
+
+  getOnlineCount: defineAction({
+    description: "Returns how many devices are currently online (heartbeat within the last 90 seconds).",
+    request: z.object({}),
+    response: z.object({ online: z.number() }),
+    async handler(ctx) {
+      return { online: await countOnline(ctx) };
+    },
+  }),
+
   resetAllData: defineAction({
     description: "Resets all trial data on this device: deletes its practice history, orphaned monitoring codes, and (when a parent/teacher token is given) that account's watch list and session, so the app starts completely fresh.",
     request: z.object({
@@ -461,6 +506,9 @@ export const Actions = {
       let clearedWatched = 0;
 
       if (args.device_id) {
+        // Baris kehadiran perangkat ini ikut dihapus: device_id akan diputar
+        // oleh klien, jadi perangkat lama tidak boleh tertinggal sebagai online.
+        await db.delete(schema.presence).where(eq(schema.presence.deviceId, args.device_id));
         const deviceRows = await db.select().from(schema.attempts).where(eq(schema.attempts.deviceId, args.device_id));
         deletedAttempts = deviceRows.length;
         if (deviceRows.length > 0) {

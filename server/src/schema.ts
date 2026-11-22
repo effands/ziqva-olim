@@ -55,3 +55,14 @@ export const watchedStudents = sqliteTable("watched_students", {
     .notNull()
     .$defaultFn(() => new Date()),
 });
+
+// Kehadiran perangkat: satu baris per perangkat (device_id unik), diperbarui
+// tiap heartbeat dari klien. Baris dengan last_seen dalam jendela ONLINE_WINDOW
+// dihitung sebagai "pemakai online" saat ini.
+export const presence = sqliteTable("presence", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  deviceId: text("device_id").notNull().unique(),
+  lastSeen: integer("last_seen", { mode: "timestamp_ms" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
