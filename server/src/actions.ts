@@ -97,6 +97,55 @@ async function countOnline(ctx: Ctx): Promise<number> {
   return rows.length;
 }
 
+/* ---------------- SISTEM POIN & CHALLENGE BULANAN ----------------
+   Poin dihitung dari data attempts yang SUDAH tersimpan (tidak ada tabel
+   poin terpisah): POIN = total jawaban benar bulan ini × 10,
+   KETEPATAN = benar / total soal, SKOR JUARA = round(poin × ketepatan).
+   Bulan berjalan dihitung dalam zona waktu Asia/Jakarta (WIB, UTC+7 tetap).
+   Status FINISHER: sesi bulan ini ≥ target dari pengaturan app_settings. */
+const SETTING_KEYS = ["challenge_title", "prize_text", "challenge_target_sessions"] as const;
+type SettingKey = (typeof SETTING_KEYS)[number];
+const settingsShape = z.object({
+  challenge_title: z.string(),
+  prize_text: z.string(),
+  target_sessions: z.number(),
+});
+
+async function readSettings(ctx: Ctx): Promise<z.infer<typeof settingsShape>> {
+  const db = ctx.db<typeof schema>();
+  const rows = await db.select().from(schema.appSettings);
+  const map = new Map(rows.map((r) => [r.key, r.value]));
+  const targetRaw = Number.parseInt(map.get("challenge_target_sessions") ?? "", 10);
+  return {
+    challenge_title: map.get("challenge_title") ?? "",
+    prize_text: map.get("prize_text") ?? "",
+    target_sessions: Number.isFinite(targetRaw) && targetRaw >= 1 ? targetRaw : 10,
+  };
+}
+
+const MONTH_NAMES_ID = [
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+];
+const JAKARTA_OFFSET_MS = 7 * 60 * 60 * 1000;
+
+/** Rentang bulan berjalan (Asia/Jakarta) sebagai instant UTC + labelnya. */
+function currentJakartaMonth() {
+  const jakartaNow = new Date(Date.now() + JAKARTA_OFFSET_MS);
+  const year = jakartaNow.getUTCFullYear();
+  const month = jakartaNow.getUTCMonth(); // 0-11
+  const day = jakartaNow.getUTCDate();
+  const start = new Date(Date.UTC(year, month, 1) - JAKARTA_OFFSET_MS);
+  const end = new Date(Date.UTC(year, month + 1, 1) - JAKARTA_OFFSET_MS);
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  return {
+    start,
+    end,
+    label: `${MONTH_NAMES_ID[month] ?? ""} ${year}`,
+    daysLeft: daysInMonth - day,
+  };
+}
+
 const attemptShape = z.object({
   id: z.number(),
   student_name: z.string(),
@@ -1285,6 +1334,148 @@ export const Actions = {
       await db.delete(schema.attempts).where(eq(schema.attempts.id, args.attempt_id));
       ctx.invalidateQueries();
       return { ok: true as const };
+    },
+  }),
+
+  /* ---------------- SISTEM POIN & CHALLENGE BULANAN ---------------- */
+  getSettings: defineAction({
+    description: "Returns the public monthly-challenge settings (challenge title, prize text, and the Finisher target in sessions per month) stored in app_settings.",
+    request: z.object({}),
+    response: settingsShape,
+    async handler(ctx) {
+      return readSettings(ctx);
+    },
+  }),
+
+  adminSetSetting: defineAction({
+    description: "Superadmin only: saves one monthly-challenge setting (challenge_title, prize_text, or challenge_target_sessions) into app_settings.",
+    request: z.object({
+      token: z.string().min(1).max(200),
+      key: z.enum(SETTING_KEYS),
+      value: z.string().trim().max(2000),
+    }),
+    response: z.object({ ok: z.literal(true), settings: settingsShape }),
+    async handler(ctx, args): Promise<{ ok: true; settings: z.infer<typeof settingsShape> }> {
+      await requireAdmin(ctx, args.token);
+      let value = args.value;
+      if (args.key === ("challenge_target_sessions" satisfies SettingKey)) {
+        const n = Number.parseInt(value, 10);
+        if (!Number.isFinite(n) || n < 1 || n > 100) {
+          throw new Error("Target Finisher harus berupa angka 1–100 sesi per bulan.");
+        }
+        value = String(n);
+      }
+      const db = ctx.db<typeof schema>();
+      const existing = await db.select().from(schema.appSettings)
+        .where(eq(schema.appSettings.key, args.key)).limit(1);
+      if (existing[0]) {
+        await db.update(schema.appSettings)
+          .set({ value, updatedAt: new Date() })
+          .where(eq(schema.appSettings.key, args.key));
+      } else {
+        await db.insert(schema.appSettings).values({ key: args.key, value, updatedAt: new Date() });
+      }
+      ctx.invalidateQueries();
+      return { ok: true as const, settings: await readSettings(ctx) };
+    },
+  }),
+
+  getMonthlyChallenge: defineAction({
+    description: "Computes this month's (Asia/Jakarta) points challenge board from saved attempts: per participant, points = correct answers × 10, accuracy = correct/questions, champion score = round(points × accuracy); Finisher status when the participant's sessions this month reach the configured target. Optionally filtered to one jenjang division (TK/SD/SMP/SMA).",
+    request: z.object({
+      jenjang: z.string().trim().max(20).optional(),
+    }),
+    response: z.object({
+      period: z.object({ label: z.string(), days_left: z.number() }),
+      settings: settingsShape,
+      total_participants: z.number(),
+      total_finishers: z.number(),
+      entries: z.array(z.object({
+        name: z.string(),
+        jenjang: z.string(),
+        sessions: z.number(),
+        questions: z.number(),
+        correct: z.number(),
+        points: z.number(),
+        accuracy: z.number(),
+        champion_score: z.number(),
+        finisher: z.boolean(),
+      })),
+    }),
+    async handler(ctx, args) {
+      const db = ctx.db<typeof schema>();
+      const settings = await readSettings(ctx);
+      const period = currentJakartaMonth();
+      const jenjangFilter = args.jenjang?.trim() ?? "";
+      const rows = await db.select().from(schema.attempts)
+        .where(and(
+          gte(schema.attempts.createdAt, period.start),
+          lt(schema.attempts.createdAt, period.end),
+          ...(jenjangFilter ? [eq(schema.attempts.jenjang, jenjangFilter)] : []),
+        ))
+        .orderBy(desc(schema.attempts.id))
+        .limit(20000);
+
+      type Agg = {
+        name: string;
+        sessions: number;
+        questions: number;
+        correct: number;
+        jenjangCounts: Map<string, number>;
+      };
+      const byStudent = new Map<string, Agg>();
+      for (const r of rows) {
+        const key = nameKey(r.studentName);
+        let agg = byStudent.get(key);
+        if (!agg) {
+          // Baris terbaru lebih dulu (orderBy id desc) → nama tampil dari
+          // sesi terbarunya bulan ini.
+          agg = { name: r.studentName, sessions: 0, questions: 0, correct: 0, jenjangCounts: new Map() };
+          byStudent.set(key, agg);
+        }
+        agg.sessions += 1;
+        agg.questions += r.total;
+        agg.correct += r.correct;
+        agg.jenjangCounts.set(r.jenjang, (agg.jenjangCounts.get(r.jenjang) ?? 0) + 1);
+      }
+
+      const entries = [...byStudent.values()].map((agg) => {
+        const points = agg.correct * 10;
+        const accuracyFrac = agg.questions > 0 ? agg.correct / agg.questions : 0;
+        let dominantJenjang = "";
+        let dominantCount = -1;
+        for (const [j, c] of agg.jenjangCounts) {
+          if (c > dominantCount) { dominantCount = c; dominantJenjang = j; }
+        }
+        return {
+          name: agg.name,
+          jenjang: dominantJenjang,
+          sessions: agg.sessions,
+          questions: agg.questions,
+          correct: agg.correct,
+          points,
+          accuracy: Math.round(accuracyFrac * 100),
+          champion_score: Math.round(points * accuracyFrac),
+          finisher: agg.sessions >= settings.target_sessions,
+        };
+      });
+      // Peringkat: Skor Juara tertinggi dulu; seri → poin lebih besar,
+      // lalu ketepatan lebih tinggi, lalu sesi lebih banyak, lalu nama.
+      entries.sort((a, b) =>
+        b.champion_score - a.champion_score ||
+        b.points - a.points ||
+        b.accuracy - a.accuracy ||
+        b.sessions - a.sessions ||
+        a.name.localeCompare(b.name),
+      );
+
+      return {
+        period: { label: period.label, days_left: period.daysLeft },
+        settings,
+        total_participants: entries.length,
+        total_finishers: entries.filter((e) => e.finisher).length,
+        entries: entries.slice(0, 50),
+      };
     },
   }),
 } satisfies ActionsModule;

@@ -20,7 +20,7 @@ import type { Actions } from "../../server/src/actions";
 
 const FIELDS = actionFields<typeof Actions>();
 
-type View = "home" | "quiz" | "result" | "history" | "login" | "dashboard" | "belajar" | "ranking" | "joinClass" | "classResult" | "admin" | "profile";
+type View = "home" | "quiz" | "result" | "history" | "login" | "dashboard" | "belajar" | "ranking" | "challenge" | "joinClass" | "classResult" | "admin" | "profile";
 type Mode = "ujian" | "latihan";
 type Role = "guru" | "orangtua" | "admin";
 type SessionUser = {
@@ -61,6 +61,9 @@ function fmtTime(sec: number) {
 function fmtDur(sec: number) {
   if (sec < 60) return `${sec} dtk`;
   return `${Math.floor(sec / 60)} mnt ${sec % 60} dtk`;
+}
+function fmtNum(n: number) {
+  return n.toLocaleString("id-ID");
 }
 
 /* ---------------- SUARA: TTS (Dengarkan Soal) + efek klik WebAudio ----------------
@@ -1525,6 +1528,8 @@ function AdminView(props: { token: string; user: SessionUser; onLogout: () => vo
       </p>
       {dash.isPending && <p className="mt-3 text-center text-sm font-semibold" style={{ color: "var(--dim)" }} role="status">⏳ Memuat data superadmin…</p>}
 
+      <AdminChallengeCard token={token} />
+
       <h2 className="font-display mt-6 text-lg font-bold">👥 Akun Terdaftar ({users.length})</h2>
       <div className="mt-2 overflow-x-auto rounded-2xl" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
         <table className="w-full min-w-[600px] border-collapse text-left text-[13px]">
@@ -1846,6 +1851,404 @@ function LeaderboardView(props: { initialJenjang: JenjangId; myName: string; onP
         </p>
       )}
     </main>
+  );
+}
+
+/* ---------------- SISTEM POIN & CHALLENGE BULANAN ----------------
+   Poin & Skor Juara dihitung SERVER dari nilai sungguhan bulan berjalan
+   (aksi getMonthlyChallenge): POIN = jawaban benar × 10,
+   SKOR JUARA = poin × ketepatan. FINISHER = sesi bulan ini mencapai
+   target dari pengaturan Superadmin. Judul & hadiah juga dari pengaturan
+   (aksi getSettings / adminSetSetting). */
+type ChallengeEntry = ApiResponse<typeof api, "getMonthlyChallenge">["entries"][number];
+
+function FinisherBadge() {
+  return (
+    <span className="font-display inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-extrabold whitespace-nowrap" style={{ background: "#1E7A46", color: "#fff" }}>🏁 Finisher</span>
+  );
+}
+
+function ChallengePodiumCard(props: { entry: ChallengeEntry; rank: number; isMe: boolean }) {
+  const { entry: e, rank, isMe } = props;
+  return (
+    <article className="pop-in rounded-3xl p-4 text-center shadow-sm"
+      style={{ background: isMe ? "#FFF3DC" : "var(--surface)", border: `2px solid ${isMe ? "var(--gold)" : "var(--border)"}` }}
+      aria-label={`Peringkat ${rank}: ${e.name}, Skor Juara ${e.champion_score}, ${e.points} poin, ketepatan ${e.accuracy} persen, ${e.sessions} sesi${e.finisher ? ", Finisher" : ""}`}>
+      <div className="text-4xl" aria-hidden>{RANK_MEDALS[rank - 1]}</div>
+      <div className="font-display mt-1 truncate text-lg font-extrabold">
+        {e.name}{" "}
+        {isMe && <span className="rounded-full px-2 py-0.5 text-[11px] font-extrabold text-white" style={{ background: "var(--accent)" }}>Ini kamu!</span>}
+      </div>
+      <div className="text-xs font-bold" style={{ color: "var(--dim)" }}>{e.jenjang}</div>
+      <div className="font-display mt-1 text-4xl leading-none font-extrabold" style={{ color: "#D97706" }}>{fmtNum(e.champion_score)}</div>
+      <div className="mt-1 text-xs font-bold tracking-wide" style={{ color: "var(--dim)" }}>SKOR JUARA</div>
+      <div className="mt-1.5 text-xs leading-relaxed font-semibold" style={{ color: "var(--dim)" }}>
+        🪙 {fmtNum(e.points)} poin • 🎯 {e.accuracy}% tepat • 📚 {e.sessions} sesi
+      </div>
+      {e.finisher && <div className="mt-2"><FinisherBadge /></div>}
+    </article>
+  );
+}
+
+const CHALLENGE_DIVISIONS: { id: string; label: string }[] = [
+  { id: "", label: "Semua" },
+  { id: "TK", label: "TK" },
+  { id: "SD", label: "SD" },
+  { id: "SMP", label: "SMP" },
+  { id: "SMA", label: "SMA" },
+];
+
+function ChallengeView(props: { myName: string; onPractice: () => void }) {
+  const [division, setDivision] = useState("");
+  const global = useQuery({ queryKey: ["monthly-challenge", ""], queryFn: () => api.getMonthlyChallenge({}) });
+  const board = useQuery({
+    queryKey: ["monthly-challenge", division],
+    queryFn: () => api.getMonthlyChallenge(division ? { jenjang: division } : {}),
+  });
+  const g = global.data;
+  const settings = board.data?.settings ?? g?.settings;
+  const period = g?.period ?? board.data?.period;
+  const title = settings?.challenge_title?.trim()
+    ? settings.challenge_title
+    : `Challenge ${period?.label ?? "Bulan Ini"}`;
+  const target = settings?.target_sessions ?? 10;
+  const entries = board.data?.entries ?? [];
+  const podium = entries.slice(0, 3);
+  const rest = entries.slice(3);
+  const myKey = props.myName.trim().toLowerCase();
+  const isMe = (e: ChallengeEntry) => myKey !== "" && e.name.trim().toLowerCase() === myKey;
+  const divisionLabel = division === "" ? "Semua Divisi" : `Divisi ${division}`;
+
+  return (
+    <main className="mx-auto w-full max-w-3xl px-4 pb-10">
+      <section className="mt-5 rounded-3xl p-5 shadow-sm" style={{ background: "linear-gradient(150deg,#1E2A78,#2B3A9E)", border: "2px solid var(--gold)", color: "#fff" }}>
+        <span className="font-display inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-extrabold" style={{ background: "var(--gold)", color: "#2B2440" }}>
+          🟢 SEDANG BERJALAN{period ? ` • SISA ${period.days_left} HARI` : ""}
+        </span>
+        <h1 className="font-display mt-3 text-2xl leading-tight font-extrabold sm:text-3xl">🏆 {title}</h1>
+        <p className="mt-1 text-sm leading-relaxed" style={{ color: "rgba(255,255,255,.85)" }}>
+          Kumpulkan poin dari jawaban benar sepanjang {period?.label ?? "bulan ini"}, jaga ketepatanmu, dan jadilah juara divisimu.
+          Hanya <strong>Finisher</strong> — peserta yang menuntaskan minimal <strong>{target} sesi</strong> bulan ini — yang berhak menyandang gelar juara &amp; menerima hadiah! 🎁
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <span className="rounded-2xl px-4 py-2 text-center" style={{ background: "rgba(255,255,255,.14)" }}>
+            <span className="font-display block text-xl leading-none font-extrabold">{g ? fmtNum(g.total_participants) : "…"}</span>
+            <span className="text-[11px] font-bold tracking-wide" style={{ color: "rgba(255,255,255,.8)" }}>PESERTA BULAN INI</span>
+          </span>
+          <span className="rounded-2xl px-4 py-2 text-center" style={{ background: "rgba(255,255,255,.14)" }}>
+            <span className="font-display block text-xl leading-none font-extrabold">{g ? fmtNum(g.total_finishers) : "…"}</span>
+            <span className="text-[11px] font-bold tracking-wide" style={{ color: "rgba(255,255,255,.8)" }}>SUDAH FINISHER</span>
+          </span>
+          <button type="button" onClick={() => { global.refetch(); board.refetch(); }} aria-label="Segarkan papan challenge"
+            className="font-display ml-auto min-h-[44px] self-center rounded-full px-4 text-sm font-bold" style={{ background: "rgba(255,255,255,.18)", color: "#fff" }}>🔄 Segarkan</button>
+        </div>
+      </section>
+
+      <section className="mt-4 rounded-3xl p-5 shadow-sm" style={{ background: "#FFF7E0", border: "2px solid var(--gold)" }} aria-label="Hadiah challenge bulan ini">
+        <h2 className="font-display text-lg font-extrabold" style={{ color: "#92600A" }}>🎁 Hadiah Bulan Ini</h2>
+        {settings?.prize_text?.trim() ? (
+          <p className="mt-1 text-[15px] leading-relaxed font-semibold whitespace-pre-line" style={{ color: "#5C430A" }}>{settings.prize_text}</p>
+        ) : (
+          <p className="mt-1 text-[15px] leading-relaxed font-semibold" style={{ color: "#5C430A" }}>
+            Hadiah bulan ini sedang disiapkan — kumpulkan poin sebanyak-banyaknya! Juara tiap divisi berhak atas hadiah &amp; sertifikat.
+          </p>
+        )}
+      </section>
+
+      <section className="mt-4 rounded-3xl p-5 shadow-sm" style={{ background: "var(--surface)", border: "1px solid var(--border)" }} aria-label="Cara bermain challenge">
+        <h2 className="font-display text-lg font-extrabold">🎮 Cara Mainnya</h2>
+        <ul className="mt-2 grid gap-2 text-sm leading-relaxed font-semibold sm:grid-cols-3" style={{ color: "var(--dim)" }}>
+          <li className="rounded-2xl p-3" style={{ background: "var(--surface2)" }}>🪙 <strong style={{ color: "var(--text)" }}>Kumpulkan Poin</strong><br />Setiap jawaban benar = <strong style={{ color: "var(--text)" }}>10 poin</strong>, dari semua sesi yang kamu selesaikan bulan ini.</li>
+          <li className="rounded-2xl p-3" style={{ background: "var(--surface2)" }}>👑 <strong style={{ color: "var(--text)" }}>Skor Juara = Poin × Ketepatan</strong><br />Rajin saja tidak cukup — jawabanmu juga harus tepat. Asal cepat tanpa benar tidak akan menang!</li>
+          <li className="rounded-2xl p-3" style={{ background: "var(--surface2)" }}>🏁 <strong style={{ color: "var(--text)" }}>Jadi Finisher</strong><br />Tuntaskan minimal <strong style={{ color: "var(--text)" }}>{target} sesi</strong> bulan ini untuk berhak menjadi juara divisimu.</li>
+        </ul>
+      </section>
+
+      <div className="mt-5 flex flex-wrap gap-2" role="group" aria-label="Pilih divisi challenge">
+        {CHALLENGE_DIVISIONS.map((d) => (
+          <button key={d.id || "semua"} type="button" onClick={() => setDivision(d.id)} aria-pressed={division === d.id} aria-label={`Lihat papan challenge ${d.label === "Semua" ? "semua divisi" : `divisi ${d.label}`}`}
+            className="min-h-[44px] rounded-full px-4 font-display text-sm font-bold"
+            style={{ background: division === d.id ? "var(--accent)" : "var(--surface)", color: division === d.id ? "#fff" : "var(--dim)", border: "1px solid var(--border)" }}>
+            {d.label}
+          </button>
+        ))}
+      </div>
+
+      {board.isPending && <p className="mt-4" style={{ color: "var(--dim)" }} role="status">Memuat papan challenge…</p>}
+      {board.isError && (
+        <div className="mt-4 rounded-3xl p-6 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+          <p className="font-display text-lg font-bold">Papan challenge belum bisa dimuat</p>
+          <p className="mt-1 text-sm" style={{ color: "var(--dim)" }}>Koneksi atau server sedang bermasalah. Coba lagi ya.</p>
+          <button type="button" onClick={() => board.refetch()} className="font-display mt-4 min-h-[52px] rounded-2xl px-6 font-bold text-white" style={{ background: "var(--accent)" }}>🔄 Coba Lagi</button>
+        </div>
+      )}
+
+      {board.data && entries.length === 0 && (
+        <div className="mt-4 rounded-3xl p-6 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+          <div className="text-5xl" aria-hidden>🏆</div>
+          <p className="font-display mt-2 text-lg font-bold">Belum ada peserta bulan ini — jadilah yang pertama naik podium!</p>
+          <p className="mx-auto mt-1 max-w-md text-sm" style={{ color: "var(--dim)" }}>
+            {division === "" ? "Papan challenge bulan ini masih kosong." : `Divisi ${division} masih kosong bulan ini.`} Selesaikan sesimu sekarang — setiap jawaban benar langsung jadi poin!
+          </p>
+          <button type="button" onClick={props.onPractice} className="font-display mt-4 min-h-[52px] rounded-2xl px-6 font-bold text-white" style={{ background: "var(--accent)" }}>🚀 Mulai &amp; Kumpulkan Poin →</button>
+        </div>
+      )}
+
+      {podium.length > 0 && (
+        <>
+          <h2 className="font-display mt-6 text-lg font-bold">👑 Podium — {divisionLabel}</h2>
+          <div className="mt-2 grid gap-2 sm:grid-cols-3">
+            {podium.map((e, i) => (
+              <ChallengePodiumCard key={`${e.name}-${i}`} entry={e} rank={i + 1} isMe={isMe(e)} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {rest.length > 0 && (
+        <>
+          <h2 className="font-display mt-6 text-lg font-bold">📋 Peringkat Berikutnya — {divisionLabel}</h2>
+          <div className="mt-2 grid gap-2">
+            {rest.map((e, i) => {
+              const rank = i + 4;
+              const me = isMe(e);
+              return (
+                <div key={`${e.name}-${rank}`} className="flex items-center gap-3 rounded-2xl p-4"
+                  style={{ background: me ? "#FFF3DC" : "var(--surface)", border: `2px solid ${me ? "var(--gold)" : "var(--border)"}` }}
+                  aria-label={`Peringkat ${rank}: ${e.name}, jenjang ${e.jenjang}, Skor Juara ${e.champion_score}, ${e.points} poin, ${e.questions} soal, ketepatan ${e.accuracy} persen, ${e.sessions} sesi${e.finisher ? ", Finisher" : ""}`}>
+                  <span className="font-display flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-base font-extrabold text-white" style={{ background: "var(--accent)" }}>{rank}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-display font-bold">
+                      {e.name}{" "}
+                      {me && <span className="rounded-full px-2 py-0.5 text-[11px] font-extrabold text-white" style={{ background: "var(--accent)" }}>Ini kamu!</span>}{" "}
+                      {e.finisher && <FinisherBadge />}
+                    </div>
+                    <div className="text-xs font-semibold" style={{ color: "var(--dim)" }}>
+                      {e.jenjang} • 🪙 {fmtNum(e.points)} poin • 📚 {fmtNum(e.questions)} soal • 🎯 {e.accuracy}% tepat • {e.sessions} sesi • {e.finisher ? "🏁 Finisher" : `Menuju Finisher (${e.sessions}/${target} sesi)`}
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className="font-display text-2xl leading-none font-extrabold" style={{ color: "#D97706" }}>{fmtNum(e.champion_score)}</div>
+                    <div className="text-[10px] font-bold" style={{ color: "var(--dim)" }}>SKOR JUARA</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {entries.length > 0 && (
+        <p className="mt-4 text-center text-xs leading-relaxed" style={{ color: "var(--dim)" }}>
+          Aturan challenge: poin = jawaban benar bulan ini × 10 • Skor Juara = poin × ketepatan • Finisher (≥ {target} sesi) yang berhak menjadi juara • papan diperbarui setiap ada sesi yang selesai.
+        </p>
+      )}
+    </main>
+  );
+}
+
+/* Papan juara ringkas di Beranda: podium 3 teratas global bulan berjalan
+   + peringkat 4–5, gaya visual ZIQVA OLIM (biru dongker & emas). */
+function HomeChampionBoard(props: { myName: string; onOpenChallenge: () => void; onPractice: () => void }) {
+  const board = useQuery({ queryKey: ["monthly-challenge", ""], queryFn: () => api.getMonthlyChallenge({}) });
+  const data = board.data;
+  const entries = data?.entries ?? [];
+  const podium = entries.slice(0, 3);
+  const rest = entries.slice(3, 5);
+  const myKey = props.myName.trim().toLowerCase();
+  const target = data?.settings.target_sessions ?? 10;
+
+  return (
+    <section className="mt-5 overflow-hidden rounded-3xl shadow-sm" style={{ background: "linear-gradient(155deg,#1E2A78,#232F6E)", border: "2px solid var(--gold)", color: "#fff" }} aria-label="Papan juara bulan ini">
+      <div className="p-5 sm:p-6">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="font-display flex-1 text-xl font-extrabold sm:text-2xl">🌟 Papan Juara Bulan Ini</h2>
+          {data && (
+            <span className="font-display rounded-full px-3 py-1.5 text-xs font-extrabold" style={{ background: "var(--gold)", color: "#2B2440" }}>
+              {data.period.label.toUpperCase()} • SISA {data.period.days_left} HARI
+            </span>
+          )}
+        </div>
+        <p className="mt-1 max-w-2xl text-sm leading-relaxed" style={{ color: "rgba(255,255,255,.85)" }}>
+          Para pejuang teratas bulan ini berebut hadiah juara! Setiap jawaban benar = <strong>10 poin</strong>, dan <strong>Skor Juara = poin × ketepatan</strong>.
+          Baru pertama kali di sini? Selesaikan sesimu, tuntaskan {target} sesi untuk jadi <strong>Finisher</strong>, dan namamu bisa tampil di podium ini! 🚀
+        </p>
+
+        {board.isPending && <p className="mt-4 text-sm font-semibold" style={{ color: "rgba(255,255,255,.8)" }} role="status">⏳ Memuat papan juara…</p>}
+        {board.isError && (
+          <div className="mt-4">
+            <p className="text-sm font-semibold" style={{ color: "rgba(255,255,255,.85)" }}>Papan juara belum bisa dimuat saat ini.</p>
+            <button type="button" onClick={() => board.refetch()} className="font-display mt-2 min-h-[44px] rounded-full px-4 text-sm font-bold" style={{ background: "rgba(255,255,255,.18)", color: "#fff" }}>🔄 Coba Lagi</button>
+          </div>
+        )}
+
+        {data && entries.length === 0 && (
+          <div className="mt-4 rounded-3xl p-5 text-center" style={{ background: "rgba(255,255,255,.1)", border: "2px dashed var(--gold)" }}>
+            <div className="text-4xl" aria-hidden>👑</div>
+            <p className="font-display mt-1 text-lg font-extrabold">Podium bulan ini masih kosong — selesaikan sesimu dan jadilah juara pertama!</p>
+            <button type="button" onClick={props.onPractice} className="font-display mt-3 min-h-[52px] rounded-2xl px-6 font-bold" style={{ background: "var(--gold)", color: "#2B2440" }}>🚀 Mulai Sesi Pertamaku</button>
+          </div>
+        )}
+
+        {podium.length > 0 && (
+          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            {podium.map((e, i) => {
+              const me = myKey !== "" && e.name.trim().toLowerCase() === myKey;
+              return (
+                <article key={`${e.name}-${i}`} className="rounded-3xl p-4 text-center" style={{ background: me ? "#FFF3DC" : "rgba(255,255,255,.1)", color: me ? "#2B2440" : "#fff", border: `2px solid ${me ? "var(--gold)" : "rgba(255,255,255,.25)"}` }}
+                  aria-label={`Peringkat ${i + 1} bulan ini: ${e.name}, Skor Juara ${e.champion_score}`}>
+                  <div className="text-3xl" aria-hidden>{RANK_MEDALS[i]}</div>
+                  <div className="font-display mt-0.5 truncate text-base font-extrabold">{e.name} {me && <span className="rounded-full px-2 py-0.5 text-[11px] font-extrabold text-white" style={{ background: "var(--accent)" }}>Ini kamu!</span>}</div>
+                  <div className="font-display text-3xl leading-none font-extrabold" style={{ color: "#D97706" }}>{fmtNum(e.champion_score)}</div>
+                  <div className="text-[11px] font-bold tracking-wide" style={{ color: me ? "var(--dim)" : "rgba(255,255,255,.75)" }}>
+                    SKOR JUARA • {e.jenjang} • 🪙 {fmtNum(e.points)} poin • 🎯 {e.accuracy}% • {e.sessions} sesi{e.finisher ? " • 🏁 Finisher" : ""}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+
+        {rest.length > 0 && (
+          <div className="mt-2 grid gap-2">
+            {rest.map((e, i) => {
+              const rank = i + 4;
+              const me = myKey !== "" && e.name.trim().toLowerCase() === myKey;
+              return (
+                <div key={`${e.name}-${rank}`} className="flex items-center gap-3 rounded-2xl px-4 py-3" style={{ background: me ? "#FFF3DC" : "rgba(255,255,255,.08)", color: me ? "#2B2440" : "#fff", border: "1px solid rgba(255,255,255,.2)" }}
+                  aria-label={`Peringkat ${rank} bulan ini: ${e.name}, Skor Juara ${e.champion_score}`}>
+                  <span className="font-display flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-extrabold" style={{ background: "var(--gold)", color: "#2B2440" }}>{rank}</span>
+                  <div className="min-w-0 flex-1 truncate font-display font-bold">{e.name} {me && <span className="rounded-full px-2 py-0.5 text-[11px] font-extrabold text-white" style={{ background: "var(--accent)" }}>Ini kamu!</span>}</div>
+                  <div className="shrink-0 text-xs font-semibold" style={{ color: me ? "var(--dim)" : "rgba(255,255,255,.75)" }}>{e.jenjang} • {e.sessions} sesi{e.finisher ? " • 🏁" : ""}</div>
+                  <div className="font-display shrink-0 text-xl font-extrabold" style={{ color: "#FFB62E" }}>{fmtNum(e.champion_score)}</div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <p className="flex-1 text-sm font-semibold" style={{ color: "rgba(255,255,255,.85)" }}>
+            {data ? `👥 ${fmtNum(data.total_participants)} peserta ikut bulan ini • 🏁 ${fmtNum(data.total_finishers)} sudah Finisher.` : ""} Hadiah &amp; sertifikat menanti juara tiap divisi!
+          </p>
+          <button type="button" onClick={props.onOpenChallenge} aria-label="Buka halaman challenge bulanan"
+            className="font-display min-h-[52px] shrink-0 rounded-2xl px-6 font-bold" style={{ background: "var(--gold)", color: "#2B2440" }}>
+            🏆 Lihat Challenge
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* Kartu pengaturan Challenge di Panel Superadmin: judul, hadiah, dan
+   target Finisher disimpan lewat adminSetSetting; ringkasan bulan
+   berjalan membantu pemilik menentukan pemenang di akhir bulan. */
+function AdminChallengeCard(props: { token: string }) {
+  const queryClient = useQueryClient();
+  const { token } = props;
+  const settingsQ = useQuery({ queryKey: ["challenge-settings"], queryFn: () => api.getSettings({}) });
+  const board = useQuery({ queryKey: ["monthly-challenge", ""], queryFn: () => api.getMonthlyChallenge({}) });
+  const [title, setTitle] = useState("");
+  const [prize, setPrize] = useState("");
+  const [target, setTarget] = useState("10");
+  const [loaded, setLoaded] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
+  useEffect(() => {
+    if (settingsQ.data && !loaded) {
+      setTitle(settingsQ.data.challenge_title);
+      setPrize(settingsQ.data.prize_text);
+      setTarget(String(settingsQ.data.target_sessions));
+      setLoaded(true);
+    }
+  }, [settingsQ.data, loaded]);
+
+  const save = useMutation({
+    mutationFn: async () => {
+      await api.adminSetSetting({ token, key: "challenge_title", value: title });
+      await api.adminSetSetting({ token, key: "prize_text", value: prize });
+      return api.adminSetSetting({ token, key: "challenge_target_sessions", value: target });
+    },
+    onSuccess: () => {
+      setMsg("✅ Pengaturan challenge tersimpan — judul, hadiah & target Finisher sudah diperbarui di Beranda dan halaman Challenge.");
+      setErr("");
+      queryClient.invalidateQueries({ queryKey: ["challenge-settings"] });
+      queryClient.invalidateQueries({ queryKey: ["monthly-challenge"] });
+    },
+    onError: (e: unknown) => {
+      setErr(e instanceof Error ? e.message : "Gagal menyimpan pengaturan. Coba lagi ya.");
+      setMsg("");
+    },
+  });
+
+  const top3 = board.data?.entries.slice(0, 3) ?? [];
+  const inputStyle = { background: "var(--surface2)", border: "2px solid var(--border)" } as const;
+
+  return (
+    <section className="mt-6 rounded-3xl p-5 shadow-sm" style={{ background: "var(--surface)", border: "2px solid var(--gold)" }} aria-label="Pengaturan challenge bulanan">
+      <h2 className="font-display text-lg font-bold">🎁 Pengaturan Challenge</h2>
+      <p className="mt-0.5 text-sm" style={{ color: "var(--dim)" }}>
+        Judul, hadiah, dan target Finisher di bawah ini tampil langsung di Beranda &amp; halaman Challenge. Kosongkan judul untuk memakai nama bawaan “Challenge &lt;Bulan&gt; &lt;Tahun&gt;”.
+      </p>
+      <div className="mt-3 grid gap-3">
+        <div>
+          <label htmlFor="challenge-title" className="font-display text-sm font-bold">Judul Challenge</label>
+          <input id="challenge-title" {...FIELDS.adminSetSetting.value} value={title} onChange={(e) => setTitle(e.target.value)}
+            placeholder="Contoh: Challenge November: Istana Ilmu"
+            className="mt-1 min-h-[48px] w-full rounded-2xl px-4 text-base font-semibold outline-none" style={inputStyle} />
+        </div>
+        <div>
+          <label htmlFor="challenge-prize" className="font-display text-sm font-bold">Hadiah Bulan Ini</label>
+          <textarea id="challenge-prize" {...FIELDS.adminSetSetting.value} value={prize} onChange={(e) => setPrize(e.target.value)} rows={4}
+            placeholder={"Contoh:\nJuara 1 tiap divisi: fresh money Rp100.000 + tumbler + sertifikat cetak\nJuara 2–3: tumbler + sertifikat cetak\nSemua Finisher: sertifikat digital"}
+            className="mt-1 w-full rounded-2xl px-4 py-3 text-base font-semibold outline-none" style={inputStyle} />
+          <p className="mt-1 text-xs font-semibold" style={{ color: "var(--dim)" }}>Boleh multi-baris — tulis satu hadiah per baris agar mudah dibaca peserta.</p>
+        </div>
+        <div className="max-w-xs">
+          <label htmlFor="challenge-target" className="font-display text-sm font-bold">Target Finisher (sesi per bulan)</label>
+          <input id="challenge-target" {...FIELDS.adminSetSetting.value} inputMode="numeric" value={target} onChange={(e) => setTarget(e.target.value.replace(/[^0-9]/g, ""))}
+            placeholder="10" aria-describedby="challenge-target-help"
+            className="mt-1 min-h-[48px] w-full rounded-2xl px-4 text-base font-semibold outline-none" style={inputStyle} />
+          <p id="challenge-target-help" className="mt-1 text-xs font-semibold" style={{ color: "var(--dim)" }}>Peserta dengan sesi bulan ini ≥ angka ini berstatus Finisher dan berhak menjadi juara.</p>
+        </div>
+      </div>
+      {msg && <p className="mt-3 rounded-xl px-3 py-2 text-sm font-bold" style={{ background: "#E2F4E9", color: "#14532D" }} role="status">{msg}</p>}
+      {err && <p className="mt-3 rounded-xl px-3 py-2 text-sm font-bold text-red-600" style={{ background: "#FAE7E9" }} role="alert">{err}</p>}
+      <button type="button" onClick={() => { setMsg(""); setErr(""); save.mutate(); }} disabled={save.isPending || settingsQ.isPending}
+        aria-label="Simpan pengaturan challenge"
+        className="font-display mt-3 min-h-[52px] rounded-2xl px-6 font-bold text-white disabled:opacity-50" style={{ background: "var(--accent)" }}>
+        {save.isPending ? "Menyimpan…" : "💾 Simpan Pengaturan Challenge"}
+      </button>
+
+      <div className="mt-5 rounded-2xl p-4" style={{ background: "var(--surface2)" }} aria-label="Ringkasan challenge bulan berjalan">
+        <h3 className="font-display text-base font-extrabold">📊 Ringkasan Bulan Berjalan{board.data ? ` — ${board.data.period.label}` : ""}</h3>
+        {board.isPending ? (
+          <p className="mt-1 text-sm font-semibold" style={{ color: "var(--dim)" }} role="status">⏳ Memuat ringkasan challenge…</p>
+        ) : board.isError ? (
+          <p className="mt-1 text-sm font-semibold" style={{ color: "var(--dim)" }}>Ringkasan belum bisa dimuat. <button type="button" onClick={() => board.refetch()} className="font-bold underline">Coba lagi</button></p>
+        ) : board.data && board.data.entries.length === 0 ? (
+          <p className="mt-1 text-sm font-semibold" style={{ color: "var(--dim)" }}>Belum ada peserta bulan ini — belum ada calon pemenang.</p>
+        ) : board.data ? (
+          <>
+            <p className="mt-1 text-sm font-semibold" style={{ color: "var(--dim)" }}>
+              👥 {fmtNum(board.data.total_participants)} peserta • 🏁 {fmtNum(board.data.total_finishers)} Finisher • ⏳ sisa {board.data.period.days_left} hari
+            </p>
+            <ol className="mt-2 grid gap-1.5">
+              {top3.map((e, i) => (
+                <li key={`${e.name}-${i}`} className="flex flex-wrap items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold" style={{ background: "var(--surface)" }}>
+                  <span aria-hidden>{RANK_MEDALS[i]}</span>
+                  <span className="font-display font-bold">{e.name}</span>
+                  <span style={{ color: "var(--dim)" }}>{e.jenjang} • Skor Juara {fmtNum(e.champion_score)} • 🪙 {fmtNum(e.points)} poin • 🎯 {e.accuracy}% • {e.sessions} sesi</span>
+                  {e.finisher && <FinisherBadge />}
+                </li>
+              ))}
+            </ol>
+            <p className="mt-2 text-xs font-semibold" style={{ color: "var(--dim)" }}>Di akhir bulan, tentukan pemenang dari papan ini: utamakan Finisher dengan Skor Juara tertinggi di tiap divisi (TK/SD/SMP/SMA) lewat halaman Challenge.</p>
+          </>
+        ) : null}
+      </div>
+    </section>
   );
 }
 
@@ -2493,7 +2896,7 @@ export function App() {
   const onlineCount = onlineQ.data?.online;
   const saveAttempt = useMutation({
     mutationFn: api.saveAttempt,
-    onSuccess: (r) => { setMonitorCode(r.monitor_code); setLastAttemptId(r.id); queryClient.invalidateQueries({ queryKey: ["attempts"] }); queryClient.invalidateQueries({ queryKey: ["leaderboard"] }); },
+    onSuccess: (r) => { setMonitorCode(r.monitor_code); setLastAttemptId(r.id); queryClient.invalidateQueries({ queryKey: ["attempts"] }); queryClient.invalidateQueries({ queryKey: ["leaderboard"] }); queryClient.invalidateQueries({ queryKey: ["monthly-challenge"] }); },
     onError: (e) => alertSaveError(e),
   });
   const deleteAttempt = useMutation({
@@ -2559,7 +2962,7 @@ export function App() {
     setResetText("");
     setResetDoneMsg(`✅ Berhasil direset! Semua data coba-coba sudah bersih.${serverNote} Sekarang ZIQVA OLIM seperti baru pertama kali dibuka — silakan mulai untuk anak dengan nama aslinya.`);
     queryClient.invalidateQueries({ queryKey: ["attempts"] });
-    queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
+    queryClient.invalidateQueries({ queryKey: ["leaderboard"] }); queryClient.invalidateQueries({ queryKey: ["monthly-challenge"] });
     queryClient.invalidateQueries({ queryKey: ["monitor"] });
     queryClient.invalidateQueries({ queryKey: ["me"] });
     setView("home");
@@ -2661,7 +3064,7 @@ export function App() {
       setClassSubmitError("");
       setMonitorCode(r.monitor_code);
       queryClient.invalidateQueries({ queryKey: ["attempts"] });
-      queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
+      queryClient.invalidateQueries({ queryKey: ["leaderboard"] }); queryClient.invalidateQueries({ queryKey: ["monthly-challenge"] });
       queryClient.invalidateQueries({ queryKey: ["myClasses"] });
       queryClient.invalidateQueries({ queryKey: ["classDashboard"] });
       queryClient.invalidateQueries({ queryKey: ["monitor"] });
@@ -2962,6 +3365,9 @@ export function App() {
             <button type="button" onClick={() => { stopSpeaking(); setView("ranking"); }} aria-label="Lihat papan peringkat per jenjang"
               className="font-display flex min-h-[44px] flex-1 basis-[31%] items-center justify-center rounded-full px-2 py-1 text-center text-xs leading-tight font-bold sm:min-h-[40px] sm:px-3 sm:text-sm lg:flex-none lg:basis-auto lg:px-4"
               style={{ background: view === "ranking" ? "var(--gold)" : "rgba(255,255,255,.15)", color: view === "ranking" ? "#2B2440" : "#fff" }}>🏆 Peringkat</button>
+            <button type="button" onClick={() => { stopSpeaking(); setView("challenge"); }} aria-label="Buka halaman challenge bulanan"
+              className="font-display flex min-h-[44px] flex-1 basis-[31%] items-center justify-center rounded-full px-2 py-1 text-center text-xs leading-tight font-bold sm:min-h-[40px] sm:px-3 sm:text-sm lg:flex-none lg:basis-auto lg:px-4"
+              style={{ background: view === "challenge" ? "var(--gold)" : "rgba(255,255,255,.15)", color: view === "challenge" ? "#2B2440" : "#fff" }}>🏆 Challenge</button>
             <button type="button" onClick={() => { if (sessionUser) setView("dashboard"); else openLogin(); }} aria-label={sessionUser ? "Ke dashboard pantau guru dan orang tua" : "Masuk sebagai guru atau orang tua"}
               className="font-display flex min-h-[44px] flex-1 basis-[31%] items-center justify-center rounded-full px-2 py-1 text-center text-xs leading-tight font-bold sm:min-h-[40px] sm:px-3 sm:text-sm lg:flex-none lg:basis-auto lg:px-4"
               style={{ background: view === "dashboard" || view === "login" ? "var(--gold)" : "rgba(255,255,255,.15)", color: view === "dashboard" || view === "login" ? "#2B2440" : "#fff" }}>
@@ -3120,6 +3526,10 @@ export function App() {
         <LeaderboardView initialJenjang={jenjang} myName={name} onPractice={() => { setView("home"); window.scrollTo({ top: 0 }); }} />
       )}
 
+      {view === "challenge" && (
+        <ChallengeView myName={name} onPractice={() => { setView("home"); window.scrollTo({ top: 0 }); }} />
+      )}
+
       {view === "belajar" && (
         <BelajarView jenjang={jenjang} english={school === "cambridge"} initialSubject={activeSubject?.id ?? subjects[0]?.id ?? "matematika"}
           onPractice={(sid) => { setSubjectId(sid); setView("home"); window.scrollTo({ top: 0 }); }}
@@ -3269,6 +3679,11 @@ export function App() {
               🏆 Lihat Peringkat
             </button>
           </section>
+
+          {/* Papan Juara Bulan Ini — sistem poin & challenge bulanan */}
+          <HomeChampionBoard myName={name}
+            onOpenChallenge={() => { stopSpeaking(); setView("challenge"); window.scrollTo({ top: 0 }); }}
+            onPractice={() => { const el = document.getElementById("student-name"); el?.scrollIntoView({ behavior: "smooth", block: "center" }); el?.focus(); }} />
 
           {/* Gabung Kelas Ujian */}
           <section className="mt-5 flex flex-col gap-3 rounded-3xl p-5 shadow-sm sm:flex-row sm:items-center" style={{ background: "linear-gradient(150deg,#E2F4E9,#DFF6F9)", border: "2px solid #1E7A46" }} aria-label="Gabung kelas ujian dari guru">

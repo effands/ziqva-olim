@@ -113,6 +113,16 @@ export const watchedStudents = sqliteTable("watched_students", {
     .$defaultFn(() => new Date()),
 });
 
+// Pengaturan aplikasi key-value yang bisa diubah Superadmin dari panel
+// (judul challenge bulanan, teks hadiah, target sesi Finisher).
+export const appSettings = sqliteTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull().default(""),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
 // Kehadiran perangkat: satu baris per perangkat (device_id unik), diperbarui
 // tiap heartbeat dari klien. Baris dengan last_seen dalam jendela ONLINE_WINDOW
 // dihitung sebagai "pemakai online" saat ini.

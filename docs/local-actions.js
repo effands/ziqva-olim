@@ -419,6 +419,70 @@
         total_participants: parts.length,
       };
     },
+    async getSettings(args) {
+      var rows = await getRows("app_settings", "select=key,value");
+      var map = {};
+      rows.forEach(function (r) { map[r.key] = r.value; });
+      var settings = {
+        challenge_title: map.challenge_title || "",
+        prize_text: map.prize_text || "",
+        target_sessions: parseInt(map.challenge_target_sessions || "10", 10) || 10,
+      };
+      return { settings: settings, challenge_title: settings.challenge_title, prize_text: settings.prize_text, target_sessions: settings.target_sessions };
+    },
+    async adminSetSetting(args) {
+      var me = await userForToken(args.token);
+      if (!me || me.role !== "admin") throw new Error("Hanya Superadmin yang dapat mengubah pengaturan challenge.");
+      var allowed = { challenge_title: 1, prize_text: 1, challenge_target_sessions: 1 };
+      if (!allowed[args.key]) throw new Error("Pengaturan tidak dikenal.");
+      await sb("app_settings?on_conflict=key", { method: "POST", prefer: "resolution=merge-duplicates,return=minimal", body: { key: args.key, value: String(args.value == null ? "" : args.value), updated_at: new Date().toISOString() } });
+      return { ok: true };
+    },
+    async getMonthlyChallenge(args) {
+      var settingsRes = await actions.getSettings({});
+      var target = settingsRes.target_sessions;
+      var MONTHS = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+      var jkt = new Date(Date.now() + 7 * 3600 * 1000);
+      var y = jkt.getUTCFullYear(), mo = jkt.getUTCMonth(), day = jkt.getUTCDate();
+      var startISO = new Date(Date.UTC(y, mo, 1) - 7 * 3600 * 1000).toISOString();
+      var endISO = new Date(Date.UTC(y, mo + 1, 1) - 7 * 3600 * 1000).toISOString();
+      var lastDay = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
+      var rows = await getRows("attempts", "select=student_name,jenjang,correct,total,created_at&created_at=gte." + enc(startISO) + "&created_at=lt." + enc(endISO) + "&order=id.asc&limit=20000");
+      var jenjangFilter = args && args.jenjang ? String(args.jenjang) : "";
+      var byKey = {};
+      rows.forEach(function (r) {
+        if (jenjangFilter && r.jenjang !== jenjangFilter) return;
+        var key = String(r.student_name || "").trim().toLowerCase();
+        if (!key) return;
+        var e = byKey[key];
+        if (!e) { e = byKey[key] = { name: r.student_name, sessions: 0, questions: 0, correct: 0, jenjangCount: {} }; }
+        e.name = r.student_name;
+        e.sessions += 1;
+        e.questions += r.total || 0;
+        e.correct += r.correct || 0;
+        e.jenjangCount[r.jenjang] = (e.jenjangCount[r.jenjang] || 0) + 1;
+      });
+      var entries = Object.keys(byKey).map(function (k) {
+        var e = byKey[k];
+        var points = e.correct * 10;
+        var ratio = e.questions ? e.correct / e.questions : 0;
+        var domJenjang = "", domCount = -1;
+        Object.keys(e.jenjangCount).forEach(function (j) { if (e.jenjangCount[j] > domCount) { domCount = e.jenjangCount[j]; domJenjang = j; } });
+        return {
+          name: e.name, jenjang: domJenjang, sessions: e.sessions, questions: e.questions, correct: e.correct,
+          points: points, accuracy: Math.round(ratio * 100), champion_score: Math.round(points * ratio),
+          finisher: e.sessions >= target,
+        };
+      });
+      entries.sort(function (a, b) { return b.champion_score - a.champion_score || b.points - a.points || b.accuracy - a.accuracy || String(a.name).localeCompare(String(b.name)); });
+      return {
+        period: { label: MONTHS[mo] + " " + y, days_left: lastDay - day },
+        settings: settingsRes.settings,
+        total_participants: entries.length,
+        total_finishers: entries.filter(function (e) { return e.finisher; }).length,
+        entries: entries.slice(0, 50),
+      };
+    },
     async adminExists(args) {
       var row = await getOne("app_users", "role=eq.admin&select=id");
       return { exists: !!row, admin_exists: !!row };
