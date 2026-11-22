@@ -2362,7 +2362,8 @@ export function App() {
   return (
     <div className="min-h-screen" style={{ background: "var(--bg)", color: "var(--text)" }}>
       <header className="sticky top-0 z-30 pt-safe" style={{ background: "var(--accent)" }}>
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-5xl flex-col gap-2 px-4 py-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 sm:py-3">
+          <div className="flex items-center gap-2 sm:contents">
           <button type="button" onClick={handleLogoClick} aria-label="Kembali ke Beranda" title="Kembali ke Beranda"
             className="flex cursor-pointer items-center gap-2 rounded-2xl text-left transition hover:opacity-90">
             <span className="flex h-10 w-10 items-center justify-center rounded-2xl text-xl" style={{ background: "var(--gold)" }} aria-hidden>🏆</span>
@@ -2371,40 +2372,41 @@ export function App() {
               <span className="block text-[11px] font-semibold text-white/70">Latihan Olimpiade TK – SMA</span>
             </span>
           </button>
-          <span className="flex min-h-[32px] items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold text-white"
+          <span className="ml-auto flex min-h-[32px] shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold text-white sm:ml-0"
             style={{ background: "rgba(255,255,255,.15)" }} role="status"
             aria-label={onlineCount != null ? `${onlineCount} pemakai sedang online sekarang` : "Menghitung pemakai yang sedang online"}>
             <span className="online-dot inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: "#4ADE80" }} aria-hidden />
             {onlineCount != null ? `${onlineCount} online` : "… online"}
           </span>
-          <nav className="ml-auto flex flex-wrap gap-2" aria-label="Navigasi utama">
+          </div>
+          <nav className="grid grid-cols-4 gap-1.5 sm:ml-auto sm:flex sm:flex-wrap sm:gap-2" aria-label="Navigasi utama">
             <button type="button" onClick={() => setView("home")} aria-label="Ke beranda"
-              className="min-h-[40px] rounded-full px-4 font-display text-sm font-bold"
+              className="font-display flex min-h-[44px] items-center justify-center rounded-full px-1 py-1 text-center text-xs leading-tight font-bold sm:min-h-[40px] sm:px-4 sm:text-sm"
               style={{ background: view === "home" ? "var(--gold)" : "rgba(255,255,255,.15)", color: view === "home" ? "#2B2440" : "#fff" }}>Beranda</button>
             <button type="button" onClick={() => setView("belajar")} aria-label="Buka perpustakaan belajar"
-              className="min-h-[40px] rounded-full px-4 font-display text-sm font-bold"
+              className="font-display flex min-h-[44px] items-center justify-center rounded-full px-1 py-1 text-center text-xs leading-tight font-bold sm:min-h-[40px] sm:px-4 sm:text-sm"
               style={{ background: view === "belajar" ? "var(--gold)" : "rgba(255,255,255,.15)", color: view === "belajar" ? "#2B2440" : "#fff" }}>📚 Perpustakaan</button>
             <button type="button" onClick={() => setView("history")} aria-label="Lihat riwayat dan prestasiku"
-              className="min-h-[40px] rounded-full px-4 font-display text-sm font-bold"
+              className="font-display flex min-h-[44px] items-center justify-center rounded-full px-1 py-1 text-center text-xs leading-tight font-bold sm:min-h-[40px] sm:px-4 sm:text-sm"
               style={{ background: view === "history" ? "var(--gold)" : "rgba(255,255,255,.15)", color: view === "history" ? "#2B2440" : "#fff" }}>🏅 Prestasiku</button>
             <button type="button" onClick={() => { stopSpeaking(); setView("ranking"); }} aria-label="Lihat papan peringkat per jenjang"
-              className="min-h-[40px] rounded-full px-4 font-display text-sm font-bold"
+              className="font-display flex min-h-[44px] items-center justify-center rounded-full px-1 py-1 text-center text-xs leading-tight font-bold sm:min-h-[40px] sm:px-4 sm:text-sm"
               style={{ background: view === "ranking" ? "var(--gold)" : "rgba(255,255,255,.15)", color: view === "ranking" ? "#2B2440" : "#fff" }}>🏆 Peringkat</button>
             <button type="button" onClick={() => { if (sessionUser) setView("dashboard"); else openLogin(); }} aria-label={sessionUser ? "Ke dashboard pantau guru dan orang tua" : "Masuk sebagai guru atau orang tua"}
-              className="min-h-[40px] rounded-full px-4 font-display text-sm font-bold"
+              className="font-display flex min-h-[44px] items-center justify-center rounded-full px-1 py-1 text-center text-xs leading-tight font-bold sm:min-h-[40px] sm:px-4 sm:text-sm"
               style={{ background: view === "dashboard" || view === "login" ? "var(--gold)" : "rgba(255,255,255,.15)", color: view === "dashboard" || view === "login" ? "#2B2440" : "#fff" }}>
               {sessionUser ? `👀 Pantau (${sessionUser.name.split(" ")[0]})` : "👨‍🏫 Guru & Ortu"}
             </button>
             {sessionUser?.role === "admin" && (
               <button type="button" onClick={() => setView("admin")} aria-label="Buka panel superadmin"
-                className="min-h-[40px] rounded-full px-4 font-display text-sm font-bold"
+                className="font-display flex min-h-[44px] items-center justify-center rounded-full px-1 py-1 text-center text-xs leading-tight font-bold sm:min-h-[40px] sm:px-4 sm:text-sm"
                 style={{ background: view === "admin" ? "var(--gold)" : "rgba(255,255,255,.15)", color: view === "admin" ? "#2B2440" : "#fff" }}>🛡️ Panel Superadmin</button>
             )}
             <button type="button" onClick={toggleSound} aria-label={soundOn ? "Matikan semua suara (bacaan soal dan efek klik)" : "Nyalakan suara"} aria-pressed={soundOn}
-              className="min-h-[40px] rounded-full px-3 font-display text-sm font-bold"
+              className="font-display flex min-h-[44px] items-center justify-center rounded-full px-1 py-1 text-center text-xs leading-tight font-bold sm:min-h-[40px] sm:px-3 sm:text-sm"
               style={{ background: "rgba(255,255,255,.15)", color: "#fff" }}>{soundOn ? "🔊 Suara ON" : "🔇 Suara OFF"}</button>
             <button type="button" onClick={handleTestSound} aria-label="Tes suara: putar nada tes dan kalimat percobaan, lalu tampilkan diagnosa suara"
-              className="min-h-[40px] rounded-full px-3 font-display text-sm font-bold"
+              className="font-display flex min-h-[44px] items-center justify-center rounded-full px-1 py-1 text-center text-xs leading-tight font-bold sm:min-h-[40px] sm:px-3 sm:text-sm"
               style={{ background: "rgba(255,255,255,.15)", color: "#fff" }}>🔊 Tes Suara</button>
           </nav>
         </div>
@@ -2556,71 +2558,105 @@ export function App() {
             </section>
           )}
           {showWelcome && (
-            <section className="pop-in relative mt-4 overflow-hidden rounded-3xl p-5 text-center shadow-sm sm:p-6" style={{ background: "linear-gradient(150deg,#FFF3DC,#FDE7F3)", border: "2px solid var(--gold)" }} aria-label="Sambutan selamat datang">
+            <section className="pop-in relative mt-4 overflow-hidden rounded-3xl p-4 text-center shadow-sm sm:p-6" style={{ background: "linear-gradient(150deg,#FFF3DC,#FDE7F3)", border: "2px solid var(--gold)" }} aria-label="Sambutan selamat datang">
               <button type="button" onClick={() => setShowWelcome(false)} aria-label="Tutup sambutan" className="absolute top-3 right-3 flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold" style={{ background: "rgba(255,255,255,.7)", color: "#92600A" }}>✕</button>
-              <div className="flex items-end justify-center gap-2 text-4xl sm:text-5xl" aria-hidden>
+              <div className="flex items-end justify-center gap-2 text-3xl sm:text-5xl" aria-hidden>
                 <span className="sparkle inline-block">⭐</span>
-                <span className="floaty inline-block text-6xl sm:text-7xl">🏆</span>
+                <span className="floaty inline-block text-5xl sm:text-7xl">🏆</span>
                 <span className="sparkle inline-block" style={{ animationDelay: ".6s" }}>✨</span>
                 <span className="wiggle inline-block">🎉</span>
                 <span className="sparkle inline-block" style={{ animationDelay: "1.1s" }}>⭐</span>
               </div>
-              <h2 className="fade-up font-display mt-2 text-2xl font-extrabold sm:text-3xl" style={{ animationDelay: ".1s" }}>Selamat Datang, Pejuang Olimpiade! 🎓</h2>
-              <p className="fade-up mx-auto mt-2 max-w-xl text-[15px] leading-relaxed font-semibold" style={{ animationDelay: ".3s", color: "#7A5B12" }}>
+              <h2 className="fade-up font-display mt-2 text-xl font-extrabold sm:text-3xl" style={{ animationDelay: ".1s" }}>Selamat Datang, Pejuang Olimpiade! 🎓</h2>
+              <p className="fade-up mx-auto mt-2 max-w-xl text-sm leading-relaxed font-semibold sm:text-[15px]" style={{ animationDelay: ".3s", color: "#7A5B12" }}>
                 Di ZIQVA OLIM kamu bisa membaca <strong>bahan belajar dari dasar</strong>, lalu menantang <strong>{SESSION_SIZE} soal acak yang selalu baru</strong> di setiap sesi —
                 dari Level 1 Pemula sampai Level 5 Ahli Olimpiade. Setiap jawaban benar mengumpulkan ⭐ bintang, 🪙 poin, dan lencana. Jaga api streak-mu tetap menyala! 🔥
               </p>
-              <div className="fade-up mt-4 flex flex-wrap justify-center gap-2" style={{ animationDelay: ".5s" }}>
-                <button type="button" onClick={() => setShowWelcome(false)} className="font-display min-h-[48px] rounded-full px-5 font-bold text-white" style={{ background: "var(--accent)" }}>🚀 Ayo Mulai!</button>
-                <button type="button" onClick={() => { setShowWelcome(false); setView("belajar"); }} className="font-display min-h-[48px] rounded-full px-5 font-bold" style={{ background: "#fff", border: "2px solid var(--gold)", color: "#92600A" }}>📚 Jelajahi Perpustakaan</button>
+              <div className="fade-up mt-4 grid grid-cols-2 justify-center gap-2 min-[560px]:flex min-[560px]:flex-wrap" style={{ animationDelay: ".5s" }}>
+                <button type="button" onClick={() => setShowWelcome(false)} className="font-display min-h-[44px] rounded-full px-3 text-sm font-bold text-white sm:min-h-[48px] sm:px-5 sm:text-base" style={{ background: "var(--accent)" }}>🚀 Ayo Mulai!</button>
+                <button type="button" onClick={() => { setShowWelcome(false); setView("belajar"); }} className="font-display min-h-[44px] rounded-full px-3 text-sm font-bold sm:min-h-[48px] sm:px-5 sm:text-base" style={{ background: "#fff", border: "2px solid var(--gold)", color: "#92600A" }}>📚 Jelajahi Perpustakaan</button>
                 <button type="button" onClick={() => {
                     if (!soundOn) { setWelcomeMsg("Suara sedang OFF — nyalakan tombol 🔊 Suara ON di bagian atas halaman dulu, ya."); return; }
                     setWelcomeMsg("");
                     speakText("Selamat datang di ZIQVA OLIM! Ayo belajar dari dasar, kumpulkan bintang dan lencana, dan taklukkan soal olimpiade dari Level 1 sampai Level 5. Semangat, Pejuang Olimpiade!", "id-ID", { setSpeaking: setWelcomeSpeaking, onStatus: setWelcomeMsg });
                   }} aria-label="Dengarkan sambutan dengan suara"
-                  className={`font-display min-h-[48px] rounded-full px-5 font-bold text-white ${welcomeSpeaking ? "speaking" : ""}`} style={{ background: "#E84393" }}>
+                  className={`font-display col-span-2 min-h-[44px] rounded-full px-3 text-sm font-bold text-white min-[560px]:col-span-1 sm:min-h-[48px] sm:px-5 sm:text-base ${welcomeSpeaking ? "speaking" : ""}`} style={{ background: "#E84393" }}>
                   {welcomeSpeaking ? "🔊 Sedang menyapa…" : "🔊 Dengarkan Sambutan"}
                 </button>
               </div>
               {welcomeMsg && <p className="mt-2 text-xs font-bold" style={{ color: "#92600A" }} role="status">{welcomeMsg}</p>}
             </section>
           )}
-          <section className="mt-4 overflow-hidden rounded-3xl shadow-sm" style={{ border: "1px solid var(--border)" }}>
-            <img src={heroImg} alt="Ilustrasi anak-anak Indonesia dari TK sampai SMA merayakan kemenangan olimpiade dengan piala dan medali" className="h-44 w-full object-cover object-top sm:h-64" />
-            <div className="p-5 sm:p-6" style={{ background: "var(--surface)" }}>
-              <div className="mb-3 flex flex-wrap items-center gap-2">
-                <span className="font-display inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-base font-extrabold text-white shadow" style={{ background: "#1E7A46" }} aria-label="Seratus persen gratis">🎁 100% GRATIS</span>
-                <span className="font-display text-base font-extrabold" style={{ color: "#1E7A46" }}>— Bekal Masa Depan Anak</span>
-              </div>
-              <h1 className="font-display text-2xl leading-tight font-extrabold sm:text-3xl">Latihan Olimpiade Interaktif — dari TK/PAUD sampai SMA/SMK/MA 🏅</h1>
-              <p className="mt-2 max-w-2xl text-[15px] leading-relaxed" style={{ color: "var(--dim)" }}>
-                Platform latihan olimpiade interaktif untuk semua jenjang, dari TK/PAUD hingga SMA/SMK/MA: <strong>{SESSION_SIZE} soal pilihan ganda dalam {SESSION_SIZE} menit</strong> dengan
-                audio soal lewat tombol <strong>“Dengarkan Soal”</strong>, penghitung waktu, indikator progres, dan skor akhir — untuk Matematika, Bahasa Inggris, IPA/Sains, Sejarah,
-                Bahasa Jawa, Bahasa Arab, PAI, Akidah Akhlak, Fikih, Qur'an Hadis, SKI, Agama Kristen, hingga kelas Cambridge, ditambah Bahasa Korea, Bahasa Jepang, dan Bahasa Mandarin.
-                Setiap sesi berisi <strong>{SESSION_SIZE} soal acak yang selalu baru</strong> (dicoba seratus kali pun tetap fresh),
-                berjenjang dari <strong>Level 1 Pemula sampai Level 5 Ahli Olimpiade</strong> — skor {UNLOCK_SCORE}+ membuka level berikutnya!
-              </p>
-              <p className="mt-2 max-w-2xl text-[15px] leading-relaxed font-semibold" style={{ color: "#1E7A46" }}>
-                Dibuat benar-benar gratis untuk latihan olimpiade anak Indonesia — semua soal, bahan belajar, dan pantauan nilainya bebas dipakai siapa saja. Ayo coba sekarang, tanpa biaya apa pun! 🎉
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2 text-sm font-bold">
-                <span className="rounded-full px-3 py-1.5" style={{ background: "var(--surface2)" }}>📚 Total {TOTAL_AUTHORED} soal inti tertulis</span>
-                <span className="rounded-full px-3 py-1.5" style={{ background: "var(--surface2)" }}>🎲 298.000+ variasi soal acak dari generator</span>
-                <span className="rounded-full px-3 py-1.5" style={{ background: "var(--surface2)" }}>🗂️ {SUBJECTS.length} mapel • 4 jenjang • 5 level</span>
-                <span className="flex items-center gap-2 rounded-full px-3 py-1.5" style={{ background: "var(--surface2)" }} role="status"
-                  aria-label={onlineCount != null ? `${onlineCount} pemakai sedang online sekarang` : "Menghitung pemakai yang sedang online"}>
-                  <span className="online-dot inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: "#22C55E" }} aria-hidden />
-                  {onlineCount != null ? `${onlineCount} pemakai online sekarang` : "Menghitung pemakai online…"}
-                </span>
-              </div>
-              {stats && stats.total_attempts > 0 && (
-                <div className="mt-4 flex flex-wrap gap-2 text-sm font-bold">
-                  <span className="rounded-full px-3 py-1.5" style={{ background: "var(--surface2)" }}>🎯 {stats.total_attempts}× latihan</span>
-                  <span className="rounded-full px-3 py-1.5" style={{ background: "var(--surface2)" }}>📊 Rata-rata {stats.average_score}</span>
-                  <span className="rounded-full px-3 py-1.5" style={{ background: "var(--surface2)" }}>🏆 Terbaik {stats.best_score}</span>
-                  <button type="button" onClick={() => setView("history")} className="rounded-full px-3 py-1.5 text-white" style={{ background: "var(--accent)" }}>Lihat Prestasiku →</button>
+          <section className="mt-4 overflow-hidden rounded-3xl shadow-sm" style={{ background: "var(--surface)", border: "1px solid var(--border)" }} aria-label="Tentang ZIQVA OLIM">
+            <div className="grid lg:grid-cols-2">
+              <div className="order-2 p-5 sm:p-7 lg:order-1">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                  <span className="font-display inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-extrabold text-white shadow sm:text-base" style={{ background: "#1E7A46" }} aria-label="Seratus persen gratis">🎁 100% GRATIS</span>
+                  <span className="font-display text-sm font-extrabold sm:text-base" style={{ color: "#1E7A46" }}>— Bekal Masa Depan Anak</span>
                 </div>
-              )}
+                <h1 className="font-display mt-3 text-2xl leading-tight font-extrabold text-balance sm:text-3xl">Latihan Olimpiade Interaktif — dari TK/PAUD sampai SMA/SMK/MA 🏅</h1>
+                <p className="mt-2 text-[15px] leading-relaxed" style={{ color: "var(--dim)" }}>
+                  Platform latihan olimpiade interaktif untuk semua jenjang — sekolah umum, madrasah, sekolah Kristen, dan Cambridge.
+                </p>
+                <ul className="mt-4 grid gap-2 min-[480px]:grid-cols-2">
+                  <li className="flex items-start gap-2.5 rounded-2xl p-3" style={{ background: "var(--surface2)" }}>
+                    <span className="text-2xl leading-none" aria-hidden>🎯</span>
+                    <span><span className="font-display block text-sm font-bold">{SESSION_SIZE} soal pilihan ganda</span><span className="block text-xs leading-snug" style={{ color: "var(--dim)" }}>{SESSION_SIZE} menit, dengan timer, indikator progres &amp; skor akhir</span></span>
+                  </li>
+                  <li className="flex items-start gap-2.5 rounded-2xl p-3" style={{ background: "var(--surface2)" }}>
+                    <span className="text-2xl leading-none" aria-hidden>🔊</span>
+                    <span><span className="font-display block text-sm font-bold">Audio “Dengarkan Soal”</span><span className="block text-xs leading-snug" style={{ color: "var(--dim)" }}>Soal dibacakan dengan suara dan bisa diulang kapan pun</span></span>
+                  </li>
+                  <li className="flex items-start gap-2.5 rounded-2xl p-3" style={{ background: "var(--surface2)" }}>
+                    <span className="text-2xl leading-none" aria-hidden>🎲</span>
+                    <span><span className="font-display block text-sm font-bold">Soal acak selalu baru</span><span className="block text-xs leading-snug" style={{ color: "var(--dim)" }}>Dicoba seratus kali pun tetap fresh — bukan soal template</span></span>
+                  </li>
+                  <li className="flex items-start gap-2.5 rounded-2xl p-3" style={{ background: "var(--surface2)" }}>
+                    <span className="text-2xl leading-none" aria-hidden>🎚️</span>
+                    <span><span className="font-display block text-sm font-bold">Level 1 – 5</span><span className="block text-xs leading-snug" style={{ color: "var(--dim)" }}>Dari Pemula sampai Ahli Olimpiade — skor {UNLOCK_SCORE}+ membuka level berikutnya</span></span>
+                  </li>
+                  <li className="flex items-start gap-2.5 rounded-2xl p-3" style={{ background: "var(--surface2)" }}>
+                    <span className="text-2xl leading-none" aria-hidden>📚</span>
+                    <span><span className="font-display block text-sm font-bold">Bahan belajar dari dasar</span><span className="block text-xs leading-snug" style={{ color: "var(--dim)" }}>Perpustakaan materi per jenjang &amp; mapel, plus pembahasan tiap soal</span></span>
+                  </li>
+                  <li className="flex items-start gap-2.5 rounded-2xl p-3" style={{ background: "var(--surface2)" }}>
+                    <span className="text-2xl leading-none" aria-hidden>👀</span>
+                    <span><span className="font-display block text-sm font-bold">Pantauan guru &amp; orang tua</span><span className="block text-xs leading-snug" style={{ color: "var(--dim)" }}>Skor, peringkat &amp; pencapaian terpantau — tidak ter-reset</span></span>
+                  </li>
+                </ul>
+                <div className="mt-4">
+                  <p className="text-xs font-extrabold tracking-wide" style={{ color: "var(--dim)" }}>{SUBJECTS.length} MATA PELAJARAN</p>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {["Matematika", "Bahasa Inggris", "IPA / Sains", "Sejarah", "Bahasa Jawa", "Bahasa Arab", "PAI", "Akidah Akhlak", "Fikih", "Qur'an Hadis", "SKI", "Agama Kristen", "Bahasa Korea", "Bahasa Jepang", "Bahasa Mandarin"].map((n) => (
+                      <span key={n} className="rounded-full px-2.5 py-1 text-xs font-bold" style={{ background: "var(--surface2)" }}>{n}</span>
+                    ))}
+                  </div>
+                </div>
+                <p className="mt-4 rounded-2xl px-4 py-3 text-sm leading-relaxed font-semibold" style={{ background: "#E2F4E9", color: "#14532D" }}>
+                  Dibuat benar-benar gratis untuk latihan olimpiade anak Indonesia — semua soal, bahan belajar, dan pantauan nilainya bebas dipakai siapa saja. Ayo coba sekarang, tanpa biaya apa pun! 🎉
+                </p>
+                {stats && stats.total_attempts > 0 && (
+                  <div className="mt-4 flex flex-wrap gap-2 text-sm font-bold">
+                    <span className="rounded-full px-3 py-1.5" style={{ background: "var(--surface2)" }}>🎯 {stats.total_attempts}× latihan</span>
+                    <span className="rounded-full px-3 py-1.5" style={{ background: "var(--surface2)" }}>📊 Rata-rata {stats.average_score}</span>
+                    <span className="rounded-full px-3 py-1.5" style={{ background: "var(--surface2)" }}>🏆 Terbaik {stats.best_score}</span>
+                    <button type="button" onClick={() => setView("history")} className="rounded-full px-3 py-1.5 text-white" style={{ background: "var(--accent)" }}>Lihat Prestasiku →</button>
+                  </div>
+                )}
+              </div>
+              <div className="order-1 lg:order-2">
+                <img src={heroImg} alt="Ilustrasi anak-anak Indonesia dari TK sampai SMA merayakan kemenangan olimpiade dengan piala dan medali" className="block h-44 w-full object-cover object-top sm:h-60 lg:h-full lg:min-h-[340px] lg:[object-position:62%_top]" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-px lg:grid-cols-4" style={{ background: "var(--border)" }} aria-label="Statistik ZIQVA OLIM">
+              <div className="flex items-center justify-center px-3 py-3 text-center text-[13px] font-bold" style={{ background: "var(--surface2)" }}>📚 Total {TOTAL_AUTHORED} soal inti tertulis</div>
+              <div className="flex items-center justify-center px-3 py-3 text-center text-[13px] font-bold" style={{ background: "var(--surface2)" }}>🎲 298.000+ variasi soal acak dari generator</div>
+              <div className="flex items-center justify-center px-3 py-3 text-center text-[13px] font-bold" style={{ background: "var(--surface2)" }}>🗂️ {SUBJECTS.length} mapel • 4 jenjang • 5 level</div>
+              <div className="flex items-center justify-center gap-2 px-3 py-3 text-center text-[13px] font-bold" style={{ background: "var(--surface2)" }} role="status"
+                aria-label={onlineCount != null ? `${onlineCount} pemakai sedang online sekarang` : "Menghitung pemakai yang sedang online"}>
+                <span className="online-dot inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: "#22C55E" }} aria-hidden />
+                {onlineCount != null ? `${onlineCount} pemakai online sekarang` : "Menghitung pemakai online…"}
+              </div>
             </div>
           </section>
 
@@ -2631,12 +2667,12 @@ export function App() {
 
           {/* Rewards strip */}
           <section className="mt-5 flex flex-wrap items-center gap-2 rounded-3xl p-4 shadow-sm" style={{ background: "var(--surface)", border: "2px solid var(--gold)" }} aria-label="Hadiah dan pencapaian saya">
-            <span className="font-display text-base font-extrabold">🎁 Hadiahku:</span>
-            <span className="rounded-full px-3 py-1.5 text-sm font-bold" style={{ background: "var(--surface2)" }}>⭐ {rewards.totalCorrect} Bintang</span>
-            <span className="rounded-full px-3 py-1.5 text-sm font-bold" style={{ background: "var(--surface2)" }}>🪙 {rewards.points} Poin</span>
-            <span className="rounded-full px-3 py-1.5 text-sm font-bold" style={{ background: "var(--surface2)" }}>🔥 {rewards.streak} hari streak</span>
-            <span className="rounded-full px-3 py-1.5 text-sm font-bold" style={{ background: "var(--surface2)" }}>🏅 {rewards.badges.length}/{BADGES.length} lencana</span>
-            <button type="button" onClick={() => setView("history")} className="rounded-full px-3 py-1.5 text-sm font-bold text-white" style={{ background: "var(--accent)" }}>Lihat Lencana →</button>
+            <span className="font-display w-full text-base font-extrabold sm:w-auto">🎁 Hadiahku:</span>
+            <span className="rounded-full px-3 py-1.5 text-center text-sm font-bold max-sm:flex-1 max-sm:basis-[46%]" style={{ background: "var(--surface2)" }}>⭐ {rewards.totalCorrect} Bintang</span>
+            <span className="rounded-full px-3 py-1.5 text-center text-sm font-bold max-sm:flex-1 max-sm:basis-[46%]" style={{ background: "var(--surface2)" }}>🪙 {rewards.points} Poin</span>
+            <span className="rounded-full px-3 py-1.5 text-center text-sm font-bold max-sm:flex-1 max-sm:basis-[46%]" style={{ background: "var(--surface2)" }}>🔥 {rewards.streak} hari streak</span>
+            <span className="rounded-full px-3 py-1.5 text-center text-sm font-bold max-sm:flex-1 max-sm:basis-[46%]" style={{ background: "var(--surface2)" }}>🏅 {rewards.badges.length}/{BADGES.length} lencana</span>
+            <button type="button" onClick={() => setView("history")} className="rounded-full px-3 py-1.5 text-sm font-bold text-white max-sm:min-h-[44px] max-sm:w-full" style={{ background: "var(--accent)" }}>Lihat Lencana →</button>
             {rewards.totalSessions === 0 && <p className="w-full text-sm font-semibold" style={{ color: "var(--dim)" }}>Selesaikan sesi pertamamu untuk membuka lencana 🎯 <strong>Langkah Pertama</strong> — setiap jawaban benar bernilai 10 poin + 1 bintang!</p>}
           </section>
 
