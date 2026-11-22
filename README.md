@@ -13,3 +13,9 @@ Web responsive untuk melatih anak TK/PAUD sampai SMA/SMK/MA menjawab soal-soal o
 
 ## Teknologi
 React + TypeScript, server actions, Drizzle ORM (SQLite).
+
+## Versi Publik (Gratis)
+
+Buka langsung tanpa install: https://effands.github.io/ziqva-olim/
+
+Versi publik ini statis (GitHub Pages, folder `docs/`). Semua soal, mode ujian/latihan, skor, Prestasiku, dan pantauan guru/orang tua berjalan di browser; data tersimpan di localStorage perangkat masing-masing. Versi server penuh ada di kode sumber repo ini.
