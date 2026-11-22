@@ -633,6 +633,12 @@ function QuizView(props: {
   );
 }
 
+/** Pindahkan fokus keyboard langsung ke kolom formulir dengan id ini
+ *  (dipakai saat validasi gagal, supaya user tidak perlu mencari kolomnya). */
+function focusField(id: string) {
+  document.getElementById(id)?.focus();
+}
+
 /* ---------------- LOGIN GURU / ORANG TUA ---------------- */
 function AuthView(props: { onSuccess: (token: string, user: SessionUser) => void }) {
   const [tab, setTab] = useState<"login" | "register">("login");
@@ -646,24 +652,30 @@ function AuthView(props: { onSuccess: (token: string, user: SessionUser) => void
   const login = useMutation({
     mutationFn: api.login,
     onSuccess: (r) => props.onSuccess(r.token, r.user),
-    onError: (e) => setError(e instanceof Error ? e.message : "Gagal masuk. Coba lagi ya."),
+    onError: (e) => { setError(e instanceof Error ? e.message : "Gagal masuk. Coba lagi ya."); focusField("auth-username"); },
   });
   const register = useMutation({
     mutationFn: api.register,
     onSuccess: (r) => props.onSuccess(r.token, r.user),
-    onError: (e) => setError(e instanceof Error ? e.message : "Gagal membuat akun. Coba lagi ya."),
+    onError: (e) => {
+      const msg = e instanceof Error ? e.message : "Gagal membuat akun. Coba lagi ya.";
+      setError(msg);
+      if (msg.toLowerCase().includes("username")) focusField("auth-username");
+      else if (msg.toLowerCase().includes("nama")) focusField("reg-name");
+    },
   });
   const busy = login.isPending || register.isPending;
 
   const submit = () => {
     setError("");
     if (tab === "login") {
-      if (!username.trim() || !password) { setError("Isi username dan kata sandi dulu ya."); return; }
+      if (!username.trim()) { setError("Isi username dulu ya."); focusField("auth-username"); return; }
+      if (!password) { setError("Isi kata sandi dulu ya."); focusField("auth-password"); return; }
       login.mutate({ username: username.trim(), password });
     } else {
-      if (!name.trim()) { setError("Isi nama lengkap dulu ya."); return; }
-      if (username.trim().length < 3) { setError("Username minimal 3 karakter (huruf kecil, angka, titik, garis bawah)."); return; }
-      if (password.length < 6) { setError("Kata sandi minimal 6 karakter."); return; }
+      if (!name.trim()) { setError("Isi nama lengkap dulu ya."); focusField("reg-name"); return; }
+      if (username.trim().length < 3) { setError("Username minimal 3 karakter (huruf kecil, angka, titik, garis bawah)."); focusField("auth-username"); return; }
+      if (password.length < 6) { setError("Kata sandi minimal 6 karakter."); focusField("auth-password"); return; }
       register.mutate({ name: name.trim(), username: username.trim(), password, role, organization: organization.trim() });
     }
   };
@@ -756,7 +768,7 @@ function MonitorView(props: { token: string; user: SessionUser; onLogout: () => 
   const addWatched = useMutation({
     mutationFn: api.addWatchedStudent,
     onSuccess: () => { setChildName(""); setChildCode(""); setChildError(""); queryClient.invalidateQueries({ queryKey: ["monitor"] }); },
-    onError: (e) => setChildError(e instanceof Error ? e.message : "Gagal menambahkan. Coba lagi ya."),
+    onError: (e) => { setChildError(e instanceof Error ? e.message : "Gagal menambahkan. Coba lagi ya."); focusField("child-code"); },
   });
   const removeWatched = useMutation({
     mutationFn: api.removeWatchedStudent,
@@ -804,8 +816,8 @@ function MonitorView(props: { token: string; user: SessionUser; onLogout: () => 
               </p>
               <form className="mt-3 flex flex-col gap-2 sm:flex-row" onSubmit={(e) => {
                 e.preventDefault();
-                if (!childName.trim()) { setChildError(isGuru ? "Isi nama murid dulu ya." : "Isi nama anak dulu ya."); return; }
-                if (!childCode.trim()) { setChildError("Isi Kode Pantau dulu ya — kodenya ada di layar hasil / Prestasiku peserta."); return; }
+                if (!childName.trim()) { setChildError(isGuru ? "Isi nama murid dulu ya." : "Isi nama anak dulu ya."); focusField("child-name"); return; }
+                if (!childCode.trim()) { setChildError("Isi Kode Pantau dulu ya — kodenya ada di layar hasil / Prestasiku peserta."); focusField("child-code"); return; }
                 setChildError("");
                 addWatched.mutate({ token, student_name: childName.trim(), code: childCode.trim() });
               }}>
@@ -1311,7 +1323,7 @@ export function App() {
   }, [mode, level, unlockedLevel, comboKey]);
 
   const startQuiz = () => {
-    if (!name.trim()) { setNameError("Isi nama peserta dulu ya, supaya hasil latihannya tercatat."); return; }
+    if (!name.trim()) { setNameError("Isi nama peserta dulu ya, supaya hasil latihannya tercatat."); focusField("student-name"); return; }
     if (!activeSubject) return;
     const qs = buildSession(jenjang, activeSubject.id, level, SESSION_SIZE);
     if (qs.length === 0) return;
