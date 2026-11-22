@@ -756,9 +756,9 @@ const sdEngPastEn: LGen = () => {
     ["write", "a letter"], ["see", "a rainbow"], ["buy", "new shoes"], ["swim", "in the pool"], ["sleep", "early last night"],
   ];
   const scene = places.find((p) => p[0] === v[0]);
-  const tail = scene ? scene[1] : "yesterday";
+  const tail = scene ? scene[1] : "";
   const wrong = sample(EN_PAST_EN.filter((p) => p[1] !== v[1]), 3).map((p) => p[1]);
-  return mkq(`Yesterday, ${name} ___ ${tail}. (verb: ${v[0]})`, v[1], wrong, `The past tense of “${v[0]}” is “${v[1]}”.`);
+  return mkq(`Yesterday, ${name} ___${tail ? ` ${tail}` : ""}. (verb: ${v[0]})`, v[1], wrong, `The past tense of “${v[0]}” is “${v[1]}”.`);
 };
 const planetGenEn: LGen = () => {
   const planets = ["Mercury", "Venus", "Earth", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune"];
@@ -801,7 +801,7 @@ const smpGradientEn: LGen = (level) => {
   const dx = ri(2, 5);
   const x2 = x1 + dx;
   const y2 = y1 + m * dx;
-  return mkNumEn(`The gradient of the line through the points (${x1}, ${y1}) and (${x2}, ${y2}) is …`, m, [m + 1, Math.max(1, m - 1), m + 2], `m = (y₂−y₁)/(x₂−x₁) = (${y2}−${y1})/(${x2}−${x1}) = ${m * dx}/${dx} = ${m}.`);
+  return mkNumEn(`The gradient of the line through the points (${x1}, ${y1}) and (${x2}, ${y2}) is …`, m, [m + 1, m === 1 ? m + 3 : m - 1, m + 2], `m = (y₂−y₁)/(x₂−x₁) = (${y2}−${y1})/(${x2}−${x1}) = ${m * dx}/${dx} = ${m}.`);
 };
 const smpProbabilityEn: LGen = (level) => {
   if (level < 2) return null;
@@ -814,7 +814,20 @@ const smpProbabilityEn: LGen = (level) => {
   const blue = ri(2, 6);
   const total = red + blue;
   const g = gcd(red, total);
-  return mkq(`A bag contains ${red} red marbles and ${blue} blue marbles. The probability of picking one red marble is …`, `${red / g}/${total / g}`, [`${red}/${total + 2}`, `${blue}/${total}`, `${red + 1}/${total}`], `Probability = number of red ÷ total = ${red} ÷ ${total} = ${red / g}/${total / g}.`);
+  // Distractors must have a DIFFERENT fraction value from the answer
+  // (e.g. 2/4 equals 1/2) and from each other.
+  const seenVal = new Set<string>([`${red / g}/${total / g}`]);
+  const ds: string[] = [];
+  for (const [n, d] of [[red, total + 2], [red + 1, total], [blue, total + 2], [red + 1, total + 1], [blue + 1, total + 1]] as const) {
+    const gg = gcd(n, d);
+    const key = `${n / gg}/${d / gg}`;
+    if (seenVal.has(key)) continue;
+    seenVal.add(key);
+    ds.push(`${n}/${d}`);
+    if (ds.length === 3) break;
+  }
+  if (ds.length < 3) return null;
+  return mkq(`A bag contains ${red} red marbles and ${blue} blue marbles. The probability of picking one red marble is …`, `${red / g}/${total / g}`, ds, `Probability = number of red ÷ total = ${red} ÷ ${total} = ${red / g}/${total / g}.`);
 };
 const smpScaleEn: LGen = (level) => {
   if (level < 2) return null;
@@ -905,10 +918,10 @@ const smpVolumeEn: LGen = (level) => {
 const smpAnglesEn: LGen = (_level) => {
   const x = ri(15, 80);
   if (Math.random() < 0.5) {
-    return mkNumEn(`The angle complementary to ${x}° is …`, 90 - x, [90 - x + 10, 180 - x, x], `Complementary angles add up to 90° → 90 − ${x} = ${90 - x}°.`);
+    return mkNumEn(`The angle complementary to ${x}° is …`, 90 - x, [90 - x + 10, 180 - x, x + 15], `Complementary angles add up to 90° → 90 − ${x} = ${90 - x}°.`);
   }
   const y = ri(95, 170);
-  return mkNumEn(`The angle supplementary to ${y}° is …`, 180 - y, [180 - y + 10, 90 - (y - 90), y - 90], `Supplementary angles add up to 180° → 180 − ${y} = ${180 - y}°.`);
+  return mkNumEn(`The angle supplementary to ${y}° is …`, 180 - y, [180 - y + 10, 180 - y + 20, 270 - y], `Supplementary angles add up to 180° → 180 − ${y} = ${180 - y}°.`);
 };
 const smpTwoVarEn: LGen = (level) => {
   if (level < 4) return null;
@@ -1031,7 +1044,7 @@ const smaPhysicsEn: LGen = (level) => {
 const smaChemistryPhEn: LGen = (level) => {
   if (level < 2) return null;
   const n = ri(1, Math.min(6, level + 2));
-  if (Math.random() < 0.5) return mkNumEn(`The pH of a 10⁻${n} M HCl solution (0.${"0".repeat(Math.max(0, n - 1))}1 M) is …`, n, [n + 1, Math.max(1, n - 1), 14 - n], `HCl is a strong acid: [H⁺] = 10⁻${n} → pH = ${n}.`);
+  if (Math.random() < 0.5) return mkNumEn(`The pH of a 10⁻${n} M HCl solution (0.${"0".repeat(Math.max(0, n - 1))}1 M) is …`, n, [n + 1, n === 1 ? n + 2 : n - 1, 14 - n], `HCl is a strong acid: [H⁺] = 10⁻${n} → pH = ${n}.`);
   return mkNumEn(`The pH of a 10⁻${n} M NaOH solution is …`, 14 - n, [n, 14 - n - 1, 14 - n + 1], `NaOH is a strong base: pOH = ${n}, pH = 14 − ${n} = ${14 - n}.`);
 };
 const smaGeneticsEn: LGen = (level) => {
@@ -1592,7 +1605,7 @@ export const BANK_EN: Partial<Record<JenjangId, Partial<Record<string, Question[
       { q: "She ___ to school every day.", options: ["go", "goes", "going"], answer: 1, explain: "For she/he/it in the simple present, add -es: goes." },
       { q: "The plural of 'child' is …", options: ["childs", "childes", "children"], answer: 2, explain: "Child is an irregular plural: children." },
       { q: "I have ___ apple in my bag.", options: ["a", "an", "the"], answer: 1, explain: "Use 'an' before words starting with a vowel sound: an apple." },
-      { q: "What is the opposite of 'hot'?", options: ["warm", "cold", "cool only"], answer: 1, explain: "The opposite of hot is cold." },
+      { q: "What is the opposite of 'hot'?", options: ["warm", "cold", "dry"], answer: 1, explain: "The opposite of hot is cold." },
       { q: "They ___ playing football now.", options: ["is", "am", "are"], answer: 2, explain: "'They' pairs with 'are' in the present continuous." },
       { q: "Yesterday, we ___ a movie together.", options: ["watch", "watched", "watches"], answer: 1, explain: "'Yesterday' signals the past: watched." },
     ],
@@ -1606,7 +1619,7 @@ export const BANK_EN: Partial<Record<JenjangId, Partial<Record<string, Question[
     ],
     ips: [
       { q: "The capital of West Java Province is …", options: ["Semarang", "Bandung", "Surabaya"], answer: 1, explain: "Bandung is the capital of West Java." },
-      { q: "The largest island in Indonesia is …", options: ["Java", "Sumatra", "Kalimantan"], answer: 2, explain: "Kalimantan (Borneo) is Indonesia's largest island." },
+      { q: "The island of Borneo is known in Indonesia as …", options: ["Java", "Sumatra", "Kalimantan"], answer: 2, explain: "The island of Borneo is called Kalimantan in Indonesia." },
       { q: "The activity of buying and selling goods in a market is called …", options: ["Production", "Trade", "Consumption"], answer: 1, explain: "Buying and selling is trade (distribution)." },
       { q: "Mount Merapi is located in the province of …", options: ["Central Java / Yogyakarta", "West Java", "East Java"], answer: 0, explain: "Merapi stands on the border of Central Java and Yogyakarta." },
       { q: "Money used as the official payment tool in Indonesia is the …", options: ["Dollar", "Ringgit", "Rupiah"], answer: 2, explain: "Indonesia's currency is the Rupiah (Rp)." },
@@ -1673,7 +1686,7 @@ export const BANK_EN: Partial<Record<JenjangId, Partial<Record<string, Question[
     ],
     biologi: [
       { q: "In aerobic respiration, the stage producing the most ATP is …", options: ["Glycolysis", "The Krebs cycle", "The electron transport chain"], answer: 2, explain: "The electron transport chain produces about 34 ATP." },
-      { q: "A cross AaBb × AaBb produces offspring with the genotype ratio pattern based on …", options: ["Mendel's law of independent assortment", "Incomplete dominance", "Codominance"], answer: 0, explain: "Dihybrid crosses follow independent assortment (9:3:3:1 phenotype ratio)." },
+      { q: "A dihybrid cross AaBb × AaBb gives a 9:3:3:1 phenotype ratio in the offspring. This pattern is explained by …", options: ["Mendel's law of independent assortment", "Incomplete dominance", "Codominance"], answer: 0, explain: "In a dihybrid cross, the two gene pairs separate independently, giving the 9:3:3:1 phenotype ratio." },
       { q: "The enzyme that joins Okazaki fragments during DNA replication is …", options: ["Helicase", "DNA ligase", "Primase"], answer: 1, explain: "DNA ligase seals the fragments on the lagging strand." },
       { q: "The breathing organ of insects is the …", options: ["Lungs", "Gills", "Tracheal system"], answer: 2, explain: "Insects breathe through tracheae and spiracles." },
     ],
@@ -1784,7 +1797,7 @@ export const MATERIALS_EN: Record<string, { title: string; sections: { h: string
     { h: "Acids & Buffers", body: "pH = −log[H⁺]. Buffers pair a weak acid with its conjugate base." },
   ] },
   ips: { title: "Social Studies — Materials in English (Cambridge)", sections: [
-    { h: "Geography", body: "Kalimantan is the largest island; each province has a capital city." },
+    { h: "Geography", body: "Kalimantan (Borneo) is one of the world's largest islands; each province has a capital city." },
     { h: "Economy", body: "Inflation is a general rise in prices; Indonesia's currency is the Rupiah." },
   ] },
   sejarah: { title: "History — Materials in English (Cambridge)", sections: [

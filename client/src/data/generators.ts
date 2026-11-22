@@ -242,7 +242,7 @@ export const JAWA_VOCAB: readonly (readonly [string, string])[] = [
   ["selamat pagi", "sugeng enjing"], ["selamat malam", "sugeng dalu"], ["air", "toya"], ["nasi", "sekul"],
   ["anak", "lare"], ["ibu", "ibu / biyung"], ["pasar", "peken"], ["jalan", "margi"], ["uang", "arta"],
   ["buku", "buku / pustaka"], ["sekolah", "sekolah / pawiyatan"], ["hari ini", "dinten menika"], ["besok", "benjing"],
-  ["kemarin", "kala wingi"], ["satu", "setunggal"], ["dua", "kalih"], ["tiga", "tiga"], ["empat", "sekawan"],
+  ["kemarin", "kala wingi"], ["satu", "setunggal"], ["dua", "kalih"], ["empat", "sekawan"],
   ["lima", "gangsal"], ["enam", "enem"], ["tujuh", "pitu"], ["delapan", "wolu"], ["sembilan", "sanga"], ["sepuluh", "sedasa"],
 ];
 export const JAWA_AKSARA: readonly (readonly [string, string])[] = [
@@ -900,9 +900,9 @@ const sdEngPast: LGen = () => {
     ["write", "a letter"], ["see", "a rainbow"], ["buy", "new shoes"], ["swim", "in the pool"], ["sleep", "early last night"],
   ];
   const scene = places.find((p) => p[0] === v[0]);
-  const tail = scene ? scene[1] : "yesterday";
+  const tail = scene ? scene[1] : "";
   const wrong = sample(EN_PAST.filter((p) => p[1] !== v[1]), 3).map((p) => p[1]);
-  return mkq(`Yesterday, ${name} ___ ${tail}. (kata kerja: ${v[0]})`, v[1], wrong, `Bentuk lampau (past tense) dari “${v[0]}” adalah “${v[1]}”.`);
+  return mkq(`Yesterday, ${name} ___${tail ? ` ${tail}` : ""}. (kata kerja: ${v[0]})`, v[1], wrong, `Bentuk lampau (past tense) dari “${v[0]}” adalah “${v[1]}”.`);
 };
 const SD_SAINS_PAIRS: readonly (readonly [string, string])[] = [
   ["Akar", "Menyerap air dan zat hara dari tanah"], ["Daun", "Tempat fotosintesis / membuat makanan"],
@@ -994,7 +994,7 @@ const smpGradient: LGen = (level) => {
   const dx = ri(2, 5);
   const x2 = x1 + dx;
   const y2 = y1 + m * dx;
-  return mkNum(`Gradien garis yang melalui titik (${x1}, ${y1}) dan (${x2}, ${y2}) adalah …`, m, [m + 1, Math.max(1, m - 1), m + 2], `m = (y₂−y₁)/(x₂−x₁) = (${y2}−${y1})/(${x2}−${x1}) = ${m * dx}/${dx} = ${m}.`);
+  return mkNum(`Gradien garis yang melalui titik (${x1}, ${y1}) dan (${x2}, ${y2}) adalah …`, m, [m + 1, m === 1 ? m + 3 : m - 1, m + 2], `m = (y₂−y₁)/(x₂−x₁) = (${y2}−${y1})/(${x2}−${x1}) = ${m * dx}/${dx} = ${m}.`);
 };
 const smpProbability: LGen = (level) => {
   if (level < 2) return null;
@@ -1007,7 +1007,20 @@ const smpProbability: LGen = (level) => {
   const blue = ri(2, 6);
   const total = red + blue;
   const g = gcd(red, total);
-  return mkq(`Dalam kantong ada ${red} kelereng merah dan ${blue} kelereng biru. Peluang mengambil satu kelereng merah adalah …`, `${red / g}/${total / g}`, [`${red}/${total + 2}`, `${blue}/${total}`, `${red + 1}/${total}`], `Peluang = jumlah merah : total = ${red} : ${total} = ${red / g}/${total / g}.`);
+  // Pengecoh wajib bernilai pecahan BERBEDA dari kunci (mis. 2/4 sama nilainya
+  // dengan 1/2 sehingga tidak boleh jadi pengecoh) dan berbeda satu sama lain.
+  const seenVal = new Set<string>([`${red / g}/${total / g}`]);
+  const ds: string[] = [];
+  for (const [n, d] of [[red, total + 2], [red + 1, total], [blue, total + 2], [red + 1, total + 1], [blue + 1, total + 1]] as const) {
+    const gg = gcd(n, d);
+    const key = `${n / gg}/${d / gg}`;
+    if (seenVal.has(key)) continue;
+    seenVal.add(key);
+    ds.push(`${n}/${d}`);
+    if (ds.length === 3) break;
+  }
+  if (ds.length < 3) return null;
+  return mkq(`Dalam kantong ada ${red} kelereng merah dan ${blue} kelereng biru. Peluang mengambil satu kelereng merah adalah …`, `${red / g}/${total / g}`, ds, `Peluang = jumlah merah : total = ${red} : ${total} = ${red / g}/${total / g}.`);
 };
 const smpScale: LGen = (level) => {
   if (level < 2) return null;
@@ -1149,7 +1162,7 @@ const smaPhysics: LGen = (level) => {
 const smaChemistryPh: LGen = (level) => {
   if (level < 2) return null;
   const n = ri(1, Math.min(6, level + 2));
-  if (Math.random() < 0.5) return mkNum(`pH larutan HCl 10⁻${n} M (0,${"0".repeat(Math.max(0, n - 1))}1 M) adalah …`, n, [n + 1, Math.max(1, n - 1), 14 - n], `HCl asam kuat: [H⁺] = 10⁻${n} → pH = ${n}.`);
+  if (Math.random() < 0.5) return mkNum(`pH larutan HCl 10⁻${n} M (0,${"0".repeat(Math.max(0, n - 1))}1 M) adalah …`, n, [n + 1, n === 1 ? n + 2 : n - 1, 14 - n], `HCl asam kuat: [H⁺] = 10⁻${n} → pH = ${n}.`);
   return mkNum(`pH larutan NaOH 10⁻${n} M adalah …`, 14 - n, [n, 14 - n - 1, 14 - n + 1], `NaOH basa kuat: pOH = ${n}, pH = 14 − ${n} = ${14 - n}.`);
 };
 const smaGenetics: LGen = (level) => {
@@ -1411,10 +1424,10 @@ const smpVolume: LGen = (level) => {
 const smpAngles: LGen = (_level) => {
   const x = ri(15, 80);
   if (Math.random() < 0.5) {
-    return mkNum(`Sudut yang berpenyiku (komplemen) dengan sudut ${x}° adalah …`, 90 - x, [90 - x + 10, 180 - x, x], `Dua sudut berpenyiku jumlahnya 90° → 90 − ${x} = ${90 - x}°.`);
+    return mkNum(`Sudut yang berpenyiku (komplemen) dengan sudut ${x}° adalah …`, 90 - x, [90 - x + 10, 180 - x, x + 15], `Dua sudut berpenyiku jumlahnya 90° → 90 − ${x} = ${90 - x}°.`);
   }
   const y = ri(95, 170);
-  return mkNum(`Sudut yang berpelurus (suplemen) dengan sudut ${y}° adalah …`, 180 - y, [180 - y + 10, 90 - (y - 90), y - 90], `Dua sudut berpelurus jumlahnya 180° → 180 − ${y} = ${180 - y}°.`);
+  return mkNum(`Sudut yang berpelurus (suplemen) dengan sudut ${y}° adalah …`, 180 - y, [180 - y + 10, 180 - y + 20, 270 - y], `Dua sudut berpelurus jumlahnya 180° → 180 − ${y} = ${180 - y}°.`);
 };
 const smpTwoVar: LGen = (level) => {
   if (level < 4) return null;
@@ -1528,7 +1541,7 @@ const indoFactsSMP: readonly Fact[] = [
 ];
 const majasClassify = [
   ...["Angin malam berbisik menyampaikan rindu.", "Ombak menari-nari di tepi pantai.", "Matahari tersenyum menyambut pagi."].map((x) => ({ item: x, cat: "Personifikasi" })),
-  ...["Wajahnya bersinar seperti bulan purnama.", "Ia berlari secepat kilat.", "Suaranya merdu bak buluh perindu."].map((x) => ({ item: x, cat: "Simile" })),
+  ...["Wajahnya bersinar seperti bulan purnama.", "Hatinya lembut seperti kapas.", "Suaranya merdu bak buluh perindu."].map((x) => ({ item: x, cat: "Simile" })),
   ...["Dia adalah bintang kelas yang selalu bersinar.", "Waktu adalah uang.", "Kampung halamanku, surga kecilku."].map((x) => ({ item: x, cat: "Metafora" })),
   ...["Suaranya menggelegar membelah angkasa.", "Aku sudah meneleponmu sejuta kali!", "Tangisannya membanjiri seluruh ruangan."].map((x) => ({ item: x, cat: "Hiperbola" })),
 ] as const;
@@ -1920,7 +1933,9 @@ export function emojiPictureGen(jenjang: JenjangId): LGen {
       const mixed = Array.from({ length: total }, (_, i) => (i === diffPos ? b[0] : a[0])).join("");
       const uniform = a[0].repeat(total);
       const uniformB = b[0].repeat(total);
-      return mkq(`Gambar mana yang BERBEDA sendiri (ada gambar lain di dalamnya)?`, mixed, [uniform, uniformB], `Kelompok ${mixed} campur: ada ${b[1]} di antara ${a[1]}. Kelompok lain seragam semua.`, a[0], four);
+      const c = COMP_EMOJI_SETS.find((s) => s[0] !== a[0] && s[0] !== b[0]) ?? a;
+      const ds = four ? [uniform, uniformB, c[0].repeat(total)] : [uniform, uniformB];
+      return mkq(`Gambar mana yang BERBEDA sendiri (ada gambar lain di dalamnya)?`, mixed, ds, `Kelompok ${mixed} campur: ada ${b[1]} di antara ${a[1]}. Kelompok lain seragam semua.`, a[0], four);
     }
     const start = ri(0, ACTIVITY_SEQ.length - 4);
     const seq = ACTIVITY_SEQ.slice(start, start + 4);
@@ -1991,7 +2006,8 @@ export function mathStoryGen(jenjang: JenjangId): LGen {
     const rem = jenjang === "TK" ? 0 : ri(0, friends - 1);
     const total = friends * per + rem;
     if (rem === 0 || level <= 2) {
-      return mkNum(`${total} permen dibagikan rata kepada ${friends} anak. Setiap anak mendapat … permen`, per, [per - 1, per + 1, per + 2].filter((x) => x > 0), `${total} : ${friends} = ${per} permen per anak.`, "🍬", four);
+      const shown = rem === 0 ? total : friends * per;
+      return mkNum(`${shown} permen dibagikan rata kepada ${friends} anak. Setiap anak mendapat … permen`, per, [per - 1, per + 1, per + 2].filter((x) => x > 0), `${shown} : ${friends} = ${per} permen per anak.`, "🍬", four);
     }
     return mkq(`${total} permen dibagikan rata kepada ${friends} anak. Setiap anak mendapat … dan sisanya …`, `${per} permen, sisa ${rem}`, [`${per} permen, sisa ${rem + 1}`, `${per + 1} permen, sisa ${rem}`, `${friends} permen, sisa ${per}`], `${friends} × ${per} = ${total - rem}; ${total} − ${total - rem} = sisa ${rem}.`, "🍬", four);
   };
@@ -2041,7 +2057,8 @@ function nalariaGens(jenjang: JenjangId): LGen[] {
     if (b <= 0) return compareTrap(level);
     const more = a > b ? nameA : nameB;
     const ans = `${more} lebih banyak ${Math.abs(a - b)}`;
-    return mkq(`${nameA} mengumpulkan ${a} stiker. ${nameB} mengumpulkan ${b} stiker. Kesimpulan yang BENAR adalah …`, ans, [`${nameA} lebih banyak ${Math.abs(a - b) + 2}`, `${nameB} lebih banyak ${Math.abs(a - b)}`, `Keduanya sama banyak`].filter((x) => x !== ans), `${Math.max(a, b)} − ${Math.min(a, b)} = ${Math.abs(a - b)}. Yang lebih banyak adalah ${more}.`, "⚖️", four);
+    const less = more === nameA ? nameB : nameA;
+    return mkq(`${nameA} mengumpulkan ${a} stiker. ${nameB} mengumpulkan ${b} stiker. Kesimpulan yang BENAR adalah …`, ans, [`${more} lebih banyak ${Math.abs(a - b) + 2}`, `${less} lebih banyak ${Math.abs(a - b)}`, `Keduanya sama banyak`], `${Math.max(a, b)} − ${Math.min(a, b)} = ${Math.abs(a - b)}. Yang lebih banyak adalah ${more}.`, "⚖️", four);
   };
   const setsLogic: LGen = (level) => {
     if (jenjang === "TK") {
@@ -2056,7 +2073,7 @@ function nalariaGens(jenjang: JenjangId): LGen[] {
     const aTotal = onlyA + both; const bTotal = onlyB + both;
     const neither = total - (onlyA + onlyB + both);
     if (Math.random() < 0.5) {
-      return mkNum(`Dari ${total} siswa, ${aTotal} suka matematika, ${bTotal} suka IPA, dan ${both} suka keduanya. Siswa yang suka matematika SAJA adalah …`, onlyA, [aTotal, onlyA + both, onlyA - 2].filter((x) => x >= 0), `Suka matematika saja = ${aTotal} − ${both} (yang suka keduanya) = ${onlyA}.`, "👥", four);
+      return mkNum(`Dari ${total} siswa, ${aTotal} suka matematika, ${bTotal} suka IPA, dan ${both} suka keduanya. Siswa yang suka matematika SAJA adalah …`, onlyA, [aTotal, onlyA + 2, aTotal + both].filter((x) => x >= 0 && x !== onlyA), `Suka matematika saja = ${aTotal} − ${both} (yang suka keduanya) = ${onlyA}.`, "👥", four);
     }
     return mkNum(`Dari ${total} siswa, ${aTotal} suka matematika, ${bTotal} suka IPA, dan ${both} suka keduanya. Siswa yang TIDAK suka keduanya adalah …`, neither, [neither + both, total - aTotal, neither + 3], `Suka minimal satu = ${aTotal} + ${bTotal} − ${both} = ${aTotal + bTotal - both}. Tidak suka keduanya = ${total} − ${aTotal + bTotal - both} = ${neither}.`, "👥", four);
   };
@@ -2207,7 +2224,7 @@ const SYLLABLE_WORDS: readonly (readonly [string, number, string])[] = [
   ["buku", 2, "bu-ku"], ["sekolah", 3, "se-ko-lah"], ["berlari", 3, "ber-la-ri"], ["kupu-kupu", 4, "ku-pu-ku-pu"],
   ["matematika", 5, "ma-te-ma-ti-ka"], ["perpustakaan", 5, "per-pus-ta-ka-an"], ["apel", 2, "a-pel"], ["jendela", 3, "jen-de-la"],
   ["kelinci", 3, "ke-lin-ci"], ["sepeda", 3, "se-pe-da"], ["televisi", 4, "te-le-vi-si"], ["Indonesia", 4, "In-do-ne-sia"],
-  ["gembira", 3, "gem-bi-ra"], ["bermain", 3, "ber-ma-in"], ["matahari", 4, "ma-ta-ha-ri"], ["pesawat", 3, "pe-sa-wat"],
+  ["gembira", 3, "gem-bi-ra"], ["melompat", 3, "me-lom-pat"], ["matahari", 4, "ma-ta-ha-ri"], ["pesawat", 3, "pe-sa-wat"],
 ] as const;
 const ALPHA_WORDS = ["apel", "buku", "ceri", "duku", "elang", "foto", "gajah", "harimau", "ikan", "jerapah", "kuda", "lemon", "mangga", "nanas", "obor", "pisang", "rusa", "sapi", "tomat", "ular", "zebra"] as const;
 const HIDDEN_WORDS: readonly (readonly [string, string, string])[] = [
@@ -2261,7 +2278,7 @@ function kanguruBahasaGens(jenjang: JenjangId): LGen[] {
   };
   const patternWordGen: LGen = () => {
     if (jenjang === "TK") {
-      const w = pick(["ada", "ibu", "apa", "oto"]);
+      const w = pick(["ada", "apa", "oto", "ini"]);
       return mkq(`Kata “${w}” — huruf pertama dan terakhirnya adalah …`, `Sama-sama huruf “${w[0]}”`, [`Huruf “${w[0]}” dan “${w[2]}” yang berbeda`, `Huruf “${w[1]}” semua`], `“${w}” dibaca ${w.split("").join("-")}: huruf pertama dan terakhir sama, yaitu “${w[0]}”.`, "🔤", four);
     }
     const words: readonly (readonly [string, string])[] = [["ada", "ABA"], ["susu", "ABAB"], ["apa", "ABA"], ["lari", "ABCD"], ["buku", "ABCB"], ["mata", "ABCB"], ["makan", "ABCBD"], ["ibu", "ABC"]];

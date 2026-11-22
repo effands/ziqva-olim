@@ -213,14 +213,14 @@ export const BANK: Bank = {
     ],
     jawa: [
       { q: "“Sugeng enjing” tegese …", options: ["Selamat malam", "Selamat pagi", "Selamat siang", "Selamat tinggal"], answer: 1, explain: "Enjing = pagi, sugeng enjing = selamat pagi." },
-      { q: "Basa krama alus saka tembung “mangan” yaiku …", options: ["Nedha", "Dahar", "Melu", "Ngombe"], answer: 1, explain: "Krama alus “mangan” = dahar (untuk orang yang dihormati)." },
+      { q: "Basa krama inggil (paling alus) saka tembung “mangan” yaiku …", options: ["Nedha", "Dahar", "Melu", "Ngombe"], answer: 1, explain: "Krama inggil “mangan” = dahar. “Nedha” iku krama biasa, dudu sing paling alus." },
       { q: "Aksara Jawa “ꦲ” diwaca …", options: ["Na", "Ha", "Ca", "Ra"], answer: 1, explain: "ꦲ = ha, aksara pertama hanacaraka." },
       { q: "“Bapak tindak dhateng kantor” — tembung “tindak” tegese …", options: ["Makan", "Pergi / berangkat", "Tidur", "Duduk"], answer: 1, explain: "Tindak (krama) = pergi/berangkat." },
     ],
     arab: [
       { q: "Bahasa Arabnya “buku” adalah …", options: ["قَلَمٌ", "كِتَابٌ", "بَابٌ", "مَاءٌ"], answer: 1, explain: "كِتَابٌ (kitābun) = buku. قَلَمٌ = pena." },
       { q: "Kata “مَدْرَسَةٌ” artinya …", options: ["Rumah", "Masjid", "Sekolah", "Pasar"], answer: 2, explain: "مَدْرَسَةٌ (madrasatun) = sekolah." },
-      { q: "Huruf hijaiyah berjumlah …", options: ["26", "28", "29", "30"], answer: 1, explain: "Huruf hijaiyah ada 28 huruf (ada yang menghitung 29 dengan hamzah)." },
+      { q: "Huruf hijaiyah berjumlah …", options: ["26", "28", "32", "30"], answer: 1, explain: "Huruf hijaiyah ada 28 huruf, dari alif sampai ya (hamzah tidak dihitung sebagai huruf tersendiri)." },
       { q: "“صَبَاحُ الْخَيْرِ” artinya …", options: ["Selamat malam", "Selamat pagi", "Terima kasih", "Sampai jumpa"], answer: 1, explain: "Ṣabāḥul khair = selamat pagi." },
     ],
     pai: [
@@ -323,7 +323,7 @@ export const BANK: Bank = {
       { q: "Protokol yang digunakan untuk transfer halaman web yang aman adalah …", options: ["FTP", "SMTP", "HTTPS", "POP3"], answer: 2, explain: "HTTPS = HTTP + enkripsi TLS untuk web yang aman." },
     ],
     jawa: [
-      { q: "Tembang macapat sing nduweni watak grapyak lan nyenengake, cacahing gatra 7, yaiku …", options: ["Maskumambang", "Gambuh", "Kinanthi", "Pangkur"], answer: 1, explain: "Gambuh: 7 gatra, wataknya akrab/grapyak." },
+      { q: "Tembang macapat sing cacahing gatra ana 10 lan asring kanggo menehi pitutur yaiku …", options: ["Maskumambang", "Dandanggula", "Pocung", "Megatruh"], answer: 1, explain: "Dandanggula nduweni 10 gatra saben sapada lan asring kanggo pitutur. Maskumambang 4 gatra, Pocung 4 gatra, Megatruh 5 gatra." },
       { q: "“Kula badhe tindak dhateng pasar.” Ukara kasebut migunakake basa …", options: ["Ngoko lugu", "Ngoko alus", "Krama alus", "Basa kasar"], answer: 2, explain: "Kula, badhe, tindak, dhateng = krama alus." },
       { q: "Paribasan “Jer basuki mawa bea” tegese …", options: ["Kabeh gegayuhan mbutuhake wragad/pengorbanan", "Wong sugih mesthi seneng", "Bea iku larang", "Kudu ngirit tansah"], answer: 0, explain: "Setiap cita-cita memerlukan biaya/pengorbanan." },
       { q: "Aksara Jawa pasangan saka “ꦠ” yaiku …", options: ["꧀ꦠ", "ꦠ꧀", "꧀ꦢ", "ꦢ꧀"], answer: 0, explain: "Pasangan ditulis di bawah aksara sebelumnya dengan pangkon: ꧀ꦠ." },
@@ -401,7 +401,7 @@ export const BANK: Bank = {
       { q: "Pada respirasi aerob, tahap yang menghasilkan ATP paling banyak adalah …", options: ["Glikolisis", "Siklus Krebs", "Rantai transpor elektron", "Fermentasi"], answer: 2, explain: "Transpor elektron menghasilkan ±34 ATP, jauh lebih banyak dari glikolisis (2) & Krebs (2)." },
       { q: "Persilangan monohibrid Aa × Aa menghasilkan fenotipe dominan : resesif = …", options: ["1 : 1", "3 : 1", "1 : 2 : 1", "9 : 3 : 3 : 1"], answer: 1, explain: "Genotipe 1AA:2Aa:1aa → fenotipe 3 dominan : 1 resesif." },
       { q: "Enzim yang berfungsi menyambung fragmen Okazaki pada replikasi DNA adalah …", options: ["Helikase", "Primase", "DNA ligase", "Topoisomerase"], answer: 2, explain: "DNA ligase menyambung fragmen Okazaki pada untai lagging." },
-      { q: "Orgán pernapasan pada serangga adalah …", options: ["Paru-paru", "Insang", "Trakea", "Kulit"], answer: 2, explain: "Serangga bernapas melalui sistem trakea & spirakel." },
+      { q: "Organ pernapasan pada serangga adalah …", options: ["Paru-paru", "Insang", "Trakea", "Kulit"], answer: 2, explain: "Serangga bernapas melalui sistem trakea & spirakel." },
     ],
     fisika: [
       { q: "Sebuah mobil bergerak dengan kecepatan awal 10 m/s dan percepatan 2 m/s² selama 5 s. Kecepatan akhirnya … m/s", options: ["15", "20", "25", "12"], answer: 1, explain: "v = v₀ + at = 10 + 2×5 = 20 m/s." },
@@ -439,7 +439,7 @@ export const BANK: Bank = {
     ],
     jawa: [
       { q: "Sastrawan Jawa pangripta novel “Kadurakan ing Kidul Dringu” yaiku …", options: ["Suparto Brata", "Ahmad Tohari", "Pramoedya Ananta Toer", "W.S. Rendra"], answer: 0, explain: "Suparto Brata adalah sastrawan Jawa produktif, pangripta “Kadurakan ing Kidul Dringu” dan banyak novel Jawa lainnya." },
-      { q: "Unggah-ungguh basa Jawa ana pira tataran utama?", options: ["2: ngoko & krama", "3: ngoko, madya, krama", "4: ngoko, madya, krama, kasar", "1: krama wae"], answer: 1, explain: "Tiga tataran: ngoko, madya, krama (krama alus/inggil untuk penghormatan tinggi)." },
+      { q: "Basa krama alus/inggil paling trep dipigunakake nalika matur marang …", options: ["Kanca akrab sing sak umur", "Wong sing diajeni, kayata guru lan wong tuwa", "Adhi kandung ing omah", "Dhewekan ing kamar"], answer: 1, explain: "Krama alus/inggil kanggo ngajeni lawan tutur sing luwih tuwa utawa diajeni, kayata guru lan wong tuwa." },
       { q: "Tegese paribasan “Kacang ora lali marang lanjaran” yaiku …", options: ["Wong ora lali marang asale / wong tuwane", "Kacang iku dawa", "Anak kudu manut", "Tetulung marang tangga"], answer: 0, explain: "Anak/orang tidak melupakan asal-usul dan orang tuanya." },
     ],
     arab: [
@@ -511,7 +511,7 @@ if (BANK.TK) {
     { q: "Di antrean, Dita berdiri paling depan. Di belakang Dita ada Rara, lalu Eko. Siapa yang paling BELAKANG?", emoji: "🚶", options: ["Dita", "Rara", "Eko"], answer: 2, explain: "Urutan antrean: Dita – Rara – Eko. Paling belakang Eko." },
   ];
   BANK.TK["kanguru-bahasa"] = [
-    { q: "Kata apa yang bunyinya sama dengan “kaki” di akhir? “Sinta memakai … di kaki.”", emoji: "🧦", options: ["Kaos kaki", "Topi", "Baju"], answer: 0, explain: "Di kaki memakai kaos kaki — kata “kaki” ada di dalamnya." },
+    { q: "Yang dipakai di kaki adalah …", emoji: "🧦", options: ["Kaos kaki", "Topi", "Baju"], answer: 0, explain: "Kaos kaki dipakai di kaki. Topi di kepala, baju di badan." },
     { q: "Lawan kata “besar” adalah …", emoji: "🐘", options: ["Kecil", "Tinggi", "Panjang"], answer: 0, explain: "Besar >< kecil." },
     { q: "Huruf pertama kata “BOLA” adalah …", emoji: "⚽", options: ["B", "O", "L"], answer: 0, explain: "B-O-L-A, huruf pertamanya B." },
     { q: "In English, “cat” artinya …", emoji: "🐱", options: ["Kucing", "Anjing", "Burung"], answer: 0, explain: "Cat = kucing dalam Bahasa Inggris." },
@@ -557,7 +557,7 @@ if (BANK.SMP) {
     { q: "Kata yang TIDAK sekelompok maknanya adalah: gembira, riang, ceria, cemas — yang berbeda adalah …", options: ["gembira", "riang", "ceria", "cemas"], answer: 3, explain: "Gembira, riang, ceria sama-sama senang; cemas berarti khawatir." },
     { q: "Kalimat yang paling logis melengkapi: “Karena hujan turun sangat deras, maka …”", options: ["pertandingan ditunda sampai cuaca membaik", "kami memutuskan berenang lebih lama", "jemuran cepat kering", "sungai menjadi kering"], answer: 0, explain: "Akibat logis hujan deras adalah kegiatan luar ditunda." },
     { q: "Urutan abjad kata-kata berikut yang benar: zebra, apel, mangga, buku adalah …", options: ["apel, buku, mangga, zebra", "buku, apel, mangga, zebra", "apel, mangga, buku, zebra", "zebra, mangga, buku, apel"], answer: 0, explain: "a < b < m < z." },
-    { q: "Pola kata: ABAB — “makan” mengikuti pola huruf M-A-K-A-N? Kata “ada” berpola …", options: ["ABA", "ABC", "AAB", "ABB"], answer: 0, explain: "a-d-a: huruf pertama dan ketiga sama → pola ABA." },
+    { q: "Kata “ada” (a-d-a) mengikuti pola huruf … (huruf yang sama diberi huruf pola yang sama)", options: ["ABA", "ABC", "AAB", "ABB"], answer: 0, explain: "a-d-a: huruf pertama dan ketiga sama-sama “a” → pola ABA." },
   ];
 }
 if (BANK.SMA) {
