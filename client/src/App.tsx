@@ -683,8 +683,8 @@ function focusField(id: string) {
 }
 
 /* ---------------- LOGIN GURU / ORANG TUA ---------------- */
-function AuthView(props: { onSuccess: (token: string, user: SessionUser) => void }) {
-  const [tab, setTab] = useState<"login" | "register">("login");
+function AuthView(props: { onSuccess: (token: string, user: SessionUser) => void; initialTab?: "login" | "register" }) {
+  const [tab, setTab] = useState<"login" | "register">(props.initialTab ?? "login");
   const [role, setRole] = useState<Role>("orangtua");
   // Pilihan Superadmin hanya tampil selama akun Superadmin BELUM pernah
   // dibuat — server juga menolak pembuatan admin kedua (satu-satunya).
@@ -1894,6 +1894,51 @@ function ModuleView(props: {
 }
 
 /* ---------------- APP ---------------- */
+/* ---------------- AJAKAN DAFTAR (Guru & Orang Tua) ----------------
+   Kartu ajakan mendaftar agar peringkat & pencapaian siswa terpantau dan
+   tidak ter-reset. Murni tampilan: tombolnya membuka halaman Guru & Ortu
+   pada tab Daftar Baru. Varian Beranda bisa ditutup permanen per perangkat
+   (localStorage ziqva-cta-daftar-v1). */
+const CTA_DISMISS_KEY = "ziqva-cta-daftar-v1";
+
+function DaftarCtaCard(props: { variant: "home" | "result" | "history"; onDaftar: () => void; onClose?: () => void }) {
+  if (props.variant === "result") {
+    return (
+      <div className="mx-auto mt-4 max-w-md rounded-2xl px-4 py-3 text-left" style={{ background: "#fff", border: "2px solid var(--gold)" }} aria-label="Ajakan mendaftar untuk guru dan orang tua">
+        <p className="text-sm leading-relaxed font-semibold" style={{ color: "#2B2440" }}>
+          🏆 Nilai kamu sudah masuk papan peringkat! Minta Ayah/Bunda atau gurumu mendaftar dan memasukkan Kode Pantau ini, supaya peringkat dan pencapaianmu terus terpantau dan tidak ter-reset.
+        </p>
+        <button type="button" onClick={props.onDaftar} aria-label="Daftar sebagai guru atau orang tua"
+          className="font-display mt-3 min-h-[48px] w-full rounded-2xl px-5 font-bold text-white" style={{ background: "var(--accent)" }}>
+          👨‍🏫 Daftar Guru / Orang Tua
+        </button>
+      </div>
+    );
+  }
+  return (
+    <section className="pop-in relative mt-5 rounded-3xl p-5 shadow-sm" style={{ background: "linear-gradient(150deg,#FFF3DC,#FDE7F3)", border: "2px solid var(--gold)" }} aria-label="Ajakan mendaftar untuk guru dan orang tua">
+      {props.onClose && (
+        <button type="button" onClick={props.onClose} aria-label="Tutup ajakan daftar" className="absolute top-3 right-3 flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold" style={{ background: "rgba(255,255,255,.7)", color: "#92600A" }}>✕</button>
+      )}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="text-4xl" aria-hidden>📣</div>
+        <div className="flex-1">
+          <h2 className="font-display pr-8 text-lg font-bold sm:pr-0">Ayo Daftar, Biar Pencapaian Tidak Hilang!</h2>
+          <p className="text-sm leading-relaxed" style={{ color: "var(--dim)" }}>
+            {props.variant === "home"
+              ? <>Daftarkan akun <strong>Guru / Orang Tua</strong> untuk memantau peringkat dan pencapaian siswa. Nilai dan riwayat tersimpan aman di awan — <strong>tidak ter-reset dan tidak hilang</strong> walau ganti HP atau browser.</>
+              : <>Dengan akun <strong>Guru / Orang Tua</strong>, peringkat dan pencapaian bisa dipantau dari perangkat mana pun. Nilai dan riwayat tersimpan aman di awan — <strong>tidak ter-reset dan tidak hilang</strong> walau ganti HP atau browser.</>}
+          </p>
+        </div>
+        <button type="button" onClick={props.onDaftar} aria-label={props.variant === "home" ? "Daftar sekarang sebagai guru atau orang tua, gratis" : "Daftar sebagai guru atau orang tua"}
+          className="font-display min-h-[54px] shrink-0 rounded-2xl px-6 font-bold text-white" style={{ background: "var(--accent)" }}>
+          {props.variant === "home" ? "📝 Daftar Sekarang — Gratis" : "👨‍🏫 Daftar Guru / Orang Tua"}
+        </button>
+      </div>
+    </section>
+  );
+}
+
 export function App() {
   const queryClient = useQueryClient();
   const [view, setView] = useState<View>("home");
@@ -1934,6 +1979,14 @@ export function App() {
   const me = useQuery({ queryKey: ["me", token], queryFn: () => api.me({ token }), enabled: token.length > 0 });
   const sessionUser: SessionUser | null = token && me.data ? me.data.user : null;
 
+  // Ajakan daftar: tab awal halaman Guru & Ortu + status kartu ajakan
+  // Beranda yang sudah ditutup di perangkat ini.
+  const [authInitialTab, setAuthInitialTab] = useState<"login" | "register">("login");
+  const [ctaDismissed, setCtaDismissed] = useState<boolean>(() => { try { return localStorage.getItem(CTA_DISMISS_KEY) === "1"; } catch { return false; } });
+  const dismissCta = () => { setCtaDismissed(true); try { localStorage.setItem(CTA_DISMISS_KEY, "1"); } catch { /* abaikan */ } };
+  const openRegister = () => { setAuthInitialTab("register"); setView("login"); window.scrollTo({ top: 0 }); };
+  const openLogin = () => { setAuthInitialTab("login"); setView("login"); window.scrollTo({ top: 0 }); };
+
   const handleAuthSuccess = (t: string, user: SessionUser) => {
     try { localStorage.setItem(TOKEN_KEY, t); } catch { /* penyimpanan tidak tersedia */ }
     setToken(t);
@@ -1945,6 +1998,7 @@ export function App() {
     onSettled: () => {
       try { localStorage.removeItem(TOKEN_KEY); } catch { /* abaikan */ }
       setToken("");
+      setAuthInitialTab("login");
       queryClient.invalidateQueries({ queryKey: ["me"] });
       setView("home");
     },
@@ -2000,6 +2054,7 @@ export function App() {
       localStorage.removeItem(SOUND_KEY);
       localStorage.removeItem(SOUND_KEY_LAMA);
       localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(CTA_DISMISS_KEY);
     } catch { /* abaikan */ }
     // Putar ID perangkat baru supaya riwayat lama benar-benar tidak terbawa.
     let newDeviceId = deviceId;
@@ -2024,6 +2079,7 @@ export function App() {
     setEarnedPoints(0);
     setUnlockedNow(null);
     setToken("");
+    setCtaDismissed(false);
     setSoundOn(true);
     setShowWelcome(true);
     setShowReset(false);
@@ -2325,7 +2381,7 @@ export function App() {
             <button type="button" onClick={() => { stopSpeaking(); setView("ranking"); }} aria-label="Lihat papan peringkat per jenjang"
               className="min-h-[40px] rounded-full px-4 font-display text-sm font-bold"
               style={{ background: view === "ranking" ? "var(--gold)" : "rgba(255,255,255,.15)", color: view === "ranking" ? "#2B2440" : "#fff" }}>🏆 Peringkat</button>
-            <button type="button" onClick={() => setView(sessionUser ? "dashboard" : "login")} aria-label={sessionUser ? "Ke dashboard pantau guru dan orang tua" : "Masuk sebagai guru atau orang tua"}
+            <button type="button" onClick={() => { if (sessionUser) setView("dashboard"); else openLogin(); }} aria-label={sessionUser ? "Ke dashboard pantau guru dan orang tua" : "Masuk sebagai guru atau orang tua"}
               className="min-h-[40px] rounded-full px-4 font-display text-sm font-bold"
               style={{ background: view === "dashboard" || view === "login" ? "var(--gold)" : "rgba(255,255,255,.15)", color: view === "dashboard" || view === "login" ? "#2B2440" : "#fff" }}>
               {sessionUser ? `👀 Pantau (${sessionUser.name.split(" ")[0]})` : "👨‍🏫 Guru & Ortu"}
@@ -2360,7 +2416,7 @@ export function App() {
         </div>
       )}
 
-      {view === "login" && <AuthView onSuccess={handleAuthSuccess} />}
+      {view === "login" && <AuthView initialTab={authInitialTab} onSuccess={handleAuthSuccess} />}
 
       {view === "dashboard" && sessionUser && (
         <MonitorView token={token} user={sessionUser} onLogout={handleLogout} onPractice={() => setView("home")} />
@@ -2550,6 +2606,11 @@ export function App() {
             </div>
           </section>
 
+          {/* Ajakan daftar Guru & Ortu — hilang bila sudah login atau sudah ditutup di perangkat ini */}
+          {!sessionUser && !ctaDismissed && (
+            <DaftarCtaCard variant="home" onDaftar={openRegister} onClose={dismissCta} />
+          )}
+
           {/* Rewards strip */}
           <section className="mt-5 flex flex-wrap items-center gap-2 rounded-3xl p-4 shadow-sm" style={{ background: "var(--surface)", border: "2px solid var(--gold)" }} aria-label="Hadiah dan pencapaian saya">
             <span className="font-display text-base font-extrabold">🎁 Hadiahku:</span>
@@ -2603,7 +2664,7 @@ export function App() {
                   : "Buat akun gratis sebagai guru atau orang tua, lalu tambahkan nama peserta + Kode Pantau-nya (tampil di layar hasil anak) untuk melihat skor, rata-rata, dan peringkatnya."}
               </p>
             </div>
-            <button type="button" onClick={() => setView(sessionUser ? "dashboard" : "login")} aria-label={sessionUser ? "Buka dashboard pantau" : "Masuk atau daftar sebagai guru atau orang tua"}
+            <button type="button" onClick={() => { if (sessionUser) setView("dashboard"); else openLogin(); }} aria-label={sessionUser ? "Buka dashboard pantau" : "Masuk atau daftar sebagai guru atau orang tua"}
               className="font-display min-h-[52px] shrink-0 rounded-2xl px-6 font-bold text-white" style={{ background: "var(--accent)" }}>
               {sessionUser ? "👀 Buka Pantauan" : "🔑 Masuk / Daftar"}
             </button>
@@ -2771,6 +2832,7 @@ export function App() {
                 <p className="text-xs font-semibold" style={{ color: "#92600A" }}>Berikan kode ini ke guru / orang tua supaya mereka bisa memantau skormu dari akun mereka.</p>
               </div>
             )}
+            {!sessionUser && <DaftarCtaCard variant="result" onDaftar={openRegister} />}
           </section>
 
           {/* Rewards yang baru didapat */}
@@ -2838,6 +2900,9 @@ export function App() {
       {view === "history" && (
         <main className="mx-auto w-full max-w-3xl px-4 pb-10">
           <h1 className="font-display mt-5 text-2xl font-extrabold">🏅 Prestasiku</h1>
+
+          {/* Ajakan daftar Guru & Ortu — hanya bila belum ada sesi login di perangkat ini */}
+          {!sessionUser && <DaftarCtaCard variant="history" onDaftar={openRegister} />}
 
           {/* Rewards & lencana */}
           <section className="mt-4 rounded-3xl p-5 shadow-sm" style={{ background: "var(--surface)", border: "1px solid var(--border)" }} aria-label="Poin, bintang, streak, dan lencana saya">
