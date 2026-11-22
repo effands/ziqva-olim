@@ -9,6 +9,7 @@
 // belum pernah keluar di perangkat ini.
 
 import { generateQuestions, shuffle, shuffleOptions } from "./generators";
+import { BANK_EN, generateQuestionsEn } from "./cambridge";
 
 export type JenjangId = "TK" | "SD" | "SMP" | "SMA";
 export type SchoolType = "umum" | "madrasah" | "kristen" | "cambridge";
@@ -521,8 +522,18 @@ function loadSeen(): Record<string, string[]> {
   }
 }
 
-/** Bank soal tertulis mentah (tanpa acak) untuk jenjang + mapel. */
-export function getPackage(jenjang: JenjangId, subjectId: string): Question[] {
+/** Bank soal tertulis mentah (tanpa acak) untuk jenjang + mapel.
+    Mode Cambridge (english): pakai BANK_EN; mapel cambridge-* memang
+    sudah berbahasa Inggris di BANK sehingga dipakai apa adanya. Bila
+    padanan Inggris belum ada, kembalikan kosong (generator Inggris
+    mengisi sesi) — jangan bocorkan soal Bahasa Indonesia. */
+export function getPackage(jenjang: JenjangId, subjectId: string, english = false): Question[] {
+  if (english) {
+    const en = BANK_EN[jenjang]?.[subjectId];
+    if (en) return en;
+    if (subjectId.startsWith("cambridge-")) return BANK[jenjang]?.[subjectId] ?? [];
+    return [];
+  }
   return BANK[jenjang]?.[subjectId] ?? [];
 }
 
@@ -532,9 +543,9 @@ export function getPackage(jenjang: JenjangId, subjectId: string): Question[] {
  * tanpa pengulangan di dalam sesi, dan memprioritaskan soal yang
  * belum pernah keluar di perangkat ini.
  */
-export function buildSession(jenjang: JenjangId, subjectId: string, level: number, count: number = SESSION_SIZE): Question[] {
-  const combo = `${jenjang}|${subjectId}|${level}`;
-  const authored = getPackage(jenjang, subjectId);
+export function buildSession(jenjang: JenjangId, subjectId: string, level: number, count: number = SESSION_SIZE, english = false): Question[] {
+  const combo = `${jenjang}|${subjectId}|${level}${english ? "|en" : ""}`;
+  const authored = getPackage(jenjang, subjectId, english);
   const total = authored.length;
   const withLevel = authored.map((q, i) => ({
     q,
@@ -558,7 +569,10 @@ export function buildSession(jenjang: JenjangId, subjectId: string, level: numbe
   };
   for (const a of ordered) push(shuffleOptions(a.q));
   for (let round = 0; round < 4 && pool.length < count * 2; round++) {
-    for (const q of generateQuestions(jenjang, subjectId, level, count * 2)) push(q);
+    const gen = english
+      ? generateQuestionsEn(jenjang, subjectId, level, count * 2)
+      : generateQuestions(jenjang, subjectId, level, count * 2);
+    for (const q of gen) push(q);
   }
 
   const store = loadSeen();

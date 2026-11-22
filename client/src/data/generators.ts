@@ -386,6 +386,15 @@ export function pairGenL(bank: PairBank): LGen {
 export function factGenL(facts: readonly Fact[], four = true): LGen {
   return (level) => factGen(windowOf(facts, level) as Fact[], four)();
 }
+/** Versi level-aware dari classifyGen: jendela item bergeser per level. */
+export function classifyGenL(
+  items: readonly { item: string; cat: string }[],
+  ask: (item: string) => string,
+  ex: (item: string, cat: string) => string,
+  four = true,
+): LGen {
+  return (level) => classifyGen(windowOf(items, level), ask, ex, four)();
+}
 /** Generator kosakata bahasa dengan jendela level. */
 export function langVocabGensL(
   vocab: readonly (readonly [string, string])[],

@@ -7,6 +7,7 @@
 // membahas topik soal itu — bukan halaman belajar umum.
 
 import { MATERIALS } from "./materials";
+import { englishMaterial, englishModule } from "./cambridge";
 import type { JenjangId, Question } from "./questions";
 
 export interface LibraryModule {
@@ -615,14 +616,18 @@ function subjectPool(subjectId: string): string[] {
   return alias ? [subjectId, alias] : [subjectId];
 }
 
-/** Modul-modul untuk satu jenjang + mapel (termasuk fallback dari Bahan Belajar). */
-export function modulesFor(jenjang: JenjangId, subjectId: string): LibraryModule[] {
+/** Modul-modul untuk satu jenjang + mapel (termasuk fallback dari Bahan Belajar).
+    Mode Cambridge (english): modul diterjemahkan lewat MODULE_EN /
+    MATERIALS_EN dari cambridge.ts, termasuk kata kuncinya, supaya
+    pemetaan soal -> modul tetap akurat untuk soal Bahasa Inggris. */
+export function modulesFor(jenjang: JenjangId, subjectId: string, english = false): LibraryModule[] {
   const pool = subjectPool(subjectId);
   const direct = LIBRARY_MODULES.filter((m) => m.jenjang.includes(jenjang) && m.subjects.some((s) => pool.includes(s)));
-  if (direct.length > 0) return direct;
+  if (direct.length > 0) return english ? direct.map(englishModule) : direct;
   // Fallback: turunkan modul dari sections Bahan Belajar mapel itu.
-  const material = MATERIALS[subjectId];
-  if (!material) return [];
+  const rawMaterial = MATERIALS[subjectId];
+  if (!rawMaterial) return [];
+  const material = english ? englishMaterial(subjectId, rawMaterial) : rawMaterial;
   return material.sections.map((sec, i) => ({
     id: `derived-${subjectId}-${i}`,
     subjects: [subjectId],
@@ -641,8 +646,8 @@ export function modulesFor(jenjang: JenjangId, subjectId: string): LibraryModule
  * pembahasannya, di antara modul jenjang + mapel yang sama.
  * Selalu mengembalikan modul paling relevan (fallback modul pertama).
  */
-export function moduleForQuestion(jenjang: JenjangId, subjectId: string, q: Question): LibraryModule | null {
-  const mods = modulesFor(jenjang, subjectId);
+export function moduleForQuestion(jenjang: JenjangId, subjectId: string, q: Question, english = false): LibraryModule | null {
+  const mods = modulesFor(jenjang, subjectId, english);
   if (mods.length === 0) return null;
   const hayQ = q.q.toLowerCase();
   const hayRest = `${q.explain} ${q.options.join(" ")}`.toLowerCase();

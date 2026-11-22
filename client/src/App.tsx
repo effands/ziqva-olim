@@ -63,7 +63,9 @@ function loadSoundOn(): boolean {
   try { return localStorage.getItem(SOUND_KEY) !== "off"; } catch { return true; }
 }
 
-export function langForSubject(subjectId: string): string {
+export function langForSubject(subjectId: string, english = false): string {
+  // Mode Cambridge: SEMUA soal dibacakan dengan suara Bahasa Inggris.
+  if (english) return "en-US";
   if (subjectId === "korea") return "ko-KR";
   if (subjectId === "jepang") return "ja-JP";
   if (subjectId === "mandarin") return "zh-CN";
@@ -422,6 +424,8 @@ function QuizView(props: {
   totalTimeSec?: number;
   /** Label konteks sesi, mis. nama Kelas Ujian — tampil di atas daftar soal. */
   contextLabel?: string;
+  /** Mode Cambridge: soal full Bahasa Inggris — TTS memakai suara Inggris. */
+  english?: boolean;
 }) {
   const { questions, mode } = props;
   const totalTime = props.totalTimeSec ?? questions.length * 60;
@@ -493,7 +497,7 @@ function QuizView(props: {
       return;
     }
     setTtsMsg("");
-    speakText(`${current.q}. Pilihan: ${current.options.join(". ")}`, langForSubject(props.subjectId), { setSpeaking, onStatus: setTtsMsg });
+    speakText(`${current.q}. ${props.english ? "Choices" : "Pilihan"}: ${current.options.join(". ")}`, langForSubject(props.subjectId, props.english), { setSpeaking, onStatus: setTtsMsg });
   };
 
   const [testLines, setTestLines] = useState<string[]>([]);
@@ -841,10 +845,10 @@ interface PendingClassSubmission {
 
 /** Bangun paket soal kelas: gabungkan beberapa sesi buildSession sampai
     jumlah uniknya mencapai target (bank + generator selalu cukup). */
-function buildClassPackage(jenjang: JenjangId, subjectId: string, level: number, count: number): Question[] {
+function buildClassPackage(jenjang: JenjangId, subjectId: string, level: number, count: number, english = false): Question[] {
   const byText = new Map<string, Question>();
   for (let round = 0; round < 6 && byText.size < count; round++) {
-    for (const q of buildSession(jenjang, subjectId, level, count)) {
+    for (const q of buildSession(jenjang, subjectId, level, count, english)) {
       if (!byText.has(q.q)) byText.set(q.q, q);
     }
   }
@@ -1711,6 +1715,7 @@ function LeaderboardView(props: { initialJenjang: JenjangId; myName: string; onP
 function BelajarView(props: {
   jenjang: JenjangId;
   initialSubject: string;
+  english?: boolean;
   onPractice: (subjectId: string) => void;
   onOpenModule: (module: LibraryModule, jenjang: JenjangId, subjectId: string) => void;
 }) {
@@ -1719,7 +1724,7 @@ function BelajarView(props: {
   const [sel, setSel] = useState(props.initialSubject);
   const active = libSubjects.find((s) => s.id === sel) ?? libSubjects[0];
   const material = active ? materialFor(active.id) : null;
-  const modules = active ? modulesFor(libJenjang, active.id) : [];
+  const modules = active ? modulesFor(libJenjang, active.id, props.english) : [];
   useEffect(() => { setSel(props.initialSubject); }, [props.initialSubject]);
   useEffect(() => { setLibJenjang(props.jenjang); }, [props.jenjang]);
   if (!active) return null;
@@ -1906,7 +1911,7 @@ function DaftarCtaCard(props: { variant: "home" | "result" | "history"; onDaftar
     return (
       <div className="mx-auto mt-4 max-w-md rounded-2xl px-4 py-3 text-left" style={{ background: "#fff", border: "2px solid var(--gold)" }} aria-label="Ajakan mendaftar untuk guru dan orang tua">
         <p className="text-sm leading-relaxed font-semibold" style={{ color: "#2B2440" }}>
-          🏆 Nilai kamu sudah masuk papan peringkat! Minta Ayah/Bunda atau gurumu mendaftar dan memasukkan Kode Pantau ini, supaya peringkat dan pencapaianmu terus terpantau dan tidak ter-reset.
+          🏆 Nilai kamu sudah masuk papan peringkat! Minta Ayah/Bunda atau gurumu mendaftar dan memasukkan Kode Pantau ini, supaya peringkat dan pencapaianmu terus terpantau dan tidak ter-reset. Daftarnya <strong>100% gratis</strong> — semua latihan di ZIQVA OLIM memang gratis, tanpa biaya apa pun! 🎁
         </p>
         <button type="button" onClick={props.onDaftar} aria-label="Daftar sebagai guru atau orang tua"
           className="font-display mt-3 min-h-[48px] w-full rounded-2xl px-5 font-bold text-white" style={{ background: "var(--accent)" }}>
@@ -1923,11 +1928,15 @@ function DaftarCtaCard(props: { variant: "home" | "result" | "history"; onDaftar
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="text-4xl" aria-hidden>📣</div>
         <div className="flex-1">
+          <span className="font-display mb-1.5 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-extrabold text-white" style={{ background: "#1E7A46" }}>🎁 100% GRATIS</span>
           <h2 className="font-display pr-8 text-lg font-bold sm:pr-0">Ayo Daftar, Biar Pencapaian Tidak Hilang!</h2>
           <p className="text-sm leading-relaxed" style={{ color: "var(--dim)" }}>
             {props.variant === "home"
               ? <>Daftarkan akun <strong>Guru / Orang Tua</strong> untuk memantau peringkat dan pencapaian siswa. Nilai dan riwayat tersimpan aman di awan — <strong>tidak ter-reset dan tidak hilang</strong> walau ganti HP atau browser.</>
               : <>Dengan akun <strong>Guru / Orang Tua</strong>, peringkat dan pencapaian bisa dipantau dari perangkat mana pun. Nilai dan riwayat tersimpan aman di awan — <strong>tidak ter-reset dan tidak hilang</strong> walau ganti HP atau browser.</>}
+          </p>
+          <p className="mt-1.5 text-sm leading-relaxed font-semibold" style={{ color: "#1E7A46" }}>
+            ZIQVA OLIM dibuat benar-benar gratis untuk latihan olimpiade — bekal masa depan anak, tanpa biaya apa pun. Ayo coba sekarang!
           </p>
         </div>
         <button type="button" onClick={props.onDaftar} aria-label={props.variant === "home" ? "Daftar sekarang sebagai guru atau orang tua, gratis" : "Daftar sebagai guru atau orang tua"}
@@ -2110,7 +2119,7 @@ export function App() {
 
   const openModuleForQuestion = (q: Question, backLabel: string) => {
     if (!activeSubject) return;
-    const m = moduleForQuestion(jenjang, activeSubject.id, q);
+    const m = moduleForQuestion(jenjang, activeSubject.id, q, school === "cambridge");
     if (!m) return;
     setModuleCtx({ module: m, jenjang, subjectId: activeSubject.id, subjectName: activeSubject.name, question: q, backLabel, fromLibrary: false });
   };
@@ -2270,7 +2279,7 @@ export function App() {
   const startQuiz = () => {
     if (!name.trim()) { setNameError("Isi nama peserta dulu ya, supaya hasil latihannya tercatat."); focusField("student-name"); return; }
     if (!activeSubject) return;
-    const qs = buildSession(jenjang, activeSubject.id, level, SESSION_SIZE);
+    const qs = buildSession(jenjang, activeSubject.id, level, SESSION_SIZE, school === "cambridge");
     if (qs.length === 0) return;
     setSessionQ(qs);
     setSessionLevel(level);
@@ -2450,6 +2459,7 @@ export function App() {
           levelLabel={`Level ${classSession.level} · ${LEVELS[classSession.level - 1]?.name ?? ""}`}
           soundOn={soundOn} onToggleSound={toggleSound}
           questions={questions} onFinish={handleClassFinish} onQuit={quitClassQuiz} quitSignal={quitSignal}
+          english={school === "cambridge"}
           totalTimeSec={classSession.durationMinutes * 60}
           contextLabel={`🏫 Kelas Ujian: ${classSession.className} • Kode ${classSession.code} • Murni Mode Ujian — kerjakan sendiri ya!`} />
       )}
@@ -2459,6 +2469,7 @@ export function App() {
           levelLabel={`Level ${sessionLevel} · ${LEVELS[sessionLevel - 1]?.name ?? ""}`}
           soundOn={soundOn} onToggleSound={toggleSound}
           questions={questions} onFinish={handleFinish} onQuit={() => setView("home")} quitSignal={quitSignal}
+          english={school === "cambridge"}
           onInfo={(q) => openModuleForQuestion(q, "Kembali ke Soal")} />
       )}
 
@@ -2530,7 +2541,7 @@ export function App() {
       )}
 
       {view === "belajar" && (
-        <BelajarView jenjang={jenjang} initialSubject={activeSubject?.id ?? subjects[0]?.id ?? "matematika"}
+        <BelajarView jenjang={jenjang} english={school === "cambridge"} initialSubject={activeSubject?.id ?? subjects[0]?.id ?? "matematika"}
           onPractice={(sid) => { setSubjectId(sid); setView("home"); window.scrollTo({ top: 0 }); }}
           onOpenModule={openModuleFromLibrary} />
       )}
@@ -2577,6 +2588,10 @@ export function App() {
           <section className="mt-4 overflow-hidden rounded-3xl shadow-sm" style={{ border: "1px solid var(--border)" }}>
             <img src={heroImg} alt="Ilustrasi anak-anak Indonesia dari TK sampai SMA merayakan kemenangan olimpiade dengan piala dan medali" className="h-44 w-full object-cover object-top sm:h-64" />
             <div className="p-5 sm:p-6" style={{ background: "var(--surface)" }}>
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <span className="font-display inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-base font-extrabold text-white shadow" style={{ background: "#1E7A46" }} aria-label="Seratus persen gratis">🎁 100% GRATIS</span>
+                <span className="font-display text-base font-extrabold" style={{ color: "#1E7A46" }}>— Bekal Masa Depan Anak</span>
+              </div>
               <h1 className="font-display text-2xl leading-tight font-extrabold sm:text-3xl">Latihan Olimpiade Interaktif — dari TK/PAUD sampai SMA/SMK/MA 🏅</h1>
               <p className="mt-2 max-w-2xl text-[15px] leading-relaxed" style={{ color: "var(--dim)" }}>
                 Platform latihan olimpiade interaktif untuk semua jenjang, dari TK/PAUD hingga SMA/SMK/MA: <strong>{SESSION_SIZE} soal pilihan ganda dalam {SESSION_SIZE} menit</strong> dengan
@@ -2584,6 +2599,9 @@ export function App() {
                 Bahasa Jawa, Bahasa Arab, PAI, Akidah Akhlak, Fikih, Qur'an Hadis, SKI, Agama Kristen, hingga kelas Cambridge, ditambah Bahasa Korea, Bahasa Jepang, dan Bahasa Mandarin.
                 Setiap sesi berisi <strong>{SESSION_SIZE} soal acak yang selalu baru</strong> (dicoba seratus kali pun tetap fresh),
                 berjenjang dari <strong>Level 1 Pemula sampai Level 5 Ahli Olimpiade</strong> — skor {UNLOCK_SCORE}+ membuka level berikutnya!
+              </p>
+              <p className="mt-2 max-w-2xl text-[15px] leading-relaxed font-semibold" style={{ color: "#1E7A46" }}>
+                Dibuat benar-benar gratis untuk latihan olimpiade anak Indonesia — semua soal, bahan belajar, dan pantauan nilainya bebas dipakai siapa saja. Ayo coba sekarang, tanpa biaya apa pun! 🎉
               </p>
               <div className="mt-4 flex flex-wrap gap-2 text-sm font-bold">
                 <span className="rounded-full px-3 py-1.5" style={{ background: "var(--surface2)" }}>📚 Total {TOTAL_AUTHORED} soal inti tertulis</span>
