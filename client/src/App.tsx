@@ -19,7 +19,7 @@ import type { Actions } from "../../server/src/actions";
 
 const FIELDS = actionFields<typeof Actions>();
 
-type View = "home" | "quiz" | "result" | "history" | "login" | "dashboard" | "belajar";
+type View = "home" | "quiz" | "result" | "history" | "login" | "dashboard" | "belajar" | "ranking";
 type Mode = "ujian" | "latihan";
 type Role = "guru" | "orangtua";
 type SessionUser = { id: number; name: string; username: string; role: string; organization: string };
@@ -77,6 +77,12 @@ export function langForSubject(subjectId: string): string {
    dipanggil SINKRON di dalam handler klik yang sama. Di Android Chrome,
    speak() yang dipanggil setelah await / jeda async sering gagal diam-diam. */
 let voiceCache: SpeechSynthesisVoice[] = [];
+/* Generasi bicara: setiap speakText() baru dan setiap stopSpeaking()
+   menaikkannya. speakChunk/doSpeak yang tertunda memeriksa generasi ini —
+   bila sudah berubah, bacaan lama TIDAK jadi dimulai/dilanjutkan. Ini
+   memastikan menekan "Berikutnya" menghentikan suara secara total, termasuk
+   utterance yang masih menunggu jeda sesudah cancel(). */
+let speechGeneration = 0;
 function refreshVoices() {
   try {
     if ("speechSynthesis" in window) {
@@ -176,6 +182,10 @@ function speakText(text: string, lang: string, opts: SpeakOpts): boolean {
     return false;
   }
   const synth = window.speechSynthesis;
+  // Bacaan ini menjadi generasi bicara terbaru; stopSpeaking() (mis. saat
+  // peserta menekan Berikutnya) menaikkan generasi dan membatalkannya.
+  speechGeneration += 1;
+  const gen = speechGeneration;
   // Bangunkan jalur WebAudio dalam gestur klik yang sama — di banyak HP,
   // jalur audio yang belum pernah dibangunkan membuat SEMUA bunyi bisu.
   ensureAudioCtx();
@@ -190,6 +200,7 @@ function speakText(text: string, lang: string, opts: SpeakOpts): boolean {
   let ci = 0;
   const speakChunk = () => {
     if (stopped) return;
+    if (gen !== speechGeneration) { stopped = true; setSpeaking(false); return; }
     if (ci >= chunks.length) { setSpeaking(false); return; }
     const u = new SpeechSynthesisUtterance(chunks[ci]);
     if (voice) {
@@ -218,10 +229,11 @@ function speakText(text: string, lang: string, opts: SpeakOpts): boolean {
     }
   };
   const doSpeak = () => {
+    if (gen !== speechGeneration) { setSpeaking(false); return; }
     setSpeaking(true);
     speakChunk();
     window.setTimeout(() => {
-      if (!started && !stopped) onStatus?.("Bacaan belum juga mulai — mesin suara (TTS) di browser ini tampaknya tidak aktif. Ketuk tombol 🔊 Tes Suara untuk diagnosa lengkap, atau buka ZIQVA OLIM dengan Chrome dan pastikan Speech Services by Google aktif.");
+      if (!started && !stopped && gen === speechGeneration) onStatus?.("Bacaan belum juga mulai — mesin suara (TTS) di browser ini tampaknya tidak aktif. Ketuk tombol 🔊 Tes Suara untuk diagnosa lengkap, atau buka ZIQVA OLIM dengan Chrome dan pastikan Speech Services by Google aktif.");
     }, 2800);
     window.setTimeout(() => setSpeaking(false), Math.min(60000, 6000 + clean.length * 110));
   };
@@ -237,6 +249,18 @@ function speakText(text: string, lang: string, opts: SpeakOpts): boolean {
     doSpeak(); // sinkron di dalam handler klik — jalur paling andal
   }
   return true;
+}
+
+/**
+ * Hentikan bacaan suara (TTS) SAAT ITU JUGA — dipanggil setiap kali peserta
+ * pindah soal (Berikutnya / Sebelumnya / nomor soal / Kumpulkan / Keluar),
+ * karena peserta yang berpikir cepat tidak perlu menunggu bacaan soal
+ * sebelumnya selesai. speechSynthesis.cancel() menghentikan utterance yang
+ * sedang berbunyi maupun yang masih antre, tanpa jeda.
+ */
+export function stopSpeaking() {
+  speechGeneration += 1; // batalkan juga speak() yang masih terjadwal (jeda 90 ms sesudah cancel)
+  try { window.speechSynthesis?.cancel(); } catch { /* abaikan */ }
 }
 
 /* Efek suara WebAudio — dibuat langsung di browser, tanpa file audio. */
@@ -404,7 +428,7 @@ function QuizView(props: {
   const [confirmQuit, setConfirmQuit] = useState(false);
   // Klik logo header saat sesi berjalan membuka konfirmasi keluar yang sama.
   useEffect(() => {
-    if ((props.quitSignal ?? 0) > 0) setConfirmQuit(true);
+    if ((props.quitSignal ?? 0) > 0) { stopSpeaking(); setConfirmQuit(true); }
   }, [props.quitSignal]);
   const [speaking, setSpeaking] = useState(false);
   const [ttsMsg, setTtsMsg] = useState("");
@@ -414,8 +438,21 @@ function QuizView(props: {
   const current = questions[idx];
   const answeredCount = answers.filter((a) => a !== null).length;
 
+  /** Hentikan bacaan suara SEKARANG juga (tanpa menunggu selesai) dan
+      matikan indikator "Sedang dibacakan…". Dipakai di semua perpindahan. */
+  const stopVoice = () => { stopSpeaking(); setSpeaking(false); };
+
+  /** Pindah ke soal lain — bacaan soal sebelumnya WAJIB berhenti langsung,
+      karena peserta yang berpikir cepat sudah tidak mendengarkan soal itu. */
+  const goTo = (next: number) => { stopVoice(); setIdx(next); };
+
+  // Jaring pengaman: perubahan nomor soal dari jalur mana pun selalu
+  // menghentikan bacaan yang sedang berbunyi.
+  useEffect(() => { stopSpeaking(); setSpeaking(false); }, [idx]);
+
   const finish = () => {
     if (finishedRef.current) return;
+    stopVoice();
     finishedRef.current = true;
     const used = Math.min(totalTime, Math.round((Date.now() - startRef.current) / 1000));
     props.onFinish(answers, used);
@@ -437,7 +474,7 @@ function QuizView(props: {
   }, []);
 
   // Hentikan bacaan TTS saat keluar dari kuis.
-  useEffect(() => () => { try { window.speechSynthesis?.cancel(); } catch { /* abaikan */ } }, []);
+  useEffect(() => () => { stopSpeaking(); }, []);
 
   const handleListen = () => {
     if (!current) return;
@@ -499,14 +536,14 @@ function QuizView(props: {
             <div className="text-[11px]" style={{ color: "var(--dim)" }}>{mode === "ujian" ? "Mode Ujian" : "Mode Latihan"}</div>
           </div>
           <button type="button" onClick={props.onToggleSound} aria-label={props.soundOn ? "Matikan semua suara" : "Nyalakan suara"} aria-pressed={props.soundOn} className="rounded-full px-3 py-2 text-sm font-bold" style={{ background: "var(--surface2)", color: "var(--dim)" }}>{props.soundOn ? "🔊" : "🔇"}</button>
-          <button type="button" onClick={() => setConfirmQuit(true)} aria-label="Keluar dari kuis" className="rounded-full px-3 py-2 text-sm font-bold" style={{ background: "var(--surface2)", color: "var(--dim)" }}>✕</button>
+          <button type="button" onClick={() => { stopVoice(); setConfirmQuit(true); }} aria-label="Keluar dari kuis" className="rounded-full px-3 py-2 text-sm font-bold" style={{ background: "var(--surface2)", color: "var(--dim)" }}>✕</button>
         </div>
       </div>
 
       <p className="mt-2 text-sm font-bold" style={{ color: "var(--dim)" }}>{props.jenjang} • {props.subjectName} • {props.levelLabel} • Soal {idx + 1} dari {questions.length}</p>
 
       <div className="pop-in relative mt-2 rounded-3xl p-5 shadow-sm" key={idx} style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-        {mode === "latihan" && props.onInfo && <InfoIcon onClick={() => props.onInfo?.(current)} />}
+        {mode === "latihan" && props.onInfo && <InfoIcon onClick={() => { stopVoice(); props.onInfo?.(current); }} />}
         {current.emoji && <div className="floaty mb-2 text-5xl" aria-hidden>{current.emoji}</div>}
         {current.stimulus && <p className="mb-3 rounded-xl px-3 py-2 text-[15px] leading-relaxed" style={{ background: "var(--surface2)" }}>{current.stimulus}</p>}
         <h2 className="pr-8 text-lg leading-snug font-bold whitespace-pre-line">{current.q}</h2>
@@ -572,7 +609,7 @@ function QuizView(props: {
       {/* Palette */}
       <div className="mt-4 flex flex-wrap gap-1.5" aria-label="Nomor soal">
         {questions.map((_, i) => (
-          <button key={i} type="button" onClick={() => setIdx(i)} aria-label={`Ke soal ${i + 1}`}
+          <button key={i} type="button" onClick={() => goTo(i)} aria-label={`Ke soal ${i + 1}`}
             className="h-10 w-10 rounded-xl font-display text-sm font-bold"
             style={{
               background: i === idx ? "var(--accent)" : answers[i] !== null ? "var(--gold)" : "var(--surface)",
@@ -584,18 +621,18 @@ function QuizView(props: {
 
       <div className="fixed inset-x-0 bottom-0 z-20 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2" style={{ background: "var(--bg)" }}>
         <div className="mx-auto flex max-w-3xl gap-2">
-          <button type="button" disabled={idx === 0} onClick={() => setIdx(idx - 1)} aria-label="Soal sebelumnya"
+          <button type="button" disabled={idx === 0} onClick={() => goTo(idx - 1)} aria-label="Soal sebelumnya — bacaan suara berhenti"
             className="min-h-[52px] flex-1 rounded-2xl font-display text-base font-bold disabled:opacity-40" style={{ background: "var(--surface)", border: "2px solid var(--border)" }}>← Sebelumnya</button>
           {idx < questions.length - 1 ? (
-            <button type="button" onClick={() => setIdx(idx + 1)} aria-label="Soal berikutnya"
+            <button type="button" onClick={() => goTo(idx + 1)} aria-label="Soal berikutnya — bacaan suara berhenti"
               className="min-h-[52px] flex-[2] rounded-2xl font-display text-base font-bold text-white" style={{ background: "var(--accent)" }}>Berikutnya →</button>
           ) : (
-            <button type="button" onClick={() => setConfirmSubmit(true)} aria-label="Kumpulkan jawaban"
+            <button type="button" onClick={() => { stopVoice(); setConfirmSubmit(true); }} aria-label="Kumpulkan jawaban"
               className="min-h-[52px] flex-[2] rounded-2xl font-display text-base font-bold text-white" style={{ background: "#1E7A46" }}>🏁 Kumpulkan</button>
           )}
         </div>
         {idx === questions.length - 1 && mode === "ujian" && (
-          <button type="button" onClick={() => setConfirmSubmit(true)} className="sr-only">Kumpulkan</button>
+          <button type="button" onClick={() => { stopVoice(); setConfirmSubmit(true); }} className="sr-only">Kumpulkan</button>
         )}
       </div>
 
@@ -608,7 +645,7 @@ function QuizView(props: {
             </p>
             <div className="mt-5 grid gap-2">
               <button type="button" onClick={() => setConfirmQuit(false)} className="min-h-[52px] rounded-2xl font-display text-base font-bold text-white" style={{ background: "var(--accent)" }}>Lanjut Mengerjakan ✏️</button>
-              <button type="button" onClick={props.onQuit} className="min-h-[52px] rounded-2xl font-display text-base font-bold" style={{ background: "var(--surface2)", color: "#B02A37" }}>Ya, Keluar ke Beranda</button>
+              <button type="button" onClick={() => { stopVoice(); props.onQuit(); }} className="min-h-[52px] rounded-2xl font-display text-base font-bold" style={{ background: "var(--surface2)", color: "#B02A37" }}>Ya, Keluar ke Beranda</button>
             </div>
           </div>
         </div>
@@ -929,6 +966,147 @@ function MonitorView(props: { token: string; user: SessionUser; onLogout: () => 
   );
 }
 
+/* ---------------- PAPAN PERINGKAT PER JENJANG ----------------
+   Peringkat resmi per jenjang, berdasarkan NAMA PESERTA. Setiap peserta
+   tampil SATU kali dengan skor TERBAIKnya di jenjang itu (semua mapel
+   digabung). Urutan: nilai tertinggi dulu — bila nilainya SAMA, yang
+   menyelesaikan lebih CEPAT yang menang (aturan dari permintaan user).
+   Data diambil dari aksi server getLeaderboard (semua perangkat). */
+const RANK_MEDALS = ["🥇", "🥈", "🥉"];
+function LeaderboardView(props: { initialJenjang: JenjangId; myName: string; onPractice: () => void }) {
+  const [selJenjang, setSelJenjang] = useState<JenjangId>(props.initialJenjang);
+  useEffect(() => { setSelJenjang(props.initialJenjang); }, [props.initialJenjang]);
+  const board = useQuery({ queryKey: ["leaderboard", selJenjang], queryFn: () => api.getLeaderboard({ jenjang: selJenjang, limit: 50 }) });
+  const entries = board.data?.entries ?? [];
+  const myKey = props.myName.trim().toLowerCase();
+  const myEntry = myKey ? entries.find((e) => e.student_name.trim().toLowerCase() === myKey) : undefined;
+  const podium = entries.slice(0, 3);
+  const rest = entries.slice(3);
+  const jenjangName = JENJANG.find((j) => j.id === selJenjang)?.name ?? selJenjang;
+
+  const rowStyle = (isMe: boolean) => ({
+    background: isMe ? "#FFF3DC" : "var(--surface)",
+    border: `2px solid ${isMe ? "var(--gold)" : "var(--border)"}`,
+  } as const);
+
+  return (
+    <main className="mx-auto w-full max-w-3xl px-4 pb-10">
+      <section className="mt-5 rounded-3xl p-5 shadow-sm" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+        <div className="flex flex-wrap items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <h1 className="font-display text-2xl font-extrabold">🏆 Papan Peringkat per Jenjang</h1>
+            <p className="mt-1 text-sm leading-relaxed" style={{ color: "var(--dim)" }}>
+              Peringkat berdasarkan <strong>nama peserta</strong>: setiap peserta tampil satu kali dengan <strong>skor terbaiknya</strong> di jenjang ini (semua mata pelajaran digabung).
+              Bila nilainya <strong>sama</strong>, yang menang adalah yang <strong>mengerjakan paling cepat</strong> ⏱️ — jadi kerjakan dengan tepat <em>dan</em> cepat!
+            </p>
+          </div>
+          <button type="button" onClick={() => board.refetch()} aria-label="Segarkan papan peringkat" className="min-h-[44px] shrink-0 rounded-full px-4 font-display text-sm font-bold" style={{ background: "var(--surface2)" }}>🔄 Segarkan</button>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Pilih jenjang peringkat">
+          {JENJANG.map((j) => (
+            <button key={j.id} type="button" onClick={() => setSelJenjang(j.id)} aria-pressed={selJenjang === j.id} aria-label={`Peringkat jenjang ${j.name}`}
+              className="min-h-[44px] rounded-full px-4 font-display text-sm font-bold"
+              style={{ background: selJenjang === j.id ? "var(--accent)" : "var(--surface2)", color: selJenjang === j.id ? "#fff" : "var(--dim)", border: "1px solid var(--border)" }}>
+              {j.name}
+            </button>
+          ))}
+        </div>
+        {board.data && board.data.total_participants > 0 && (
+          <p className="mt-3 text-sm font-bold" style={{ color: "var(--dim)" }}>
+            👥 {board.data.total_participants} peserta • 🎯 {board.data.total_attempts} sesi selesai di jenjang {jenjangName}
+          </p>
+        )}
+      </section>
+
+      {myKey && board.data && (
+        myEntry ? (
+          <section className="pop-in mt-4 rounded-3xl p-4 text-center shadow-sm" style={{ background: "#FFF3DC", border: "2px solid var(--gold)" }} role="status" aria-label="Posisi peringkat saya">
+            <p className="font-display text-lg font-extrabold">🎉 {props.myName.trim()} ada di peringkat #{myEntry.rank} jenjang {jenjangName}!</p>
+            <p className="mt-0.5 text-sm font-semibold" style={{ color: "var(--dim)" }}>Skor terbaik {myEntry.score} • ⏱ {fmtDur(myEntry.duration_sec)} • {myEntry.mapel}. {myEntry.rank > 1 ? "Sedikit lagi naik ke puncak — coba lagi dan kerjakan lebih cepat!" : "Kamu sang juara jenjang ini — pertahankan posisimu! 👑"}</p>
+          </section>
+        ) : (
+          <section className="mt-4 rounded-3xl p-4 text-center" style={{ background: "var(--surface)", border: "1px dashed var(--border)" }} role="status" aria-label="Nama saya belum masuk peringkat">
+            <p className="text-sm font-semibold" style={{ color: "var(--dim)" }}>Nama <strong>{props.myName.trim()}</strong> belum masuk peringkat jenjang {jenjangName} — selesaikan satu sesi di jenjang ini, lalu namamu tampil di sini. 💪</p>
+          </section>
+        )
+      )}
+
+      {board.isPending && <p className="mt-4" style={{ color: "var(--dim)" }}>Memuat papan peringkat…</p>}
+      {board.isError && (
+        <div className="mt-4 rounded-3xl p-6 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+          <p className="font-display text-lg font-bold">Peringkat belum bisa dimuat</p>
+          <p className="mt-1 text-sm" style={{ color: "var(--dim)" }}>Koneksi atau server sedang bermasalah. Coba lagi ya.</p>
+          <button type="button" onClick={() => board.refetch()} className="font-display mt-4 min-h-[52px] rounded-2xl px-6 font-bold text-white" style={{ background: "var(--accent)" }}>🔄 Coba Lagi</button>
+        </div>
+      )}
+
+      {board.data && entries.length === 0 && (
+        <div className="mt-4 rounded-3xl p-6 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+          <div className="text-5xl" aria-hidden>🏆</div>
+          <p className="font-display mt-2 text-lg font-bold">Belum ada pemenang di jenjang {jenjangName}</p>
+          <p className="mx-auto mt-1 max-w-md text-sm" style={{ color: "var(--dim)" }}>Peringkat ini masih kosong — jadilah peserta pertama yang naik podium! Selesaikan satu sesi {SESSION_SIZE} soal di jenjang {jenjangName}, dan namamu langsung tercatat di sini.</p>
+          <button type="button" onClick={props.onPractice} className="font-display mt-4 min-h-[52px] rounded-2xl px-6 font-bold text-white" style={{ background: "var(--accent)" }}>🚀 Mulai Latihan Sekarang →</button>
+        </div>
+      )}
+
+      {podium.length > 0 && (
+        <>
+          <h2 className="font-display mt-6 text-lg font-bold">👑 Podium Juara — {jenjangName}</h2>
+          <div className="mt-2 grid gap-2 sm:grid-cols-3">
+            {podium.map((e) => {
+              const isMe = myKey !== "" && e.student_name.trim().toLowerCase() === myKey;
+              return (
+                <article key={e.rank} className="pop-in rounded-3xl p-4 text-center shadow-sm" style={rowStyle(isMe)} aria-label={`Peringkat ${e.rank}: ${e.student_name}, skor ${e.score}, waktu ${fmtDur(e.duration_sec)}`}>
+                  <div className="text-4xl" aria-hidden>{RANK_MEDALS[e.rank - 1]}</div>
+                  <div className="font-display mt-1 truncate text-lg font-extrabold">{e.student_name} {isMe && <span className="rounded-full px-2 py-0.5 text-[11px] font-extrabold text-white" style={{ background: "var(--accent)" }}>KAMU</span>}</div>
+                  <div className="font-display text-4xl leading-none font-extrabold" style={{ color: medalFor(e.score).color }}>{e.score}</div>
+                  <div className="mt-1 text-xs font-bold" style={{ color: "var(--dim)" }}>SKOR TERBAIK • ⏱ {fmtDur(e.duration_sec)}</div>
+                  <div className="mt-1.5 text-xs leading-relaxed font-semibold" style={{ color: "var(--dim)" }}>
+                    {e.mapel} • {e.correct}/{e.total} benar<br />
+                    {e.attempts_count}× latihan di jenjang ini • {new Date(e.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {rest.length > 0 && (
+        <>
+          <h2 className="font-display mt-6 text-lg font-bold">📋 Peringkat Berikutnya</h2>
+          <div className="mt-2 grid gap-2">
+            {rest.map((e) => {
+              const isMe = myKey !== "" && e.student_name.trim().toLowerCase() === myKey;
+              return (
+                <div key={e.rank} className="flex items-center gap-3 rounded-2xl p-4" style={rowStyle(isMe)} aria-label={`Peringkat ${e.rank}: ${e.student_name}, skor ${e.score}, waktu ${fmtDur(e.duration_sec)}`}>
+                  <span className="font-display flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-base font-extrabold text-white" style={{ background: "var(--accent)" }}>{e.rank}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-display font-bold">{e.student_name} {isMe && <span className="rounded-full px-2 py-0.5 text-[11px] font-extrabold text-white" style={{ background: "var(--accent)" }}>KAMU</span>}</div>
+                    <div className="text-xs font-semibold" style={{ color: "var(--dim)" }}>
+                      {e.mapel} • {e.correct}/{e.total} benar • ⏱ {fmtDur(e.duration_sec)} • {e.attempts_count}× latihan • {new Date(e.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className="font-display text-2xl leading-none font-extrabold" style={{ color: medalFor(e.score).color }}>{e.score}</div>
+                    <div className="text-[10px] font-bold" style={{ color: "var(--dim)" }}>SKOR</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {entries.length > 0 && (
+        <p className="mt-4 text-center text-xs leading-relaxed" style={{ color: "var(--dim)" }}>
+          Aturan peringkat: skor terbaik per nama peserta di jenjang ini • nilai sama → waktu pengerjaan tercepat menang • peringkat diperbarui setiap ada sesi yang selesai.
+        </p>
+      )}
+    </main>
+  );
+}
+
 /* ---------------- PERPUSTAKAAN BELAJAR ---------------- */
 function BelajarView(props: {
   jenjang: JenjangId;
@@ -1182,7 +1360,7 @@ export function App() {
   const history = useQuery({ queryKey: ["attempts", deviceId], queryFn: () => api.listAttempts({ limit: 30, device_id: deviceId }) });
   const saveAttempt = useMutation({
     mutationFn: api.saveAttempt,
-    onSuccess: (r) => { setMonitorCode(r.monitor_code); queryClient.invalidateQueries({ queryKey: ["attempts"] }); },
+    onSuccess: (r) => { setMonitorCode(r.monitor_code); queryClient.invalidateQueries({ queryKey: ["attempts"] }); queryClient.invalidateQueries({ queryKey: ["leaderboard"] }); },
     onError: (e) => alertSaveError(e),
   });
   const deleteAttempt = useMutation({
@@ -1240,6 +1418,7 @@ export function App() {
     setResetText("");
     setResetDoneMsg(`✅ Berhasil direset! Semua data coba-coba sudah bersih.${serverNote} Sekarang ZIQVA OLIM seperti baru pertama kali dibuka — silakan mulai untuk anak dengan nama aslinya.`);
     queryClient.invalidateQueries({ queryKey: ["attempts"] });
+    queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
     queryClient.invalidateQueries({ queryKey: ["monitor"] });
     queryClient.invalidateQueries({ queryKey: ["me"] });
     setView("home");
@@ -1307,7 +1486,7 @@ export function App() {
     setSoundOn((prev) => {
       const next = !prev;
       try { localStorage.setItem(SOUND_KEY, next ? "on" : "off"); } catch { /* abaikan */ }
-      if (!next) { try { window.speechSynthesis?.cancel(); } catch { /* abaikan */ } }
+      if (!next) stopSpeaking();
       else unlockAudio(); // menyalakan suara = bangunkan jalur audio dalam klik ini
       return next;
     });
@@ -1427,6 +1606,9 @@ export function App() {
             <button type="button" onClick={() => setView("history")} aria-label="Lihat riwayat dan prestasiku"
               className="min-h-[40px] rounded-full px-4 font-display text-sm font-bold"
               style={{ background: view === "history" ? "var(--gold)" : "rgba(255,255,255,.15)", color: view === "history" ? "#2B2440" : "#fff" }}>🏅 Prestasiku</button>
+            <button type="button" onClick={() => { stopSpeaking(); setView("ranking"); }} aria-label="Lihat papan peringkat per jenjang"
+              className="min-h-[40px] rounded-full px-4 font-display text-sm font-bold"
+              style={{ background: view === "ranking" ? "var(--gold)" : "rgba(255,255,255,.15)", color: view === "ranking" ? "#2B2440" : "#fff" }}>🏆 Peringkat</button>
             <button type="button" onClick={() => setView(sessionUser ? "dashboard" : "login")} aria-label={sessionUser ? "Ke dashboard pantau guru dan orang tua" : "Masuk sebagai guru atau orang tua"}
               className="min-h-[40px] rounded-full px-4 font-display text-sm font-bold"
               style={{ background: view === "dashboard" || view === "login" ? "var(--gold)" : "rgba(255,255,255,.15)", color: view === "dashboard" || view === "login" ? "#2B2440" : "#fff" }}>
@@ -1479,6 +1661,10 @@ export function App() {
           soundOn={soundOn} onToggleSound={toggleSound}
           questions={questions} onFinish={handleFinish} onQuit={() => setView("home")} quitSignal={quitSignal}
           onInfo={(q) => openModuleForQuestion(q, "Kembali ke Soal")} />
+      )}
+
+      {view === "ranking" && (
+        <LeaderboardView initialJenjang={jenjang} myName={name} onPractice={() => { setView("home"); window.scrollTo({ top: 0 }); }} />
       )}
 
       {view === "belajar" && (
@@ -1562,6 +1748,22 @@ export function App() {
             <span className="rounded-full px-3 py-1.5 text-sm font-bold" style={{ background: "var(--surface2)" }}>🏅 {rewards.badges.length}/{BADGES.length} lencana</span>
             <button type="button" onClick={() => setView("history")} className="rounded-full px-3 py-1.5 text-sm font-bold text-white" style={{ background: "var(--accent)" }}>Lihat Lencana →</button>
             {rewards.totalSessions === 0 && <p className="w-full text-sm font-semibold" style={{ color: "var(--dim)" }}>Selesaikan sesi pertamamu untuk membuka lencana 🎯 <strong>Langkah Pertama</strong> — setiap jawaban benar bernilai 10 poin + 1 bintang!</p>}
+          </section>
+
+          {/* Papan peringkat per jenjang */}
+          <section className="mt-5 flex flex-col gap-3 rounded-3xl p-5 shadow-sm sm:flex-row sm:items-center" style={{ background: "linear-gradient(150deg,#FFF3DC,#FDE7F3)", border: "2px solid var(--gold)" }} aria-label="Papan peringkat per jenjang">
+            <div className="text-4xl" aria-hidden>🏆</div>
+            <div className="flex-1">
+              <h2 className="font-display text-lg font-bold">Papan Peringkat — siapa juara di jenjangmu?</h2>
+              <p className="text-sm leading-relaxed" style={{ color: "var(--dim)" }}>
+                Setiap jenjang (TK, SD, SMP, SMA) punya juaranya sendiri, diurutkan dari <strong>nama peserta</strong> dengan skor terbaiknya.
+                Nilai sama? Yang <strong>mengerjakan paling cepat</strong> yang menang. Selesaikan sesi dan lihat posisimu!
+              </p>
+            </div>
+            <button type="button" onClick={() => setView("ranking")} aria-label="Buka papan peringkat per jenjang"
+              className="font-display min-h-[52px] shrink-0 rounded-2xl px-6 font-bold" style={{ background: "var(--gold)", color: "#2B2440" }}>
+              🏆 Lihat Peringkat
+            </button>
           </section>
 
           {/* Login guru & orang tua */}
@@ -1784,6 +1986,9 @@ export function App() {
             <button type="button" onClick={() => setView("home")} className="min-h-[54px] rounded-2xl font-display text-base font-bold text-white" style={{ background: "var(--accent)" }} aria-label="Kembali ke beranda">🏠 Beranda</button>
             <button type="button" onClick={startQuiz} className="min-h-[54px] rounded-2xl font-display text-base font-bold" style={{ background: "var(--gold)", color: "#2B2440" }} aria-label="Ulangi paket soal ini">🔁 Latihan Lagi</button>
           </div>
+          <button type="button" onClick={() => setView("ranking")} className="mt-2 min-h-[54px] w-full rounded-2xl font-display text-base font-bold text-white" style={{ background: "#D97706" }} aria-label={`Lihat posisi peringkat saya di jenjang ${jenjang}`}>
+            🏆 Lihat Peringkatku di Jenjang {jenjang} — nilai sama, yang tercepat menang!
+          </button>
 
           <h2 className="font-display mt-6 text-lg font-bold">🔍 Review &amp; Pembahasan</h2>
           <div className="mt-2 grid gap-3">

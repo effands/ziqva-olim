@@ -115,6 +115,37 @@
       }).sort(function (a, b) { return b.average_score - a.average_score || b.attempts - a.attempts; });
       return { user: toUser(user), watched: watched, attempts: visible.slice(0, 100).map(function (r) { var c = strip(r); c.monitor_code = ""; return c; }), students: students };
     },
+    async getLeaderboard(args) {
+      var jenjang = args.jenjang || "";
+      var limit = args.limit || 50;
+      var rows = read(K.attempts, []).filter(function (a) { return a.jenjang === jenjang; });
+      var byName = {};
+      rows.forEach(function (a) {
+        var k = nameKey(a.student_name);
+        if (!byName[k]) byName[k] = { student_name: a.student_name, best: a, attempts_count: 0 };
+        byName[k].attempts_count += 1;
+        var b = byName[k].best;
+        if (a.score > b.score || (a.score === b.score && (a.duration_sec || 999999) < (b.duration_sec || 999999))) byName[k].best = a;
+      });
+      var entries = Object.keys(byName).map(function (k) {
+        var g = byName[k]; var a = g.best;
+        return {
+          student_name: g.student_name, name: g.student_name,
+          score: a.score, best_score: a.score,
+          duration_sec: a.duration_sec, best_duration_sec: a.duration_sec, time_sec: a.duration_sec,
+          correct: a.correct, total: a.total, mapel: a.mapel,
+          attempts_count: g.attempts_count, attempts: g.attempts_count,
+          last_at: a.created_at,
+        };
+      }).sort(function (x, y) { return y.score - x.score || (x.duration_sec || 999999) - (y.duration_sec || 999999); });
+      entries.forEach(function (e, i) { e.rank = i + 1; });
+      var top = entries.slice(0, limit);
+      return {
+        jenjang: jenjang, entries: top, leaderboard: top,
+        total_participants: entries.length, participants: entries.length,
+        total_sessions: rows.length, sessions: rows.length,
+      };
+    },
     async resetAllData(args) {
       var attempts = read(K.attempts, []);
       var mine = attempts.filter(function (a) { return a.device_id === (args.device_id || ""); });

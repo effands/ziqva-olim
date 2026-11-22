@@ -179,6 +179,82 @@ export const Actions = {
     },
   }),
 
+  getLeaderboard: defineAction({
+    description: "Returns the public leaderboard for one jenjang: each participant appears once with their best score in that jenjang (all subjects combined), ranked by score descending and, for equal scores, by fastest completion time.",
+    request: z.object({
+      jenjang: z.string().min(1).max(20),
+      limit: z.number().int().positive().max(100).default(50),
+    }),
+    response: z.object({
+      jenjang: z.string(),
+      total_participants: z.number(),
+      total_attempts: z.number(),
+      entries: z.array(z.object({
+        rank: z.number(),
+        student_name: z.string(),
+        score: z.number(),
+        correct: z.number(),
+        total: z.number(),
+        duration_sec: z.number(),
+        mapel: z.string(),
+        mode: z.string(),
+        created_at: z.string(),
+        attempts_count: z.number(),
+      })),
+    }),
+    async handler(ctx, args) {
+      const db = ctx.db<typeof schema>();
+      const rows = await db.select().from(schema.attempts)
+        .where(eq(schema.attempts.jenjang, args.jenjang))
+        .orderBy(desc(schema.attempts.id)).limit(5000);
+
+      // Satu baris per peserta (berdasarkan nama): ambil percobaan dengan
+      // skor TERBAIK peserta itu di jenjang ini; bila skor terbaiknya sama
+      // di beberapa percobaan, ambil yang waktu pengerjaannya TERCEPAT
+      // (lalu yang paling awal diraih).
+      type Row = (typeof rows)[number];
+      const byStudent = new Map<string, { best: Row; count: number }>();
+      for (const r of rows) {
+        const key = nameKey(r.studentName);
+        const cur = byStudent.get(key);
+        if (!cur) { byStudent.set(key, { best: r, count: 1 }); continue; }
+        cur.count += 1;
+        const b = cur.best;
+        const better =
+          r.score > b.score ||
+          (r.score === b.score && r.durationSec < b.durationSec) ||
+          (r.score === b.score && r.durationSec === b.durationSec && r.createdAt.getTime() < b.createdAt.getTime());
+        if (better) cur.best = r;
+      }
+
+      // Urutan peringkat: nilai tertinggi dulu; nilai sama → tercepat
+      // mengerjakan yang menang; masih sama → yang meraihnya lebih dulu.
+      const ranked = [...byStudent.values()].sort((a, b) =>
+        b.best.score - a.best.score ||
+        a.best.durationSec - b.best.durationSec ||
+        a.best.createdAt.getTime() - b.best.createdAt.getTime(),
+      );
+
+      return {
+        jenjang: args.jenjang,
+        total_participants: ranked.length,
+        total_attempts: rows.length,
+        entries: ranked.slice(0, args.limit).map((g, i) => ({
+          rank: i + 1,
+          student_name: g.best.studentName,
+          score: g.best.score,
+          correct: g.best.correct,
+          total: g.best.total,
+          duration_sec: g.best.durationSec,
+          mapel: g.best.mapel,
+          mode: g.best.mode,
+          created_at: g.best.createdAt.toISOString(),
+          attempts_count: g.count,
+        })),
+      };
+    },
+  }),
+
   register: defineAction({
     description: "Creates a teacher (guru) or parent (orang tua) account for monitoring student scores.",
     request: z.object({
