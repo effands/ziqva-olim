@@ -8,6 +8,7 @@
 
 import { MATERIALS } from "./materials";
 import { englishMaterial, englishModule } from "./cambridge";
+import { MODULE_ENRICH } from "./library-enrich";
 import type { JenjangId, Question } from "./questions";
 
 export interface LibraryModule {
@@ -20,6 +21,14 @@ export interface LibraryModule {
   concept: string;
   example: string;
   summary: string;
+  /** Contoh soal yang dibahas langkah demi langkah (pengayaan literasi). */
+  worked?: string;
+  /** Daftar kosakata / istilah penting modul ini, satu baris per istilah. */
+  vocab?: string;
+  /** Kotak "Tahukah Kamu?" — fakta seru pembangkit rasa penasaran. */
+  fact?: string;
+  /** Sudut literasi baca: teks pendek + pertanyaan pemahaman isi bacaan. */
+  reading?: { title: string; text: string; qa: { q: string; a: string }[] };
 }
 
 const ALL: JenjangId[] = ["TK", "SD", "SMP", "SMA"];
@@ -207,7 +216,7 @@ const KIM_MODULES: LibraryModule[] = [
 /* ================= MATEMATIKA ================= */
 const MATH_MODULES: LibraryModule[] = [
   {
-    id: "mat-operasi", subjects: ["matematika", "cambridge-math"], jenjang: ALL, emoji: "➗",
+    id: "mat-operasi", subjects: ["matematika", "cambridge-math"], jenjang: ["SD", "SMP", "SMA"], emoji: "➗",
     title: "Operasi Hitung & Urutan Pengerjaan",
     keywords: ["hasil dari", "jumlah", "selisih", "dikali", "dibagi", "kurung", "berapa hasil", "×", "÷"],
     concept: "Urutan mengerjakan hitungan campuran: kerjakan yang di dalam kurung dulu, lalu pangkat, lalu kali dan bagi (dari kiri ke kanan), terakhir tambah dan kurang. Contoh: 6 + 3 × 4 = 6 + 12 = 18 — bukan 36! Untuk soal cerita, tulis dulu apa yang diketahui dan apa yang ditanya, baru pilih operasinya: 'semuanya' biasanya tambah/kali, 'sisa' kurang, 'dibagi rata' bagi.",
@@ -231,7 +240,7 @@ const MATH_MODULES: LibraryModule[] = [
     summary: "FPB untuk membagi rata, KPK untuk jadwal bertemu. Selisih tetap = aritmetika.",
   },
   {
-    id: "mat-bangun", subjects: ["matematika"], jenjang: ["SD", "SMP", "TK"], emoji: "📐",
+    id: "mat-bangun", subjects: ["matematika"], jenjang: ["SD", "SMP"], emoji: "📐",
     title: "Bangun Datar, Bangun Ruang & Sudut",
     keywords: ["luas", "keliling", "volume", "persegi", "segitiga", "lingkaran", "balok", "kubus", "tabung", "kerucut", "sudut", "sisi", "pythagoras", "siku-siku"],
     concept: "Luas persegi = s × s; persegi panjang = p × l; segitiga = ½ × alas × tinggi; lingkaran = πr² (kelilingnya 2πr). Volume balok = p × l × t; kubus = s³; tabung = πr²t. Segitiga punya 3 sisi, persegi 4 sisi sama panjang, lingkaran tak bersudut. Sudut lurus = 180°, sudut siku-siku = 90°, jumlah sudut segitiga = 180°. Teorema Pythagoras untuk segitiga siku-siku: c² = a² + b².",
@@ -320,7 +329,7 @@ const ISLAM_MODULES: LibraryModule[] = [
     summary: "Raqib = baik, Atid = buruk, Munkar-Nakir = penanya kubur. Al-Qur'an penyempurna kitab sebelumnya.",
   },
   {
-    id: "islam-asmaul-sifat", subjects: ["akidah", "pai"], jenjang: ALL, emoji: "✨",
+    id: "islam-asmaul-sifat", subjects: ["akidah", "pai"], jenjang: ["SD", "SMP", "SMA"], emoji: "✨",
     title: "Asmaul Husna & Sifat Allah",
     keywords: ["asmaul", "al-", "ar-", "sifat wajib", "sifat mustahil", "sifat jaiz"],
     concept: "Asmaul Husna adalah 99 nama Allah yang indah: Ar-Rahman (Maha Pengasih), Ar-Rahim (Maha Penyayang), Al-Malik (Maha Raja), As-Salam (Maha Pemberi Keselamatan), Al-Alim (Maha Mengetahui), Al-Khabir (Maha Waspada), As-Sami' (Maha Mendengar), Al-Bashir (Maha Melihat), Al-Qadir (Maha Kuasa), Al-Ghaffar (Maha Pengampun). Sifat wajib Allah antara lain wujud (ada), qidam (dahulu), baqa (kekal), wahdaniyah (esa). Sifat mustahil adalah lawannya (adam = tiada, huduts = baru). Sifat jaiz Allah hanya satu: berbuat sesuatu atau tidak berbuat.",
@@ -328,7 +337,7 @@ const ISLAM_MODULES: LibraryModule[] = [
     summary: "Al-Alim = Mengetahui, Al-Khabir = Waspada. Sifat jaiz Allah hanya satu.",
   },
   {
-    id: "islam-thaharah-salat", subjects: ["fikih", "pai"], jenjang: ALL, emoji: "💧",
+    id: "islam-thaharah-salat", subjects: ["fikih", "pai"], jenjang: ["SD", "SMP", "SMA"], emoji: "💧",
     title: "Thaharah & Salat",
     keywords: ["wudu", "air", "najis", "tayamum", "salat", "rakaat", "jenazah", "jumat", "hadas"],
     concept: "Thaharah = bersuci. Air mutlak (suci & menyucikan): air hujan, sungai, sumur, embun, salju, mata air, laut. Air yang terkena najis dan berubah sifatnya tidak bisa dipakai bersuci. Najis dibagi tiga: mukhaffafah (ringan: air kencing bayi laki-laki di bawah 2 tahun yang hanya minum ASI — cukup diperciki air), mutawassithah (sedang: bangkai & darah — dicuci sampai hilang wujudnya), mughallazhah (berat: anjing & babi — dicuci 7 kali, salah satunya dengan tanah/debu bersih). Wudu membatalkan hadas kecil; mandi wajib menghilangkan hadas besar; tayamum (dengan debu) menggantikan keduanya saat tidak ada air. Rakaat salat fardu: Subuh 2, Zuhur 4, Asar 4, Magrib 3, Isya 4. Salat jenazah 4 takbir tanpa rukuk & sujud; salat Jumat 2 rakaat menggantikan Zuhur bagi laki-laki.",
@@ -336,7 +345,7 @@ const ISLAM_MODULES: LibraryModule[] = [
     summary: "Najis anjing/babi = mughallazhah (7× cuci + tanah). Subuh 2, Zuhur 4, Asar 4, Magrib 3, Isya 4.",
   },
   {
-    id: "islam-puasa-zakat-haji", subjects: ["fikih", "pai"], jenjang: ALL, emoji: "🌙",
+    id: "islam-puasa-zakat-haji", subjects: ["fikih", "pai"], jenjang: ["SD", "SMP", "SMA"], emoji: "🌙",
     title: "Puasa, Zakat & Haji",
     keywords: ["puasa", "zakat", "haji", "fitrah", "nisab", "fidyah", "kaffarah", "bulan"],
     concept: "Puasa wajib di bulan Ramadan; puasa sunah antara lain Senin-Kamis, Syawal 6 hari, Arafah 9 Zulhijah. Yang membatalkan puasa: makan/minum sengaja, muntah disengaja, haid/nifas, hilang akal. Zakat fitrah: 2,5 kg (±3,5 liter) bahan makanan pokok per jiwa, dibayar sebelum salat Idulfitri. Zakat mal 2,5% bila mencapai nisab (emas 85 gram) dan haul (1 tahun). Haji wajib sekali seumur hidup bagi yang mampu (istitha'ah); umrah adalah haji kecil yang bisa kapan saja. Fidyah dibayar yang tidak mampu puasa sama sekali (lansia, sakit menahun); kaffarah adalah denda pelanggaran tertentu.",
@@ -344,7 +353,7 @@ const ISLAM_MODULES: LibraryModule[] = [
     summary: "Fitrah 2,5 kg/jiwa sebelum Idulfitri. Zakat mal 2,5%, nisab emas 85 g, haul 1 tahun.",
   },
   {
-    id: "islam-quran-hadis", subjects: ["quranhadis", "pai"], jenjang: ALL, emoji: "📜",
+    id: "islam-quran-hadis", subjects: ["quranhadis", "pai"], jenjang: ["SD", "SMP", "SMA"], emoji: "📜",
     title: "Al-Qur'an, Surah & Hadis",
     keywords: ["surah", "al-qur'an", "alquran", "hadis", "ayat", "makkiyah", "madaniyah", "juz"],
     concept: "Al-Qur'an terdiri dari 114 surah dan 30 juz, diturunkan berangsur selama ±23 tahun kepada Nabi Muhammad ﷺ lewat Malaikat Jibril. Surah pertama turun: Al-'Alaq ayat 1–5; surah terakhir turun: Al-Maidah ayat 3. Surah terpanjang: Al-Baqarah (286 ayat); surah tanpa basmalah di awal: At-Taubah. Surah Makkiyah turun sebelum hijrah (umumnya tentang akidah), Madaniyah sesudah hijrah (banyak hukum). Hadis adalah perkataan, perbuatan, dan ketetapan Nabi ﷺ; hadis qudsi maknanya dari Allah, redaksinya dari Nabi. Hadis sahih sanadnya bersambung, rawinya adil & kuat hafalan, tanpa kejanggalan.",
@@ -352,7 +361,7 @@ const ISLAM_MODULES: LibraryModule[] = [
     summary: "114 surah, 30 juz, ±23 tahun. Pertama turun Al-'Alaq 1–5; terpanjang Al-Baqarah.",
   },
   {
-    id: "islam-sejarah", subjects: ["ski", "pai"], jenjang: ALL, emoji: "🏛️",
+    id: "islam-sejarah", subjects: ["ski", "pai"], jenjang: ["SD", "SMP", "SMA"], emoji: "🏛️",
     title: "Sejarah Islam: Khulafaur & Dinasti",
     keywords: ["khalifah", "dinasti", "khulafaur", "ibu kota", "didirikan oleh", "berdiri pada", "tokoh", "penulis kitab", "gelar", "karya", "terkenal dengan", "sumbangan", "baitul hikmah"],
     concept: "Khulafaur Rasyidin: Abu Bakar (gelar Ash-Shiddiq, memerangi nabi palsu & mengumpulkan mushaf), Umar bin Khattab (Al-Faruq, pembebas Baitul Maqdis, membuat kalender Hijriah), Utsman bin Affan (Dzun Nurain, membukukan mushaf standar), Ali bin Abi Thalib (pintu ilmu, pusat pemerintahan di Kufah). Dinasti sesudahnya: Umayyah berpusat di Damaskus; Abbasiyah di Baghdad (masa keemasan ilmu, Baitul Hikmah); Fatimiyah di Kairo (mendirikan Al-Azhar); Umayyah II di Cordoba, Andalusia (perpustakaan raksasa Eropa); Ayyubiyah dipimpin Shalahuddin Al-Ayyubi yang membebaskan Al-Quds. Tokoh ilmu: Al-Khawarizmi (aljabar & angka 0), Ibnu Sina (kedokteran, Al-Qanun), Ibnu Khaldun (sosiologi, Muqaddimah).",
@@ -380,7 +389,7 @@ const ISLAM_MODULES: LibraryModule[] = [
 /* ================= AGAMA KRISTEN ================= */
 const KRISTEN_MODULES: LibraryModule[] = [
   {
-    id: "kristen-alkitab", subjects: ["kristen"], jenjang: ALL, emoji: "✝️",
+    id: "kristen-alkitab", subjects: ["kristen"], jenjang: ["SD", "SMP", "SMA"], emoji: "✝️",
     title: "Alkitab, Tokoh & Perjanjian",
     keywords: ["alkitab", "kitab", "perjanjian", "nabi", "rasul", "murid", "yesus", "ditulis oleh"],
     concept: "Alkitab terdiri dari Perjanjian Lama (sejarah Israel, Taurat Musa, Mazmur Daud) dan Perjanjian Baru (kehidupan Yesus dan gereja mula-mula). Tokoh kunci: Abraham bapa orang beriman; Musa memimpin Israel keluar dari Mesir dan menerima Sepuluh Perintah; Daud raja Israel penulis banyak Mazmur; Paulus rasul yang menulis banyak surat (Roma, Korintus) dan mengabarkan Injil ke bangsa-bangsa; Petrus pemimpin para rasul; Maria ibu Yesus; Yohanes Pembaptis mempersiapkan jalan Yesus. Empat Injil: Matius, Markus, Lukas, Yohanes.",
@@ -388,7 +397,7 @@ const KRISTEN_MODULES: LibraryModule[] = [
     summary: "PL = sebelum Yesus; PB = Yesus & gereja. Injil ada 4: Matius, Markus, Lukas, Yohanes.",
   },
   {
-    id: "kristen-ajaran", subjects: ["kristen"], jenjang: ALL, emoji: "❤️",
+    id: "kristen-ajaran", subjects: ["kristen"], jenjang: ["SD", "SMP", "SMA"], emoji: "❤️",
     title: "Ajaran Yesus & Kehidupan Kristen",
     keywords: ["hukum", "kasih", "perayaan", "hari raya", "natal", "paskah", "buah roh", "sakramen", "doa bapa kami"],
     concept: "Hukum yang terutama menurut Yesus: kasihilah Tuhan Allahmu dengan segenap hati, dan kasihilah sesamamu manusia seperti dirimu sendiri. Hari raya Kristen: Natal (kelahiran Yesus), Jumat Agung (penyaliban), Paskah (kebangkitan Yesus — hari raya terpenting), Kenaikan (Yesus naik ke surga 40 hari setelah Paskah), Pentakosta (turunnya Roh Kudus 50 hari setelah Paskah). Buah Roh: kasih, sukacita, damai sejahtera, kesabaran, kemurahan, kebaikan, kesetiaan, kelemahlembutan, penguasaan diri. Doa Bapa Kami diajarkan Yesus sendiri; sakramen utama Protestan: baptisan dan perjamuan kudus.",
@@ -400,7 +409,7 @@ const KRISTEN_MODULES: LibraryModule[] = [
 /* ================= BAHASA (Inggris, Indonesia, Jawa, Korea, Jepang, Mandarin) ================= */
 const LANG_MODULES: LibraryModule[] = [
   {
-    id: "ing-vocab", subjects: ["inggris", "cambridge-eng"], jenjang: ALL, emoji: "🔤",
+    id: "ing-vocab", subjects: ["inggris", "cambridge-eng"], jenjang: ["SD", "SMP", "SMA"], emoji: "🔤",
     title: "English Vocabulary & Opposites",
     keywords: ["opposite", "synonym", "means", "artinya", "smallest", "between", "word", "arrange", "complete"],
     concept: "Learn words in pairs and families: opposites (big >< small, brave >< afraid, ancient >< modern), synonyms (rapid = fast, begin = start), and number words (twenty-one … ninety-nine). Smallest means the least value; 'between' asks for the number in the middle. Arranging letters: say the word aloud, then group its letters — TWENTYTWO is TWENTY + TWO.",
@@ -448,7 +457,7 @@ const LANG_MODULES: LibraryModule[] = [
     summary: "Hanacaraka 20 aksara. Macapat: dari Maskumambang sampai Pucung, tiap tembang punya watak.",
   },
   {
-    id: "kor-dasar", subjects: ["korea"], jenjang: ALL, emoji: "🇰🇷",
+    id: "kor-dasar", subjects: ["korea"], jenjang: ["SD", "SMP", "SMA"], emoji: "🇰🇷",
     title: "Bahasa Korea: Hangul, Angka & Salam",
     keywords: ["hangul", "angka", "salam", "partikel", "kata tanya", "artinya", "bahasa koreanya"],
     concept: "Hangul ditulis per blok suku kata. Dua sistem angka: Sino-Korea (일 이 삼 사 오 육 칠 팔 구 십) untuk tanggal, uang, menit; asli Korea (하나 둘 셋 넷 다섯) untuk menghitung benda dan umur. Salam sopan: 안녕하세요 halo, 감사합니다 terima kasih. Partikel menandai peran kata: 이/가 subjek, 을/를 objek, 은/는 topik. Kata kerja selalu di akhir kalimat: 저는 밥을 먹어요 (saya nasi makan).",
@@ -456,7 +465,7 @@ const LANG_MODULES: LibraryModule[] = [
     summary: "Dua angka: Sino (일 이 삼) & asli (하나 둘 셋). Kata kerja selalu terakhir.",
   },
   {
-    id: "jpn-dasar", subjects: ["jepang"], jenjang: ALL, emoji: "🇯🇵",
+    id: "jpn-dasar", subjects: ["jepang"], jenjang: ["SD", "SMP", "SMA"], emoji: "🇯🇵",
     title: "Bahasa Jepang: Kana, Kanji & Partikel",
     keywords: ["hiragana", "katakana", "kanji", "partikel", "artinya", "bahasa jepangnya", "masu"],
     concept: "Tiga aksara: Hiragana (kata asli Jepang), Katakana (kata serapan asing), Kanji (karakter Tiongkok). Angka kanji: 一 ichi, 二 ni, 三 san, 四 yon, 五 go, 六 roku, 七 nana, 八 hachi, 九 kyuu, 十 juu. Partikel: は (wa) penanda topik, を (o) objek, に arah/waktu. Bentuk sopan memakai -masu: 食べます (tabemasu, makan). Kanji alam berasal dari gambar: 山 gunung, 川 sungai, 海 laut, 水 air, 雨 hujan, 雪 salju.",
@@ -464,7 +473,7 @@ const LANG_MODULES: LibraryModule[] = [
     summary: "Hiragana asli, Katakana serapan, Kanji gambar. は=wa topik, を=o objek.",
   },
   {
-    id: "man-dasar", subjects: ["mandarin"], jenjang: ALL, emoji: "🇨🇳",
+    id: "man-dasar", subjects: ["mandarin"], jenjang: ["SD", "SMP", "SMA"], emoji: "🇨🇳",
     title: "Bahasa Mandarin: Nada, Hanzi & Pinyin",
     keywords: ["nada", "hanzi", "pinyin", "kata ukur", "artinya", "bahasa mandarinnya", "partikel"],
     concept: "Mandarin adalah bahasa nada: mā (ibu), má (rami), mǎ (kuda), mà (memarahi) — nada mengubah arti! Angka: 一 yī, 二 èr, 三 sān, 四 sì, 五 wǔ, 六 liù, 七 qī, 八 bā, 九 jiǔ, 十 shí, 百 bǎi. Urutan kalimat SPO sama seperti Indonesia: 我吃饭 (saya makan nasi). Partikel: 的 de (milik), 吗 ma (penanya akhir kalimat), 是 shì (adalah). Kata ukur wajib: 本 běn (buku), 个 gè (umum), 只 zhī (hewan), 条 tiáo (benda panjang).",
@@ -629,11 +638,275 @@ const KOMPETISI_MODULES: LibraryModule[] = [
   },
 ];
 
+/* ================= MODUL TK BARU — audit kesesuaian jenjang =================
+   Modul-modul di bawah ini ditulis khusus untuk anak usia 4–6 tahun:
+   pengantar Bahasa Indonesia, kalimat pendek, banyak emoji, konsep paling
+   dasar. Modul lama yang isinya setara anak besar (mis. "English
+   Vocabulary & Opposites" dengan ancient–modern & ninety-nine) TIDAK lagi
+   tampil untuk TK — jenjangnya dibatasi SD ke atas. */
+const TK_MODULES: LibraryModule[] = [
+  {
+    id: "ing-tk-dasar", subjects: ["inggris"], jenjang: ["TK"], emoji: "🌈",
+    title: "Bahasa Inggris Seru: Warna, Hewan, Angka & Sapaan",
+    keywords: ["red", "blue", "color", "warna", "cat", "dog", "hewan", "animal", "one", "two", "angka", "number", "hello", "good morning", "mata", "eye", "tangan", "hand", "body", "tubuh", "bird", "fish", "apple"],
+    concept: "Halo, Teman Kecil! Ayo belajar Bahasa Inggris yang seru. 🎨 WARNA: red = merah 🔴, blue = biru 🔵, yellow = kuning 🟡, green = hijau 🟢, black = hitam ⚫, white = putih ⚪. 🐶 HEWAN: cat = kucing 🐱, dog = anjing 🐶, bird = burung 🐦, fish = ikan 🐟, duck = bebek 🦆, cow = sapi 🐮. 🔢 ANGKA 1–10: one 1, two 2, three 3, four 4, five 5, six 6, seven 7, eight 8, nine 9, ten 10. 👋 SAPAAN: hello = halo, good morning = selamat pagi, thank you = terima kasih, bye-bye = dadah! 🖐️ TUBUHKU: eye = mata 👀, nose = hidung 👃, hand = tangan ✋, head = kepala, mouth = mulut 👄. Ucapkan keras-keras sambil menunjuk bendanya, ya!",
+    example: "Pagi hari kamu menyapa guru: \"Good morning, Miss!\" Lalu saat melihat kucing oranye di halaman, kamu berlatih: \"Look, a cat!\" — belajar Inggris itu seperti bermain kata setiap hari. 🐱",
+    summary: "Red merah, blue biru, cat kucing, dog anjing, one-two-three = 1-2-3, hello = halo. Berani mengucapkan = berani pintar!",
+    worked: "Contoh soal: Bahasa Inggris dari 'burung' adalah … Langkah 1: ingat kelompok hewan — bird itu yang bisa terbang dan berkicau. 🐦 Langkah 2: cat = kucing, dog = anjing, fish = ikan — semuanya bukan burung. Langkah 3: jadi jawabannya bird! Coba lagi: 'ikan' = fish. 🐟",
+    vocab: "🔴 red = merah\n🔵 blue = biru\n🟡 yellow = kuning\n🟢 green = hijau\n🐱 cat = kucing\n🐶 dog = anjing\n🐦 bird = burung\n🐟 fish = ikan\n🍎 apple = apel\n👋 hello = halo",
+    fact: "Tahukah kamu? Anak kecil bisa belajar bahasa baru jauh lebih cepat daripada orang dewasa, karena otak anak seperti spons yang menyerap bunyi. Makanya bernyanyi lagu Inggris sambil menari itu cara belajar yang hebat! 🎵",
+    reading: {
+      title: "Bacaan Kecil: My Cat Momo",
+      text: "This is Momo. Momo is a cat. Momo is white. Momo likes fish. Momo says: meow! (Ini Momo. Momo adalah kucing. Momo berwarna putih. Momo suka ikan. Momo berkata: meong!)",
+      qa: [
+        { q: "Momo itu hewan apa?", a: "Kucing (cat). 🐱" },
+        { q: "Apa warna Momo?", a: "Putih (white). ⚪" },
+        { q: "Momo suka makan apa?", a: "Ikan (fish). 🐟" },
+      ],
+    },
+  },
+  {
+    id: "mat-tk-hitung", subjects: ["matematika", "cambridge-math"], jenjang: ["TK"], emoji: "🔢",
+    title: "Berhitung Seru 1–20 & Bentuk di Sekitarku",
+    keywords: ["berapa banyak", "hitung", "setelah angka", "sebelum angka", "lebih banyak", "lebih sedikit", "sama banyak", "bentuk", "lingkaran", "segitiga", "persegi", "pola"],
+    concept: "Ayo berhitung sambil menunjuk benda satu-satu: 1 ☝️, 2, 3, 4, 5, 6, 7, 8, 9, 10, lalu 11 sampai 20! Sentuh bendanya supaya tidak terlewat atau terhitung dua kali. Mana yang LEBIH BANYAK? Bandingkan dengan memasangkan satu-satu: yang masih punya sisa berarti lebih banyak. 🟰 SAMA BANYAK artinya jumlahnya pas berpasangan. Bentuk di sekitar kita: lingkaran ⭕ seperti roda dan piring, segitiga 🔺 seperti atap rumah, persegi ⬛ seperti ubin lantai. Pola seru: 🔴🔵🔴🔵 … sesudah biru pasti merah lagi!",
+    example: "Di meja ada 4 sendok dan 6 garpu. Pasangkan satu sendok dengan satu garpu: garpu masih sisa 2, jadi garpu LEBIH BANYAK daripada sendok. Kamu baru saja membandingkan bilangan tanpa menghitung keras-keras! 🍴",
+    summary: "Hitung sambil menunjuk satu-satu. Lebih banyak = ada sisa saat dipasangkan. Lingkaran, segitiga, persegi ada di mana-mana!",
+    worked: "Contoh soal: Ada 🍓🍓🍓🍓🍓 stroberi. Berapa banyak stroberi? Langkah 1: tunjuk satu-satu sambil berhitung: satu, dua, tiga, empat, lima. Langkah 2: stroberi terakhir yang ditunjuk adalah yang kelima. Langkah 3: jadi ada 5 stroberi. 🍓",
+    vocab: "🔢 berhitung = menyebut angka sambil menunjuk benda\n➕ tambah = menjadi lebih banyak\n➖ kurang = menjadi lebih sedikit\n🟰 sama banyak = jumlahnya pas\n⭕ lingkaran = bentuk bulat tanpa sudut\n🔺 segitiga = bentuk bersudut tiga",
+    fact: "Tahukah kamu? Jari tanganmu ada 10 — itu sebabnya manusia berhitung memakai dasar sepuluh! Dulu, orang menghitung dengan jari, kerikil, dan ruas bambu. 🖐️",
+  },
+  {
+    id: "islam-tk-ceria", subjects: ISLAM_SUBJECTS, jenjang: ["TK"], emoji: "🌟",
+    title: "Islam Ceria: Allah, Doa & Anak Saleh",
+    keywords: ["allah", "doa", "bismillah", "alhamdulillah", "rukun islam", "syahadat", "salat", "nabi muhammad", "malaikat", "al-fatihah", "surah pendek", "wudu"],
+    concept: "Allah adalah Tuhan kita yang menciptakan langit, bumi, dan semua makhluk. Nabi kita adalah Nabi Muhammad ﷺ. Umat Islam punya 5 Rukun Islam: syahadat, salat, zakat, puasa, dan haji. Sebelum makan dan belajar, kita ucapkan BISMILLAH. Sesudah makan dan menerima hadiah, kita ucapkan ALHAMDULILLAH. 🤲 Doa anak saleh: sebelum makan, sebelum tidur, dan doa untuk ibu bapak: \"Ya Allah, sayangilah ibu bapakku seperti mereka menyayangiku waktu kecil.\" Malaikat Jibril menyampaikan wahyu Allah kepada Nabi Muhammad. Surah pertama yang kita hafal: Al-Fatihah, dibaca di setiap salat.",
+    example: "Sebelum makan bekal di sekolah, kamu berdoa dan mengucap bismillah dengan suara pelan. Sesudah kenyang, kamu bilang alhamdulillah. Temanmu yang mendengar jadi ikut meniru — anak saleh menular kebaikannya! 🍱",
+    summary: "Bismillah sebelum memulai, alhamdulillah sesudah selesai. Rukun Islam ada 5. Allah sayang anak yang rajin berdoa.",
+    worked: "Contoh soal: Sebelum makan, kita mengucapkan … Langkah 1: ingat aturan anak saleh — memulai kebaikan dengan nama Allah. Langkah 2: ucapan sesudah selesai adalah alhamdulillah, jadi bukan itu. Langkah 3: jawaban yang tepat adalah BISMILLAH. 🤲",
+    vocab: "🤲 doa = berbicara dan meminta kepada Allah\n📿 bismillah = dengan nama Allah (diucapkan saat memulai)\n🌙 salat = ibadah menghadap Allah 5 kali sehari\n⭐ syahadat = kalimat persaksian seorang muslim\n👼 malaikat = makhluk Allah yang selalu taat",
+    fact: "Tahukah kamu? Surah Al-Fatihah hanya 7 ayat, tetapi dibaca berulang-ulang setiap hari oleh muslim di seluruh dunia — lebih dari seribu tahun lamanya! 📖",
+  },
+  {
+    id: "kristen-tk-cerita", subjects: ["kristen"], jenjang: ["TK"], emoji: "🌈",
+    title: "Cerita Alkitab Anak: Tuhan Sayang Aku",
+    keywords: ["yesus", "nuh", "daud", "adam", "penciptaan", "bahtera", "natal", "kelahiran", "doa", "allah", "goliat", "yunus", "daniel"],
+    concept: "Tuhan menciptakan langit, bumi, hewan, dan manusia — semuanya baik! 🌍 Cerita seru Alkitab untuk anak: Nuh membuat bahtera besar dan menyelamatkan hewan berpasang-pasangan dari air bah 🦒🦒; Daud yang kecil berani menghadapi raksasa Goliat karena Tuhan menyertainya; Daniel tetap setia berdoa dan Tuhan menjaganya di kandang singa 🦁; dan Yesus lahir di Betlehem pada hari Natal — kabar gembira untuk semua orang! ⭐ Yesus mengasihi anak-anak dan berkata: \"Biarkan anak-anak itu datang kepada-Ku.\" Berdoa itu berbicara dengan Tuhan, bisa kapan saja: pagi bangun tidur, sebelum makan, dan malam sebelum tidur.",
+    example: "Sebelum tidur, kamu melipat tangan, menutup mata, dan berdoa: \"Tuhan Yesus, terima kasih untuk hari ini. Jaga aku dan keluargaku. Amin.\" Hati terasa tenang dan berani. 🙏",
+    summary: "Tuhan menciptakan segalanya dan sayang padamu. Nuh–bahtera, Daud–Goliat, Daniel–singa, Natal–kelahiran Yesus.",
+    worked: "Contoh soal: Siapa yang membuat bahtera besar untuk menyelamatkan hewan dari air bah? Langkah 1: ingat cerita air bah — hujan besar menutupi bumi. Langkah 2: Tuhan menyuruh seorang bapak yang baik membuat kapal besar. Langkah 3: bapak itu bernama NUH. 🌈",
+    vocab: "🙏 doa = berbicara dengan Tuhan\n⛵ bahtera = kapal besar Nuh\n⭐ Natal = hari kelahiran Yesus\n❤️ kasih = sayang yang tulus\n📖 Alkitab = firman Tuhan",
+    fact: "Tahukah kamu? Pelangi pertama kali diceritakan di Alkitab sesudah air bah surut, sebagai tanda janji Tuhan kepada Nuh. Makanya pelangi selalu terasa seperti kabar baik! 🌈",
+  },
+  {
+    id: "kor-tk-salam", subjects: ["korea"], jenjang: ["TK"], emoji: "👋",
+    title: "Bahasa Korea Seru: Salam & Angka 1–10",
+    keywords: ["annyeong", "halo", "terima kasih", "angka", "hana", "satu", "warna", "hewan", "korea"],
+    concept: "Ayo menyapa dalam Bahasa Korea! 👋 안녕하세요 (annyeonghaseyo) = halo! 감사합니다 (gamsahamnida) = terima kasih. 안녕히 가세요 (annyeonghi gaseyo) = sampai jumpa! 🔢 Angka asli Korea 1–10: 하나 (hana) 1, 둘 (dul) 2, 셋 (set) 3, 넷 (net) 4, 다섯 (daseot) 5, 여섯 (yeoseot) 6, 일곱 (ilgop) 7, 여덟 (yeodeol) 8, 아홉 (ahop) 9, 열 (yeol) 10. 🐶 Hewan: 개 (gae) = anjing, 고양이 (goyangi) = kucing. Ucapkan sambil bertepuk tangan mengikuti irama, ya!",
+    example: "Saat menonton kartun Korea bersama kakak, kamu menyapa tokohnya: \"Annyeonghaseyo!\" Serasa punya teman baru dari negeri jauh. 🇰🇷",
+    summary: "Annyeonghaseyo = halo, gamsahamnida = terima kasih. Hana, dul, set = 1, 2, 3!",
+    worked: "Contoh soal: 'Satu' dalam Bahasa Korea adalah … Langkah 1: berhitung dengan lagu: hana … Langkah 2: hana adalah angka pertama yang kita nyanyikan. Langkah 3: jadi satu = 하나 (hana)! 🎵",
+    vocab: "👋 안녕하세요 (annyeonghaseyo) = halo\n🙏 감사합니다 (gamsahamnida) = terima kasih\n1️⃣ 하나 (hana) = satu\n2️⃣ 둘 (dul) = dua\n3️⃣ 셋 (set) = tiga\n🐶 개 (gae) = anjing",
+    fact: "Tahukah kamu? Huruf Korea bernama Hangul dan diciptakan oleh seorang raja yang baik hati, Raja Sejong, supaya semua rakyatnya bisa membaca! 👑",
+  },
+  {
+    id: "jpn-tk-salam", subjects: ["jepang"], jenjang: ["TK"], emoji: "👋",
+    title: "Bahasa Jepang Seru: Salam & Angka 1–10",
+    keywords: ["konnichiwa", "halo", "arigatou", "terima kasih", "angka", "ichi", "satu", "warna", "hewan", "jepang"],
+    concept: "Ayo menyapa dalam Bahasa Jepang! 👋 こんにちは (konnichiwa) = halo! おはよう (ohayou) = selamat pagi. ありがとう (arigatou) = terima kasih. さようなら (sayounara) = selamat tinggal! 🔢 Angka Jepang 1–10: 一 ichi 1, 二 ni 2, 三 san 3, 四 yon 4, 五 go 5, 六 roku 6, 七 nana 7, 八 hachi 8, 九 kyuu 9, 十 juu 10. 🐱 Hewan: ねこ (neko) = kucing, いぬ (inu) = anjing, さかな (sakana) = ikan. Di Jepang, menyapa sambil sedikit membungkuk tanda sopan. 🎎",
+    example: "Pagi hari di sekolah kamu menyapa guru seperti anak Jepang: \"Ohayou!\" sambil membungkuk kecil. Sopan dan seru! 🌸",
+    summary: "Konnichiwa = halo, ohayou = selamat pagi, arigatou = terima kasih. Ichi, ni, san = 1, 2, 3!",
+    worked: "Contoh soal: 'Satu' dalam Bahasa Jepang adalah … Langkah 1: berhitung dari awal: ichi … Langkah 2: ichi adalah bunyi pertama saat berhitung. Langkah 3: jadi satu = 一 (ichi)! 🎵",
+    vocab: "👋 こんにちは (konnichiwa) = halo\n🌅 おはよう (ohayou) = selamat pagi\n🙏 ありがとう (arigatou) = terima kasih\n1️⃣ 一 (ichi) = satu\n2️⃣ 二 (ni) = dua\n3️⃣ 三 (san) = tiga\n🐱 ねこ (neko) = kucing",
+    fact: "Tahukah kamu? Di Jepang ada kereta super cepat bernama Shinkansen yang melaju lebih cepat daripada mobil balap — dan selalu tepat waktu! 🚄",
+  },
+  {
+    id: "man-tk-salam", subjects: ["mandarin"], jenjang: ["TK"], emoji: "👋",
+    title: "Bahasa Mandarin Seru: Salam & Angka 1–10",
+    keywords: ["ni hao", "halo", "xiexie", "terima kasih", "angka", "yi", "satu", "warna", "hewan", "mandarin"],
+    concept: "Ayo menyapa dalam Bahasa Mandarin! 👋 你好 (nǐ hǎo) = halo! 谢谢 (xièxie) = terima kasih. 再见 (zàijiàn) = sampai jumpa! 🔢 Angka Mandarin 1–10: 一 yī 1, 二 èr 2, 三 sān 3, 四 sì 4, 五 wǔ 5, 六 liù 6, 七 qī 7, 八 bā 8, 九 jiǔ 9, 十 shí 10. Sambil berhitung, gerakkan jarimu seperti bentuk angkanya: satu jari untuk yī, dua jari untuk èr! 🐱 Hewan: 猫 (māo) = kucing, 狗 (gǒu) = anjing, 鱼 (yú) = ikan.",
+    example: "Di pasar, kamu menyapa penjual buah keturunan Tionghoa: \"Nǐ hǎo!\" Beliau tersenyum lebar. Satu kata halo bisa membuka pertemanan baru. 🍊",
+    summary: "Nǐ hǎo = halo, xièxie = terima kasih. Yī, èr, sān = 1, 2, 3!",
+    worked: "Contoh soal: 'Satu' dalam Bahasa Mandarin adalah … Langkah 1: berhitung sambil mengangkat jari: yī … Langkah 2: yī adalah angka yang pertama disebut. Langkah 3: jadi satu = 一 (yī)! 🎵",
+    vocab: "👋 你好 (nǐ hǎo) = halo\n🙏 谢谢 (xièxie) = terima kasih\n1️⃣ 一 (yī) = satu\n2️⃣ 二 (èr) = dua\n3️⃣ 三 (sān) = tiga\n🐱 猫 (māo) = kucing\n🐼 熊猫 (xióngmāo) = panda",
+    fact: "Tahukah kamu? Panda raksasa berasal dari Tiongkok dan hampir seluruh makanannya adalah bambu — ia bisa makan bambu selama 12 jam sehari! 🐼",
+  },
+];
+
+/* ================= MODUL TOPIK BARU (pengayaan cakupan) ================= */
+const EXTRA_MODULES: LibraryModule[] = [
+  {
+    id: "sains-benda-sekitar", subjects: ["sains"], jenjang: ["TK", "SD"], emoji: "🧸",
+    title: "Benda di Sekitarku: Sifat & Kegunaannya",
+    keywords: ["keras", "lembut", "kasar", "halus", "benda", "kayu", "plastik", "kaca", "kain", "basah", "kering", "mengapung", "tenggelam"],
+    concept: "Setiap benda punya sifat: batu itu KERAS, kapas itu LEMBUT, amplas itu KASAR, sutra itu HALUS. Benda dibuat dari bahan yang cocok dengan tugasnya: payung dari bahan anti-air supaya kita tidak kehujanan, panci dari logam karena tahan panas, bantal dari kain dan kapas supaya empuk. Ada benda yang MENGAPUNG di air (daun, gabus, bola plastik) dan ada yang TENGGELAM (batu, koin, sendok logam). Coba tebak dulu, lalu buktikan dengan percobaan di baskom air — seperti ilmuwan cilik! 🔬",
+    example: "Sendok logam tenggelam, tetapi sendok plastik mengapung. Kapal laut yang sangat besar terbuat dari baja, tetapi bentuknya berongga seperti mangkuk raksasa — makanya ia mengapung! 🚢",
+    summary: "Keras–lembut, kasar–halus. Bahan dipilih sesuai tugas benda. Mengapung atau tenggelam? Tebak, lalu buktikan!",
+    worked: "Contoh soal: Benda yang tenggelam di air adalah … Langkah 1: ingat hasil percobaan baskom — daun dan gabus mengapung. Langkah 2: koin logam berat dan padat. Langkah 3: jadi koin TENGGELAM. 🪙",
+    vocab: "🪨 keras = sulit ditekan/dibentuk (batu, kayu)\n☁️ lembut = empuk dan mudah ditekan (kapas, bantal)\n🌊 mengapung = berada di atas permukaan air\n⚓ tenggelam = turun ke dasar air\n🧲 bahan = zat pembuat suatu benda",
+    fact: "Tahukah kamu? Es mengapung di air — tidak seperti kebanyakan benda yang membeku lalu tenggelam. Karena es mengapung, ikan di danau yang membeku tetap bisa hidup di bawahnya! 🧊",
+  },
+  {
+    id: "sains-siklus-air", subjects: ["sains"], jenjang: ["SD", "SMP"], emoji: "🌧️",
+    title: "Siklus Air & Cuaca",
+    keywords: ["siklus air", "evaporasi", "kondensasi", "presipitasi", "awan", "hujan", "cuaca", "musim", "angin", "pelangi"],
+    concept: "Air di Bumi berputar terus dalam SIKLUS AIR: (1) EVAPORASI — air laut, danau, dan sungai menguap karena panas Matahari; (2) KONDENSASI — uap air naik, mendingin, dan berubah menjadi titik-titik air kecil pembentuk awan; (3) PRESIPITASI — titik air berkumpul, membesar, lalu jatuh sebagai hujan (atau salju di tempat sangat dingin); (4) air hujan berkumpul lagi di sungai dan laut — siklus berulang. Cuaca adalah keadaan udara dalam waktu singkat (cerah, berawan, hujan, berangin), sedangkan musim adalah pola cuaca panjang. Pelangi muncul saat cahaya Matahari menembus sisa titik hujan. 🌈",
+    example: "Jemuran basah menjadi kering karena evaporasi — airnya tidak hilang, ia berubah menjadi uap dan naik ke langit, mungkin turun lagi sebagai hujan di kota lain minggu depan!",
+    summary: "Evaporasi → kondensasi (awan) → presipitasi (hujan) → berkumpul lagi. Air tidak pernah hilang, hanya berputar.",
+    worked: "Contoh soal: Uap air yang naik ke langit lalu berubah menjadi awan mengalami … Langkah 1: awan terbentuk dari uap yang mendingin. Langkah 2: perubahan gas menjadi cair disebut mengembun/kondensasi. Langkah 3: jadi jawabannya KONDENSASI. ☁️",
+    vocab: "💨 evaporasi = penguapan air oleh panas\n☁️ kondensasi = uap berubah menjadi titik air (awan)\n🌧️ presipitasi = jatuhnya air dari awan (hujan/salju)\n🌡️ cuaca = keadaan udara saat ini\n🔄 siklus = perputaran yang berulang",
+    fact: "Tahukah kamu? Air yang kamu minum hari ini bisa jadi adalah air yang sama yang diminum dinosaurus jutaan tahun lalu — karena air Bumi selalu berputar dan tidak pernah bertambah atau berkurang! 🦕",
+  },
+  {
+    id: "sains-cahaya-bunyi", subjects: ["sains"], jenjang: ["SD", "SMP"], emoji: "🔦",
+    title: "Cahaya & Bunyi di Sekitar Kita",
+    keywords: ["cahaya", "bayangan", "cermin", "pantul", "bunyi", "getaran", "gema", "pelangi", "lensa", "suara"],
+    concept: "Cahaya merambat LURUS — itu sebabnya benda yang menghalangi cahaya membentuk BAYANGAN. Benda bening (kaca) meneruskan cahaya, benda gelap (kayu, karton) menghalanginya. Cermin memantulkan cahaya dengan teratur sehingga kita bisa bercermin; cahaya juga bisa dibiaskan, misalnya sendok tampak patah di dalam gelas air. Bunyi lahir dari GETARAN: senar gitar bergetar, gendang bergetar, pita suara kita pun bergetar. Bunyi merambat lewat udara, air, dan benda padat — tetapi TIDAK bisa merambat di ruang hampa seperti luar angkasa. Bunyi yang memantul pada dinding jauh menghasilkan GEMA.",
+    example: "Berteriak di depan tebing dan mendengar suaramu kembali? Itu gema — bunyi memantul. Astronaut di Bulan tidak bisa saling mendengar tanpa radio karena di sana tidak ada udara! 🌕",
+    summary: "Cahaya merambat lurus dan dipantulkan cermin. Bunyi berasal dari getaran dan butuh perantara untuk merambat.",
+    worked: "Contoh soal: Kita bisa melihat wajah sendiri di cermin karena cahaya … Langkah 1: cahaya dari wajah kita menuju cermin. Langkah 2: permukaan cermin yang halus mengembalikan cahaya ke mata kita. Langkah 3: jadi cahaya DIPANTULKAN oleh cermin. 🪞",
+    vocab: "🌑 bayangan = daerah gelap di belakang benda yang menghalangi cahaya\n🪞 pemantulan = cahaya kembali setelah menabrak permukaan\n〰️ getaran = gerakan bolak-balik sumber bunyi\n📣 gema = bunyi pantul yang terdengar kembali\n🔍 pembiasan = pembelokan cahaya saat berpindah medium",
+    fact: "Tahukah kamu? Cahaya adalah yang tercepat di alam semesta: 300.000 kilometer per detik! Cahaya Matahari hanya butuh sekitar 8 menit untuk sampai ke Bumi. ☀️",
+  },
+  {
+    id: "sains-makanan-sehat", subjects: ["sains"], jenjang: ["SD", "SMP"], emoji: "🥦",
+    title: "Makanan Sehat & Sistem Pencernaan",
+    keywords: ["pencernaan", "makanan", "gizi", "protein", "karbohidrat", "vitamin", "usus", "enzim pencernaan", "sehat", "mineral"],
+    concept: "Tubuh kita seperti mesin yang butuh bahan bakar dan bahan bangunan. KARBOHIDRAT (nasi, roti, kentang) memberi energi; PROTEIN (telur, ikan, daging, tahu-tempe) membangun dan memperbaiki tubuh; LEMAK menyimpan cadangan energi; VITAMIN & MINERAL (sayur dan buah) menjaga daya tahan; AIR membantu semua proses. Makanan dicerna bertahap: mulut (gigi mengunyah + air liur), kerongkongan, lambung (diaduk dan diberi enzim), usus halus (sari makanan diserap ke darah — di sinilah makanan benar-benar 'masuk' ke tubuh), usus besar (air diserap), dan sisa dibuang. Pedoman praktis: isi piringku — setengah sayur-buah, sisanya makanan pokok dan lauk protein. 🍽️",
+    example: "Sarapan nasi + telur + sayur bayam + susu memberi paket lengkap: energi dari nasi, protein dari telur dan susu, vitamin dari bayam. Badan siap belajar sampai siang!",
+    summary: "Karbohidrat = energi, protein = pembangun, vitamin = penjaga. Sari makanan diserap di usus halus.",
+    worked: "Contoh soal: Sari-sari makanan diserap ke dalam darah di … Langkah 1: ikuti perjalanan makanan — mulut, kerongkongan, lambung, lalu usus. Langkah 2: lambung hanya mengaduk dan mencampur enzim, belum menyerap sari. Langkah 3: penyerapan terjadi di USUS HALUS. ✅",
+    vocab: "⚡ karbohidrat = zat pemberi energi (nasi, roti)\n🧱 protein = zat pembangun tubuh (telur, ikan, tempe)\n🛡️ vitamin = zat penjaga kesehatan (sayur, buah)\n🍽️ pencernaan = proses mengolah makanan menjadi sari\n🌀 usus halus = tempat penyerapan sari makanan",
+    fact: "Tahukah kamu? Kalau usus halusmu dibentangkan, luas permukaannya bisa sebesar lapangan tenis! Lipatan dan tonjolan kecilnya (vili) membuat penyerapan makanan super efisien. 🎾",
+  },
+  {
+    id: "mat-statistika", subjects: ["matematika", "cambridge-math"], jenjang: ["SD", "SMP"], emoji: "📊",
+    title: "Statistika: Diagram, Rata-rata, Median & Modus",
+    keywords: ["rata-rata", "diagram", "median", "modus", "data", "piktogram", "grafik", "mean"],
+    concept: "Statistika adalah cara membaca kumpulan data. Tiga ukuran penting: (1) RATA-RATA (mean) = jumlah semua data ÷ banyaknya data; (2) MEDIAN = nilai tengah setelah data diurutkan; (3) MODUS = data yang paling sering muncul. Data disajikan dalam diagram batang (membandingkan jumlah), diagram garis (perubahan dari waktu ke waktu), diagram lingkaran (bagian dari keseluruhan), dan piktogram (gambar mewakili jumlah tertentu — perhatikan kunci gambarnya!). Jebakan klasik: rata-rata gabungan dua kelompok TIDAK bisa dirata-rata begitu saja — kembalikan ke jumlah total dulu.",
+    example: "Nilai ulangan 6 siswa: 70, 80, 80, 90, 100, 80. Modusnya 80 (muncul 3 kali), mediannya 80 (nilai tengah), rata-ratanya (70+80+80+90+100+80) ÷ 6 = 500 ÷ 6 ≈ 83,3.",
+    summary: "Mean = total ÷ banyak data. Median = nilai tengah terurut. Modus = paling sering muncul.",
+    worked: "Contoh soal: Rata-rata nilai 70, 80, 90, 100 adalah … Langkah 1: jumlahkan semua: 70 + 80 + 90 + 100 = 340. Langkah 2: hitung banyaknya data: ada 4 nilai. Langkah 3: bagi: 340 ÷ 4 = 85. Jadi rata-ratanya 85. ✅",
+    vocab: "📊 data = kumpulan keterangan/angka\n➗ rata-rata (mean) = jumlah data ÷ banyak data\n🎯 median = nilai tengah setelah diurutkan\n🔁 modus = data yang paling sering muncul\n🖼️ piktogram = diagram memakai gambar berkunci",
+    fact: "Tahukah kamu? Kata 'statistik' berasal dari kata 'state' (negara) — dulu penguasa mengumpulkan data penduduk untuk mengatur kerajaannya. Sekarang statistik dipakai di mana-mana, dari cuaca sampai sepak bola! ⚽",
+  },
+  {
+    id: "indo-bacaan-sd", subjects: ["indonesia"], jenjang: ["SD"], emoji: "📖",
+    title: "Literasi Baca SD: Membaca & Memahami Cerita",
+    keywords: ["bacaan", "cerita", "paragraf", "tokoh", "isi bacaan", "membaca", "pemahaman"],
+    concept: "Membaca bukan sekadar mengeja kata — membaca adalah memahami isi. Cara membaca yang baik: (1) baca judulnya dan tebak isinya; (2) baca seluruh teks pelan-pelan; (3) tandai siapa tokohnya, di mana tempatnya, dan apa yang terjadi; (4) setelah membaca, coba ceritakan kembali dengan bahasamu sendiri. Pertanyaan pemahaman biasanya menanyakan: siapa tokohnya, apa yang dilakukan tokoh, di mana peristiwa terjadi, dan pelajaran baik apa yang bisa diambil. Kalau lupa jawabannya, cari lagi di teks — semua jawaban ada di dalam bacaan!",
+    example: "Sesudah membaca cerita fabel, tutuplah bukunya dan ceritakan kembali kepada temanmu: awal cerita, masalahnya, dan akhir ceritanya. Kalau kamu bisa menceritakannya, berarti kamu benar-benar paham. 🗣️",
+    summary: "Baca judul → baca teks → kenali tokoh, tempat, peristiwa → ceritakan kembali. Jawaban selalu ada di dalam teks.",
+    worked: "Contoh soal bacaan: bacalah teks 'Kancil dan Petani' di bagian Ayo Membaca di bawah, lalu jawab: siapa yang menolong kancil? Langkah 1: baca teks sampai selesai. Langkah 2: cari kalimat yang menyebut pertolongan — 'Seekor burung hantu tua menunjukkannya jalan pulang.' Langkah 3: jadi yang menolong kancil adalah BURUNG HANTU. 🦉",
+    vocab: "🧑 tokoh = orang/hewan dalam cerita\n🏞️ latar = tempat dan waktu cerita\n📜 alur = urutan peristiwa dalam cerita\n💡 amanat = pelajaran baik dari cerita\n🔍 gagasan utama = pikiran pokok paragraf",
+    fact: "Tahukah kamu? Anak yang membaca 15 menit setiap hari bisa membaca sekitar satu juta kata dalam setahun — dan kosakatanya tumbuh jauh lebih cepat daripada teman yang jarang membaca! 📚",
+    reading: {
+      title: "Kancil dan Petani",
+      text: "Di tepi hutan tinggal seekor kancil yang cerdik. Suatu pagi, kancil tersesat saat mencari timun dan masuk ke kebun seorang petani. Petani itu bernama Pak Samin. Melihat kancil ketakutan, Pak Samin tidak marah. Ia justru memberi kancil minum dan menunjukkan jalan pulang ke hutan. Seekor burung hantu tua yang melihat kejadian itu berkata, 'Kebaikan hati selalu berbuah manis.' Sejak hari itu, kancil tidak pernah lagi mencuri timun. Ia menunggu diberi oleh Pak Samin, dan mereka menjadi sahabat.",
+      qa: [
+        { q: "Siapa nama petani dalam cerita?", a: "Pak Samin." },
+        { q: "Apa yang dilakukan Pak Samin saat melihat kancil?", a: "Ia tidak marah; ia memberi kancil minum dan menunjukkan jalan pulang ke hutan." },
+        { q: "Apa amanat (pelajaran baik) dari cerita ini?", a: "Kebaikan hati selalu berbuah manis — berbuat baik membuat orang lain berubah menjadi baik dan menjadi sahabat." },
+      ],
+    },
+  },
+  {
+    id: "indo-bacaan-smp", subjects: ["indonesia"], jenjang: ["SMP", "SMA"], emoji: "📰",
+    title: "Literasi Baca SMP: Teks, Gagasan Utama & Simpulan",
+    keywords: ["bacaan", "teks", "gagasan utama", "simpulan", "paragraf", "eksposisi", "pemahaman", "inferensi"],
+    concept: "Di SMP, membaca berarti berpikir. Setiap paragraf punya GAGASAN UTAMA (biasanya pada kalimat utama di awal atau akhir paragraf) dan kalimat penjelas yang mendukungnya. Teks eksposisi menyampaikan fakta dan pendapat secara logis; teks narasi menceritakan peristiwa; teks deskripsi menggambarkan sesuatu seolah pembaca melihatnya. Membaca kritis artinya membedakan FAKTA (dapat dibuktikan: 'Suhu Bandung hari ini 24°C') dan OPINI (penilaian: 'Bandung kota ternyaman'). Simpulan bacaan harus mencakup gagasan utama seluruh teks, bukan menyalin satu kalimat. Pertanyaan 'mengapa' dan 'bagaimana' menuntut inferensi: gabungkan keterangan di teks dengan penalaranmu.",
+    example: "Berita tentang banjir adalah fakta bila menyebut waktu, tempat, dan data; kolom komentar warga tentang banjir berisi opini. Pembaca cerdas memeriksa sumber dan tanggal sebelum membagikan berita. 📰",
+    summary: "Gagasan utama = inti paragraf. Fakta bisa dibuktikan, opini adalah penilaian. Simpulan merangkum, bukan menyalin.",
+    worked: "Contoh soal: bacalah paragraf di bagian Ayo Membaca, lalu tentukan gagasan utamanya. Langkah 1: baca semua kalimat. Langkah 2: tanyakan 'kalimat mana yang dibahas oleh kalimat-kalimat lain?' — kalimat pertama dibahas dan didukung kalimat berikutnya. Langkah 3: jadi gagasan utamanya ada pada kalimat pertama: perpustakaan adalah jendela dunia. ✅",
+    vocab: "💡 gagasan utama = pikiran pokok paragraf\n📄 kalimat utama = kalimat yang memuat gagasan utama\n✔️ fakta = keterangan yang dapat dibuktikan\n💭 opini = pendapat/penilaian seseorang\n🧾 simpulan = ringkasan inti seluruh bacaan\n🔎 inferensi = simpulan dari petunjuk teks",
+    fact: "Tahukah kamu? Indonesia punya tradisi literasi kuno: naskah-naskah lontar di Bali dan Jawa ditulis di atas daun palem dan sebagian masih tersimpan rapi sampai berumur ratusan tahun! 🌴",
+    reading: {
+      title: "Perpustakaan, Jendela Dunia",
+      text: "Perpustakaan adalah jendela dunia yang terbuka untuk siapa saja. Di dalamnya, pembaca dapat berkelana ke masa lalu lewat buku sejarah, menjelajahi luar angkasa lewat buku sains, dan menyelami perasaan manusia lewat novel — tanpa beranjak dari tempat duduk. Lebih dari itu, perpustakaan melatih kemandirian: pengunjung belajar mencari, memilih, dan menilai informasi sendiri. Karena itulah, bangsa yang besar selalu merawat perpustakaannya. Buku mungkin diam, tetapi pikiran yang dibangunnya bergerak jauh melampaui dinding ruangan.",
+      qa: [
+        { q: "Apa gagasan utama paragraf tersebut?", a: "Perpustakaan adalah jendela dunia yang terbuka untuk siapa saja (kalimat pertama, didukung seluruh kalimat berikutnya)." },
+        { q: "Menurut teks, apa manfaat perpustakaan selain membaca buku?", a: "Melatih kemandirian: pengunjung belajar mencari, memilih, dan menilai informasi sendiri." },
+        { q: "Apakah kalimat 'Buku mungkin diam, tetapi pikiran yang dibangunnya bergerak jauh' termasuk fakta atau opini? Jelaskan.", a: "Opini — kalimat itu penilaian/kiasan penulis, bukan keterangan yang dapat dibuktikan dengan data." },
+      ],
+    },
+  },
+  {
+    id: "ing-reading-sd", subjects: ["inggris", "cambridge-eng"], jenjang: ["SD"], emoji: "📖",
+    title: "Reading Time SD: Short Stories & Questions",
+    keywords: ["reading", "story", "read", "passage", "question", "bacaan", "cerita"],
+    concept: "Reading in English is easier than you think! Follow these steps: (1) read the title and guess what the story is about; (2) read the whole text slowly — do not stop at every new word; (3) find WHO (the characters), WHERE (the place), and WHAT HAPPENS; (4) answer the questions by looking back at the text — the answers are hidden inside the sentences! Useful question words: who = siapa, what = apa, where = di mana, when = kapan, why = mengapa. Belajar membaca Inggris itu seperti berburu harta karun: jawabannya selalu ada di dalam teks. 🔎",
+    example: "After reading a short story, close the book and retell it in your own words: 'The story is about a rabbit. The rabbit is fast but lazy…' If you can retell it, you truly understand it!",
+    summary: "Title → read → who/where/what happens → find answers in the text. who=siapa, what=apa, where=di mana.",
+    worked: "Worked example: read 'Benny the Rabbit' below, then answer: What does Benny like to eat? Step 1: read the whole text. Step 2: find the sentence about food — 'He likes carrots and leaves.' Step 3: so the answer is CARROTS (and leaves). 🥕",
+    vocab: "📖 reading = membaca\n🧑 character = tokoh cerita\n🏞️ place = tempat kejadian\n❓ question word = kata tanya (who, what, where, when, why)\n🔎 look back = melihat kembali ke teks\n🥕 carrot = wortel",
+    fact: "Did you know? The word 'bookworm' (kutu buku) is for someone who loves reading — and real bookworms are tiny insects that eat old book pages! 📚",
+    reading: {
+      title: "Benny the Rabbit",
+      text: "Benny is a small white rabbit. He lives in a garden near a big mango tree. Every morning, Benny hops around the garden. He likes carrots and leaves. One day, Benny meets a turtle. The turtle walks slowly, but Benny hops fast. 'Let us be friends,' says Benny. Now Benny and the turtle play together every day.",
+      qa: [
+        { q: "What colour is Benny?", a: "White." },
+        { q: "Where does Benny live?", a: "In a garden near a big mango tree." },
+        { q: "Who is Benny's new friend?", a: "A turtle." },
+      ],
+    },
+  },
+  {
+    id: "ing-reading-smp", subjects: ["inggris", "cambridge-eng"], jenjang: ["SMP", "SMA"], emoji: "📰",
+    title: "Reading Comprehension SMP: Main Idea & Inference",
+    keywords: ["reading", "passage", "main idea", "inference", "comprehension", "bacaan", "teks"],
+    concept: "Strong readers do three things: (1) find the MAIN IDEA — the point every sentence supports, often in the first or last sentence of a paragraph; (2) separate FACT from OPINION — facts can be proven, opinions show feelings or judgement; (3) make INFERENCES — conclusions the writer suggests but does not state directly ('She grabbed an umbrella' → it was probably raining). Skim first for the big picture, then scan for details. For 'why' questions, combine clues in the text. Remember: comprehension questions are answered FROM the text, not from your own experience.",
+    example: "A text says: 'Rafi saved his money for six months. Last Saturday, he finally bought the bicycle.' Inference: Rafi is patient and determined — the writer never says it, but the clues prove it. 🚲",
+    summary: "Main idea = the supported point. Fact ≠ opinion. Inference = clues + reasoning.",
+    worked: "Worked example: read the passage below and choose its main idea. Step 1: skim all sentences. Step 2: ask 'what do all these sentences support?' — every sentence is about libraries helping people learn. Step 3: so the main idea is: libraries open the world of knowledge to everyone. ✅",
+    vocab: "💡 main idea = gagasan utama\n✔️ fact = a statement that can be proven\n💭 opinion = a personal judgement\n🔎 inference = a conclusion from clues\n👀 skim = read quickly for the big picture\n🎯 scan = search for specific details",
+    fact: "Did you know? The longest sentence ever printed in a novel has more than 13.000 words — readers needed many bookmarks for just one sentence! 😲",
+    reading: {
+      title: "Libraries Open the World",
+      text: "A library is far more than a room full of books. Inside a library, a student can travel to ancient Egypt through a history book, explore the deep sea through a science magazine, or learn a new language from a dictionary — all without leaving the chair. Libraries also teach independence: visitors learn to search, choose, and judge information by themselves. That is why great nations take care of their libraries. Books may be silent, but the minds they build travel far beyond the walls.",
+      qa: [
+        { q: "What is the main idea of the passage?", a: "Libraries open the world of knowledge to everyone (and train independence) — every sentence supports this point." },
+        { q: "According to the text, what do libraries teach besides knowledge?", a: "Independence: visitors learn to search, choose, and judge information by themselves." },
+        { q: "Is 'Books may be silent, but the minds they build travel far' a fact or an opinion? Why?", a: "An opinion — it is the writer's figurative judgement, not something that can be proven with data." },
+      ],
+    },
+  },
+  {
+    id: "ips-asean", subjects: ["ips"], jenjang: ["SMP", "SMA"], emoji: "🌏",
+    title: "ASEAN & Indonesia di Dunia",
+    keywords: ["asean", "asia tenggara", "negara anggota", "sekretariat", "kerja sama", "global", "pbb", "ekspor", "impor"],
+    concept: "ASEAN (Association of Southeast Asian Nations) didirikan 8 Agustus 1967 di Bangkok oleh 5 negara: Indonesia, Malaysia, Filipina, Singapura, dan Thailand. Kini anggotanya 10 negara Asia Tenggara (ditambah Brunei, Vietnam, Laos, Myanmar, Kamboja). Sekretariat ASEAN berada di Jakarta — bukti peran penting Indonesia. Kerja sama ASEAN meliputi ekonomi (perdagangan bebas kawasan), pendidikan (pertukaran pelajar), dan keamanan kawasan. Di tingkat dunia, Indonesia aktif di PBB, G20, dan pernah memelopori Gerakan Non-Blok serta Konferensi Asia-Afrika 1955 di Bandung. Politik luar negeri Indonesia: bebas dan aktif.",
+    example: "Produk Indonesia seperti kopi dan minyak sawit dijual ke negara ASEAN dan dunia (ekspor), sedangkan gandum dan mesin kita datangkan dari luar (impor) — perdagangan membuat negara saling membutuhkan.",
+    summary: "ASEAN lahir 1967 di Bangkok, 10 anggota, sekretariat di Jakarta. Politik luar negeri Indonesia: bebas aktif.",
+    worked: "Contoh soal: Sekretariat ASEAN berkedudukan di … Langkah 1: ingat peran Indonesia sebagai salah satu pendiri terbesar. Langkah 2: Bangkok adalah tempat ASEAN didirikan, bukan sekretariatnya. Langkah 3: sekretariat tetap ASEAN berada di JAKARTA. ✅",
+    vocab: "🌏 ASEAN = perhimpunan bangsa-bangsa Asia Tenggara\n🏢 sekretariat = kantor pusat organisasi\n📦 ekspor = menjual barang ke luar negeri\n📥 impor = membeli barang dari luar negeri\n🕊️ non-blok = tidak memihak blok kekuatan mana pun\n🤝 bebas aktif = politik luar negeri Indonesia",
+    fact: "Tahukah kamu? Konferensi Asia-Afrika 1955 di Bandung dihadiri 29 negara dan mengguncang dunia — banyak negara Asia-Afrika merdeka terinspirasi peristiwa ini. Gedung Merdeka tempatnya masih berdiri sampai sekarang! 🏛️",
+  },
+  {
+    id: "ppkn-hak-kewajiban", subjects: ["ppkn"], jenjang: ["SD", "SMP"], emoji: "⚖️",
+    title: "Hak, Kewajiban & Musyawarah",
+    keywords: ["hak", "kewajiban", "musyawarah", "mufakat", "voting", "warga negara", "aturan", "norma", "gotong royong"],
+    concept: "Setiap warga negara punya HAK (sesuatu yang layak diterima: hak belajar, hak bermain, hak mendapat perlindungan) dan KEWAJIBAN (sesuatu yang harus dilakukan: kewajiban belajar, mematuhi aturan, menjaga kebersihan). Hak dan kewajiban harus SEIMBANG: menuntut hak tanpa menjalankan kewajiban membuat kehidupan bersama kacau. Keputusan bersama diambil lewat MUSYAWARAH untuk mencapai MUFAKAT (kesepakatan semua pihak) — sesuai sila ke-4 Pancasila. Bila mufakat tidak tercapai, barulah dilakukan pemungutan suara (voting) dan semua pihak menghormati hasilnya. Norma yang mengatur hidup bersama: agama, kesusilaan, kesopanan, dan hukum.",
+    example: "Kelasmu bermusyawarah memilih tujuan karyawisata. Ada yang ingin ke pantai, ada yang ingin ke museum. Setelah berdiskusi baik-baik, kelas sepakat ke museum sains — itulah mufakat, dan semua ikut dengan senang hati. 🚌",
+    summary: "Hak diterima, kewajiban dilakukan — keduanya seimbang. Musyawarah dulu, mufakat tujuan, voting jalan terakhir.",
+    worked: "Contoh soal: Contoh kewajiban siswa di sekolah adalah … Langkah 1: kewajiban = yang harus DILAKUKAN, bukan diterima. Langkah 2: 'mendapat nilai' dan 'dipuji guru' adalah hak/akibat, bukan kewajiban. Langkah 3: 'mengerjakan tugas dan mematuhi tata tertib' adalah KEWAJIBAN. ✅",
+    vocab: "🎁 hak = sesuatu yang layak diterima\n📋 kewajiban = sesuatu yang harus dilakukan\n🗣️ musyawarah = berunding untuk keputusan bersama\n🤝 mufakat = kesepakatan semua pihak\n📏 norma = aturan hidup bersama\n🗳️ voting = pemungutan suara",
+    fact: "Tahukah kamu? Kata 'musyawarah' berasal dari bahasa Arab 'syawara' yang artinya saling memberi isyarat/pendapat. Tradisi berunding ini sudah hidup di desa-desa Nusantara jauh sebelum Indonesia merdeka! 🏡",
+  },
+];
+
 export const LIBRARY_MODULES: LibraryModule[] = [
   ...SAINS_MODULES, ...BIO_MODULES, ...FIS_MODULES, ...KIM_MODULES,
   ...MATH_MODULES, ...ARAB_MODULES, ...ISLAM_MODULES, ...KRISTEN_MODULES,
   ...LANG_MODULES, ...SOSIAL_MODULES, ...SEJARAH_MODULES, ...KOMPETISI_MODULES,
-];
+  ...TK_MODULES, ...EXTRA_MODULES,
+].map((m) => {
+  // Gabungkan pengayaan (contoh dibahas, kosakata, Tahukah Kamu?) dari
+  // library-enrich.ts; modul baru yang sudah membawa kolomnya sendiri
+  // (TK_MODULES & EXTRA_MODULES) tidak ditimpa.
+  const e = MODULE_ENRICH[m.id];
+  if (!e) return m;
+  return { ...m, worked: m.worked ?? e.worked, vocab: m.vocab ?? e.vocab, fact: m.fact ?? e.fact };
+});
 
 const SUBJECT_ALIAS: Record<string, string> = {
   "cambridge-sci": "sains",

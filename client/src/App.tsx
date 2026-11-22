@@ -2747,7 +2747,10 @@ function BelajarView(props: {
         <h1 className="font-display text-2xl font-extrabold">📚 Perpustakaan Belajar — Modul per Jenjang &amp; Mapel</h1>
         <p className="mt-1 max-w-2xl text-[15px] leading-relaxed" style={{ color: "var(--dim)" }}>
           Perpustakaan lengkap untuk belajar dari dasar: pilih jenjang dan mata pelajaran, lalu buka modul topiknya —
-          ada penjelasan konsep, contoh dalam kehidupan sehari-hari, dan rangkuman. Khusus Sains/IPA, lingkupnya lengkap per jenjang:
+          setiap modul kini berisi penjelasan konsep yang runtut, contoh soal yang dibahas langkah demi langkah, contoh dalam
+          kehidupan sehari-hari, daftar kosakata penting, kotak “Tahukah Kamu?”, bacaan literasi untuk Bahasa Indonesia &amp;
+          Bahasa Inggris, dan rangkuman — semua materinya disesuaikan dengan jenjangnya, dan bisa dibacakan dengan tombol suara.
+          Khusus Sains/IPA, lingkupnya lengkap per jenjang:
           makhluk hidup &amp; lingkungan, tubuh manusia, energi, bumi &amp; alam semesta, zat &amp; materi, gaya &amp; gerak, listrik &amp; magnet, ekosistem, sampai Fisika, Kimia, dan Biologi yang lebih dalam. ✨
         </p>
         <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Pilih jenjang perpustakaan">
@@ -2797,7 +2800,7 @@ function BelajarView(props: {
                         <span className="text-3xl" aria-hidden>{m.emoji}</span>
                         <span className="min-w-0">
                           <span className="block font-display text-sm leading-tight font-bold">{m.title}</span>
-                          <span className="block text-xs font-semibold" style={{ color: "var(--dim)" }}>Konsep • Contoh nyata • Rangkuman →</span>
+                          <span className="block text-xs font-semibold" style={{ color: "var(--dim)" }}>Konsep • Contoh dibahas • Kosakata • Fakta seru • Rangkuman →</span>
                         </span>
                       </button>
                     ))}
@@ -2852,16 +2855,36 @@ function ModuleView(props: {
   subjectName: string;
   question?: Question;
   backLabel: string;
+  english?: boolean;
   onBack: () => void;
   onPractice?: () => void;
 }) {
   const m = props.module;
   const q = props.question;
+  // Bacakan modul (ramah TK & untuk semua jenjang): membaca judul, konsep,
+  // contoh yang dibahas, contoh sehari-hari, fakta seru, bacaan literasi,
+  // dan rangkuman. Berhenti total saat modul ditutup / tombol ditekan lagi.
+  const [listening, setListening] = useState(false);
+  useEffect(() => () => { stopSpeaking(); }, []);
+  const handleListen = () => {
+    if (listening) { stopSpeaking(); setListening(false); return; }
+    const parts = [
+      m.title,
+      m.concept,
+      m.worked ? `Contoh soal dibahas langkah demi langkah. ${m.worked}` : "",
+      m.example,
+      m.reading ? `Ayo membaca. ${m.reading.title}. ${m.reading.text}` : "",
+      m.fact ?? "",
+      `Rangkuman. ${m.summary}`,
+    ].filter(Boolean);
+    speakText(parts.join(" "), props.english ? "en-US" : "id-ID", { setSpeaking: setListening, rate: 1.0 });
+  };
+  const goBack = () => { stopSpeaking(); props.onBack(); };
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto" style={{ background: "var(--bg)" }} role="dialog" aria-modal="true" aria-label={`Modul belajar ${m.title}`}>
       <main className="mx-auto w-full max-w-3xl px-4 pb-12">
         <div className="sticky top-0 z-10 -mx-4 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3" style={{ background: "var(--bg)" }}>
-          <button type="button" onClick={props.onBack} aria-label={props.backLabel}
+          <button type="button" onClick={goBack} aria-label={props.backLabel}
             className="font-display min-h-[48px] rounded-full px-5 text-base font-extrabold text-white shadow" style={{ background: "var(--accent)" }}>
             ← {props.backLabel}
           </button>
@@ -2882,21 +2905,64 @@ function ModuleView(props: {
           <h1 className="font-display mt-2 text-2xl leading-snug font-extrabold">{m.title}</h1>
           <p className="mt-1 text-sm font-bold" style={{ color: "var(--dim)" }}>{props.subjectName} • Jenjang {JENJANG.find((j) => j.id === props.jenjang)?.name ?? props.jenjang} • Modul Perpustakaan Belajar</p>
 
+          <button type="button" onClick={handleListen} aria-label={listening ? "Berhenti membacakan modul" : "Dengarkan modul dibacakan"} aria-live="polite"
+            className={`font-display mt-3 inline-flex min-h-[48px] items-center gap-2 rounded-full px-5 text-base font-extrabold text-white ${listening ? "speaking" : ""}`}
+            style={{ background: listening ? "#C2255C" : "#E84393" }}>
+            {listening ? "🔊 Sedang dibacakan… (ketuk untuk berhenti)" : "▶ 🔊 Dengarkan Modul Ini"}
+          </button>
+
           <section className="mt-5">
             <h2 className="font-display text-lg font-extrabold" style={{ color: "var(--accent)" }}>📖 Konsep dari Dasar</h2>
             <p className="mt-1 text-[15px] leading-relaxed">{m.concept}</p>
           </section>
+          {m.worked && (
+            <section className="mt-5">
+              <h2 className="font-display text-lg font-extrabold" style={{ color: "var(--accent)" }}>🧮 Contoh Soal — Dibahas Langkah demi Langkah</h2>
+              <p className="mt-1 rounded-2xl px-4 py-3 text-[15px] leading-relaxed whitespace-pre-line" style={{ background: "#FFF6E5", border: "1px solid var(--gold)" }}>{m.worked}</p>
+            </section>
+          )}
           <section className="mt-5">
             <h2 className="font-display text-lg font-extrabold" style={{ color: "var(--accent)" }}>🏠 Contoh dalam Kehidupan Sehari-hari</h2>
             <p className="mt-1 rounded-2xl px-4 py-3 text-[15px] leading-relaxed" style={{ background: "var(--surface2)" }}>{m.example}</p>
           </section>
+          {m.vocab && (
+            <section className="mt-5">
+              <h2 className="font-display text-lg font-extrabold" style={{ color: "var(--accent)" }}>📚 Kosakata &amp; Istilah Penting</h2>
+              <ul className="mt-1 grid gap-1.5">
+                {m.vocab.split("\n").filter((line) => line.trim()).map((line) => (
+                  <li key={line} className="rounded-xl px-3 py-2 text-[15px] leading-relaxed" style={{ background: "var(--surface2)" }}>{line}</li>
+                ))}
+              </ul>
+            </section>
+          )}
+          {m.reading && (
+            <section className="mt-5 rounded-2xl px-4 py-3" style={{ background: "#EAF1FE", border: "1px solid #2E7CD6" }} aria-label={`Bacaan literasi: ${m.reading.title}`}>
+              <h2 className="font-display text-lg font-extrabold" style={{ color: "#1D4ED8" }}>📖 Ayo Membaca: {m.reading.title}</h2>
+              <p className="mt-2 text-[15px] leading-relaxed whitespace-pre-line">{m.reading.text}</p>
+              <h3 className="font-display mt-3 text-base font-extrabold">🤔 Pertanyaan Pemahaman</h3>
+              <ol className="mt-1 grid list-decimal gap-2 pl-5">
+                {m.reading.qa.map((item) => (
+                  <li key={item.q} className="text-[15px] leading-relaxed">
+                    <span className="font-semibold">{item.q}</span>
+                    <span className="block" style={{ color: "var(--dim)" }}>Jawaban: {item.a}</span>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
+          {m.fact && (
+            <section className="mt-5 rounded-2xl px-4 py-3" style={{ background: "#FDF2E3", border: "1px dashed #D97706" }}>
+              <h2 className="font-display text-base font-extrabold">💡 Tahukah Kamu?</h2>
+              <p className="mt-1 text-[15px] leading-relaxed">{m.fact}</p>
+            </section>
+          )}
           <section className="mt-5 rounded-2xl px-4 py-3" style={{ background: "#E2F4E9", border: "1px solid #1E7A46" }}>
             <h2 className="font-display text-base font-extrabold">📝 Rangkuman — Ingat Ini Saja</h2>
             <p className="mt-1 text-[15px] leading-relaxed font-semibold">{m.summary}</p>
           </section>
 
           <div className="mt-6 grid gap-2">
-            <button type="button" onClick={props.onBack} className="font-display min-h-[54px] rounded-2xl text-lg font-extrabold text-white" style={{ background: "var(--accent)" }} aria-label={props.backLabel}>
+            <button type="button" onClick={goBack} className="font-display min-h-[54px] rounded-2xl text-lg font-extrabold text-white" style={{ background: "var(--accent)" }} aria-label={props.backLabel}>
               ← {props.backLabel}
             </button>
             {props.onPractice && (
@@ -4740,7 +4806,7 @@ export function App() {
 
       {moduleCtx && (
         <ModuleView module={moduleCtx.module} jenjang={moduleCtx.jenjang} subjectName={moduleCtx.subjectName}
-          question={moduleCtx.question} backLabel={moduleCtx.backLabel}
+          question={moduleCtx.question} backLabel={moduleCtx.backLabel} english={school === "cambridge"}
           onBack={() => setModuleCtx(null)}
           onPractice={moduleCtx.fromLibrary ? () => { const sid = moduleCtx.subjectId; setModuleCtx(null); setSubjectId(sid); setView("home"); window.scrollTo({ top: 0 }); } : undefined} />
       )}

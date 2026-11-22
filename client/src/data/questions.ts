@@ -39,7 +39,7 @@ export const SCHOOL_TYPES: { id: SchoolType; name: string; desc: string }[] = [
   { id: "umum", name: "Umum / Negeri", desc: "TK • SD • SMP • SMA • SMK negeri & swasta" },
   { id: "madrasah", name: "Madrasah", desc: "RA (setara TK) • MI • MTs • MA + mapel keislaman lengkap" },
   { id: "kristen", name: "Sekolah Kristen", desc: "TK • SD • SMP • SMA Kristen + Agama Kristen" },
-  { id: "cambridge", name: "Cambridge / Intl", desc: "TK / Early Years • Primary • Secondary — soal berbahasa Inggris" },
+  { id: "cambridge", name: "Cambridge Internasional", desc: "TK / Early Years • Primary • Secondary — soal berbahasa Inggris" },
 ];
 
 export const JENJANG: { id: JenjangId; name: string; sub: string; ages: string; color: string }[] = [
