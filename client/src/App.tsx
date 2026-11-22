@@ -181,6 +181,131 @@ function splitSentences(text: string): string[] {
   return chunks.length ? chunks : [text];
 }
 
+/* ---------- Pembacaan soal SADAR BAHASA per potongan ----------
+   Soal Bahasa Inggris di sekolah non-Cambridge itu CAMPURAN: pengantarnya
+   Bahasa Indonesia, kata target & pilihan jawabannya Bahasa Inggris.
+   Dibacakan satu suara, kata Inggrisnya jadi berlafal Indonesia (atau
+   sebaliknya) dan terdengar janggal. Karena itu teks soal dipecah menjadi
+   potongan-potongan bahasa (SpeechSegment) dan tiap potongan diucapkan
+   dengan voice bahasanya sendiri, dengan jeda singkat di titik ganti
+   bahasa dan lafal sedikit lebih lambat untuk kata target Inggris.
+   Teks yang TAMPIL di layar tidak berubah sama sekali — pemecahan ini
+   hanya untuk teks yang dikirim ke speech synthesis. */
+export interface SpeechSegment { text: string; lang: string; slow?: boolean }
+
+/* Kamus petunjuk bahasa: kata-kata fungsi & kata yang sangat khas salah
+   satu bahasa, dipakai menebak bahasa sepotong teks pendek (terutama isi
+   tanda kutip dan batang soal yang seluruhnya berbahasa Inggris). */
+const EN_HINT = new Set(("the of is are was were has have had in on at to a an and or but if as by for from with without what which who whom whose when where why how she he they it we you this that these those there here do does did be been being am will would can could should choose correct word words sentence sentences letter letters number numbers means mean meaning opposite antonym synonym plural singular past present tense form verb verbs noun nouns adjective adverb english indonesian look read how many much smallest biggest largest first last every yesterday today tomorrow goes go going went come comes say says said cat dog bird fish black white red blue green book school student students teacher class house family mother father water apple banana animal animals body head hand eye ear nose mouth one two three four five six seven eight nine ten hardware software keyboard mouse monitor printer internet online website email file program download upload server digital computer laptop smartphone network system information energy power photosynthesis cell").split(/\s+/));
+const ID_HINT = new Set(("yang dari adalah kata katanya dengan untuk dalam pada ini itu tidak bukan atau dan di ke berapa manakah berikut pilihlah pilih kalimat huruf suku terdiri pertama terakhir tunggal jamak lawan berlawanan semakna persamaan arti artinya bahasa inggris indonesia bentuk baku majas tanda baca ejaan termasuk merupakan disebut dinamakan terjadi jumlah selisih hasil bilangan angka tentukan nilai zat unsur larutan asam basa organ tubuh hewan tumbuhan daun akar batang bunga tanah air udara matahari bumi bulan bintang planet musim hujan ibu ayah anak guru murid sekolah rumah pasar sungai gunung laut desa kota provinsi negara pulau sila lambang dasar hukum hak kewajiban warga tuhan allah nabi kitab surah ayat salat puasa zakat haji wudu masjid gereja doa ibadah malaikat").split(/\s+/));
+
+/** Tebak bahasa sepotong teks dari kata-kata petunjuknya: "en", "id",
+    atau null bila tidak ada sinyal yang cukup kuat. */
+function guessLang(text: string): "en" | "id" | null {
+  const words = text.toLowerCase().match(/[a-z]+/g) ?? [];
+  let en = 0, id = 0;
+  for (const w of words) {
+    if (EN_HINT.has(w)) en += 1;
+    if (ID_HINT.has(w)) id += 1;
+  }
+  if (en > id && en >= 1) return "en";
+  if (id > en && id >= 1) return "id";
+  return null;
+}
+
+/** Pecah teks pada tanda kutip (“…” atau "…"): potongan di dalam kutip
+    ditandai quoted, sisanya tidak. Tanda kutipnya sendiri dibuang dari
+    teks yang akan dibacakan. */
+function splitByQuotes(text: string): { text: string; quoted: boolean }[] {
+  const parts: { text: string; quoted: boolean }[] = [];
+  const re = /“[^”]*”|"[^"]*"/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) parts.push({ text: text.slice(last, m.index), quoted: false });
+    parts.push({ text: m[0].slice(1, -1), quoted: true });
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) parts.push({ text: text.slice(last), quoted: false });
+  return parts.length ? parts : [{ text, quoted: false }];
+}
+
+/**
+ * Susun potongan-potongan bacaan untuk satu soal (batang soal + pilihan):
+ * - Cambridge (english): satu potongan full Bahasa Inggris, seperti dulu.
+ * - Mapel bahasa asing lain (Arab/Korea/Jepang/Mandarin/Jawa): satu
+ *   potongan bahasa mapelnya, seperti dulu.
+ * - Mapel Bahasa Inggris non-Cambridge: pengantar Indonesia → id-ID; kata/
+ *   frasa Inggris (di dalam kutip maupun batang soal berbahasa Inggris)
+ *   → en-US sedikit lebih lambat; pilihan jawaban berbahasa Inggris →
+ *   en-US (awalan "Pilihan:" tetap Indonesia). Arah soal menentukan
+ *   bahasa pilihan: "Bahasa Inggris dari …" → pilihan Inggris; "…
+ *   artinya …" → pilihan Indonesia.
+ * - Mapel lain: batang soal Indonesia, kecuali potongan dalam tanda kutip
+ *   yang jelas berbahasa Inggris (istilah) → en-US sedikit lebih lambat.
+ */
+function buildQuestionSpeech(question: string, options: string[], subjectId: string, english: boolean): SpeechSegment[] {
+  if (english) return [{ text: `${question}. Choices: ${options.join(". ")}`, lang: "en-US" }];
+  const isEnglishSubject = subjectId.includes("inggris") || subjectId.startsWith("cambridge-eng");
+  const base = langForSubject(subjectId);
+  if (!isEnglishSubject && base !== "id-ID") {
+    return [{ text: `${question}. Pilihan: ${options.join(". ")}`, lang: base }];
+  }
+  const lower = question.toLowerCase();
+  const parts = splitByQuotes(question);
+  // Bahasa pilihan jawaban mengikuti arah soal.
+  let answerEnglish: boolean;
+  if (/bahasa inggris dari/.test(lower)) answerEnglish = true;
+  else if (/\bartinya\b/.test(lower)) answerEnglish = false;
+  else {
+    const frameGuess = guessLang(parts.filter((p) => !p.quoted).map((p) => p.text).join(" "));
+    answerEnglish = frameGuess === "en" ? true : isEnglishSubject;
+  }
+  const segs: SpeechSegment[] = [];
+  const push = (text: string, lang: string, slow = false) => {
+    const t = text.replace(/\s+/g, " ").trim();
+    if (!t) return;
+    const lastSeg = segs[segs.length - 1];
+    if (lastSeg && lastSeg.lang === lang && !!lastSeg.slow === slow) lastSeg.text += ` ${t}`;
+    else segs.push({ text: t, lang, slow });
+  };
+  parts.forEach((part, i) => {
+    if (!part.quoted) {
+      // Batang soal: Bahasa Inggris utuh (mis. "The opposite of … is …")
+      // dibacakan Inggris; pengantar Indonesia tetap Indonesia.
+      const g = isEnglishSubject ? guessLang(part.text) : null;
+      push(part.text, g === "en" ? "en-US" : "id-ID");
+      return;
+    }
+    if (isEnglishSubject) {
+      // Kata di dalam kutip pada mapel Bahasa Inggris umumnya kata target
+      // Inggris — KECUALI bila pengantarnya menunjukkan kata itu justru
+      // kata Indonesia yang ditanyakan padanannya ("Bahasa Inggris dari
+      // “burung”", "berlawanan arti dengan “panas”").
+      const prev = (parts[i - 1]?.text ?? "").toLowerCase();
+      const quotedIsIndonesian = /bahasa inggris dari\s*$/.test(prev) || /berlawanan arti dengan\s*$/.test(prev) || /semakna dengan\s*$/.test(prev) || guessLang(part.text) === "id";
+      if (quotedIsIndonesian) push(part.text, "id-ID");
+      else push(part.text, "en-US", true);
+      return;
+    }
+    // Mapel lain: isi kutip yang jelas istilah Inggris dibacakan Inggris.
+    const g = guessLang(part.text);
+    const wordCount = (part.text.match(/[a-z]+/gi) ?? []).length;
+    if (g === "en" || (g === null && wordCount >= 3)) push(part.text, "en-US", true);
+    else push(part.text, "id-ID");
+  });
+  // Tutup batang soal dengan titik agar ada jeda sebelum daftar pilihan.
+  const lastStem = segs[segs.length - 1];
+  if (lastStem && !/[.!?…]$/.test(lastStem.text)) lastStem.text += ".";
+  if (answerEnglish) {
+    push("Pilihan:", "id-ID");
+    for (const opt of options) push(`${opt}.`, "en-US", true);
+  } else {
+    push(`Pilihan: ${options.join(". ")}`, "id-ID");
+  }
+  return segs.length ? segs : [{ text: `${question}. Pilihan: ${options.join(". ")}`, lang: "id-ID" }];
+}
+
 /**
  * Ucapkan teks dengan pola paling andal & paling ramah anak di HP:
  * - utterance pertama dibuat & speak() dipanggil sinkron dari klik;
@@ -193,8 +318,15 @@ function splitSentences(text: string): string[] {
  *   dan speak berikutnya diberi jeda kecil agar antrean tidak macet;
  * - bila TTS error, bunyi nada WebAudio singkat berbunyi sebagai indikator
  *   bahwa tombol bekerja, dan pesan status tampil jelas di layar.
+ *
+ * Versi multi-potongan (speakSegments): tiap SpeechSegment diucapkan
+ * dengan voice & rate bahasanya sendiri; di titik GANTI BAHASA antar
+ * potongan disisipkan jeda ±320 ms agar perpindahan suaranya terasa
+ * natural, tidak menyambung paksa; potongan bertanda slow (kata target
+ * Bahasa Inggris) dibacakan ±15% lebih lambat agar jelas terdengar anak.
  */
-function speakText(text: string, lang: string, opts: SpeakOpts): boolean {
+interface SpeechChunk { text: string; voice?: SpeechSynthesisVoice; lang: string; rate: number; langSwitch: boolean }
+function speakSegments(segments: SpeechSegment[], opts: SpeakOpts): boolean {
   const { setSpeaking, onStatus } = opts;
   if (!("speechSynthesis" in window)) {
     setSpeaking(false);
@@ -209,12 +341,23 @@ function speakText(text: string, lang: string, opts: SpeakOpts): boolean {
   // Bangunkan jalur WebAudio dalam gestur klik yang sama — di banyak HP,
   // jalur audio yang belum pernah dibangunkan membuat SEMUA bunyi bisu.
   ensureAudioCtx();
-  const clean = text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, "").replace(/\s+/g, " ").trim();
-  if (!clean) { setSpeaking(false); return true; }
   refreshVoices();
-  const picked = pickVoice(lang);
-  const voice = picked.voice;
-  const chunks = splitSentences(clean);
+  const chunks: SpeechChunk[] = [];
+  let anyUnmatched = false;
+  let totalLen = 0;
+  for (const seg of segments) {
+    const clean = seg.text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, "").replace(/\s+/g, " ").trim();
+    if (!clean) continue;
+    totalLen += clean.length;
+    const picked = pickVoice(seg.lang);
+    if (!picked.matched && voiceCache.length > 0) anyUnmatched = true;
+    const rate = rateForLang(seg.lang) * (seg.slow ? 0.85 : 1);
+    for (const piece of splitSentences(clean)) {
+      const prev = chunks[chunks.length - 1];
+      chunks.push({ text: piece, voice: picked.voice, lang: seg.lang, rate, langSwitch: !!prev && prev.lang !== seg.lang });
+    }
+  }
+  if (!chunks.length) { setSpeaking(false); return true; }
   let started = false;
   let stopped = false;
   let ci = 0;
@@ -222,15 +365,26 @@ function speakText(text: string, lang: string, opts: SpeakOpts): boolean {
     if (stopped) return;
     if (gen !== speechGeneration) { stopped = true; setSpeaking(false); return; }
     if (ci >= chunks.length) { setSpeaking(false); return; }
-    const u = new SpeechSynthesisUtterance(chunks[ci]);
-    if (voice) {
-      u.voice = voice;
-      u.lang = voice.lang; // pakai bahasa voice yang benar-benar ada di perangkat
+    const chunk = chunks[ci] as SpeechChunk;
+    const u = new SpeechSynthesisUtterance(chunk.text);
+    if (chunk.voice) {
+      u.voice = chunk.voice;
+      u.lang = chunk.voice.lang; // pakai bahasa voice yang benar-benar ada di perangkat
     }
-    u.rate = rateForLang(lang);
+    u.rate = chunk.rate;
     u.pitch = 1.1; // sedikit lebih tinggi & hangat — ramah anak, tidak kaku
     u.onstart = () => { if (ci === 0) { started = true; opts.onStart?.(); } setSpeaking(true); };
-    u.onend = () => { ci += 1; speakChunk(); };
+    u.onend = () => {
+      ci += 1;
+      const next = chunks[ci];
+      if (next?.langSwitch) {
+        // Jeda singkat yang natural di titik ganti bahasa, supaya suara
+        // Indonesia dan suara Inggris tidak terdengar menyambung paksa.
+        window.setTimeout(speakChunk, 320);
+      } else {
+        speakChunk();
+      }
+    };
     u.onerror = (e) => {
       if (e.error === "canceled" || e.error === "interrupted") { stopped = true; setSpeaking(false); return; }
       stopped = true;
@@ -255,9 +409,9 @@ function speakText(text: string, lang: string, opts: SpeakOpts): boolean {
     window.setTimeout(() => {
       if (!started && !stopped && gen === speechGeneration) onStatus?.("Bacaan belum juga mulai — mesin suara (TTS) di browser ini tampaknya tidak aktif. Ketuk tombol 🔊 Tes Suara untuk diagnosa lengkap, atau buka ZIQVA OLIM dengan Chrome dan pastikan Speech Services by Google aktif.");
     }, 2800);
-    window.setTimeout(() => setSpeaking(false), Math.min(60000, 6000 + clean.length * 110));
+    window.setTimeout(() => setSpeaking(false), Math.min(60000, 6000 + totalLen * 110));
   };
-  if (!picked.matched && voiceCache.length > 0) {
+  if (anyUnmatched) {
     onStatus?.("Suara untuk bahasa soal ini belum terpasang di HP — memakai suara bawaan perangkat, jadi pelafalannya mungkin berbeda.");
   }
   if (synth.speaking || synth.pending) {
@@ -269,6 +423,11 @@ function speakText(text: string, lang: string, opts: SpeakOpts): boolean {
     doSpeak(); // sinkron di dalam handler klik — jalur paling andal
   }
   return true;
+}
+
+/** Pembungkus satu bahasa untuk pemanggil lama (sambutan & tes suara). */
+function speakText(text: string, lang: string, opts: SpeakOpts): boolean {
+  return speakSegments([{ text, lang }], opts);
 }
 
 /**
@@ -514,7 +673,10 @@ function QuizView(props: {
       return;
     }
     setTtsMsg("");
-    speakText(`${current.q}. ${props.english ? "Choices" : "Pilihan"}: ${current.options.join(". ")}`, langForSubject(props.subjectId, props.english), { setSpeaking, onStatus: setTtsMsg });
+    // Bacaan sadar bahasa per potongan: pengantar Indonesia dibacakan
+    // suara Indonesia, kata target & pilihan Bahasa Inggris dibacakan
+    // suara Inggris (lihat buildQuestionSpeech). Teks tampil tidak berubah.
+    speakSegments(buildQuestionSpeech(current.q, current.options, props.subjectId, !!props.english), { setSpeaking, onStatus: setTtsMsg });
   };
 
   const [testLines, setTestLines] = useState<string[]>([]);
