@@ -115,6 +115,26 @@
       }).sort(function (a, b) { return b.average_score - a.average_score || b.attempts - a.attempts; });
       return { user: toUser(user), watched: watched, attempts: visible.slice(0, 100).map(function (r) { var c = strip(r); c.monitor_code = ""; return c; }), students: students };
     },
+    async resetAllData(args) {
+      var attempts = read(K.attempts, []);
+      var mine = attempts.filter(function (a) { return a.device_id === (args.device_id || ""); });
+      var names = {}; mine.forEach(function (a) { names[nameKey(a.student_name)] = true; });
+      var rest = attempts.filter(function (a) { return a.device_id !== (args.device_id || ""); });
+      write(K.attempts, rest);
+      var codes = read(K.codes, {});
+      Object.keys(names).forEach(function (k) {
+        if (!rest.some(function (a) { return nameKey(a.student_name) === k; })) delete codes[k];
+      });
+      write(K.codes, codes);
+      if (args.token) {
+        var sessions = read(K.sessions, {}); var uid = sessions[args.token];
+        if (uid != null) {
+          write(K.watched, read(K.watched, []).filter(function (w) { return w.user_id !== uid; }));
+          delete sessions[args.token]; write(K.sessions, sessions);
+        }
+      }
+      return { ok: true, deleted_attempts: mine.length };
+    },
     async deleteAttempt(args) {
       write(K.attempts, read(K.attempts, []).filter(function (a) { return !(a.id === args.id && a.device_id === (args.device_id || "")); }));
       return { ok: true };

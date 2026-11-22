@@ -141,6 +141,7 @@ function sfxCelebrate() { tone(523, 0, 0.12, 0.1); tone(659, 0.1, 0.12, 0.1); to
 /* ---------------- REWARDS & LEVEL (tersimpan di perangkat) ---------------- */
 const REWARD_KEY = "ziqva-rewards-v1";
 const LEVEL_KEY = "ziqva-levels-v1";
+const SEEN_KEY = "ziqva-seen-v1";
 interface Rewards { points: number; totalCorrect: number; totalSessions: number; streak: number; lastDay: string; badges: string[] }
 const EMPTY_REWARDS: Rewards = { points: 0, totalCorrect: 0, totalSessions: 0, streak: 0, lastDay: "", badges: [] };
 function loadRewards(): Rewards {
@@ -768,7 +769,11 @@ export function App() {
   });
   const handleLogout = () => { if (token) logout.mutate({ token }); else setView("home"); };
 
-  const [deviceId] = useState<string>(() => getDeviceId());
+  const [deviceId, setDeviceId] = useState<string>(() => getDeviceId());
+  const [showReset, setShowReset] = useState(false);
+  const [resetText, setResetText] = useState("");
+  const [resetError, setResetError] = useState("");
+  const [resetDoneMsg, setResetDoneMsg] = useState("");
   const [monitorCode, setMonitorCode] = useState("");
   const history = useQuery({ queryKey: ["attempts", deviceId], queryFn: () => api.listAttempts({ limit: 30, device_id: deviceId }) });
   const saveAttempt = useMutation({
@@ -780,6 +785,61 @@ export function App() {
     mutationFn: api.deleteAttempt,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["attempts"] }),
   });
+  const resetAll = useMutation({
+    mutationFn: api.resetAllData,
+    onError: (e) => setResetError(e instanceof Error ? e.message : "Reset di server gagal. Data di perangkat ini tetap dibersihkan — coba lagi bila perlu."),
+  });
+
+  const doResetAll = async () => {
+    if (resetText.trim().toUpperCase() !== "RESET") return;
+    setResetError("");
+    let serverNote = "";
+    try {
+      const res = await resetAll.mutateAsync({ device_id: deviceId, token: token ?? "" });
+      serverNote = res.deleted_attempts > 0 ? ` ${res.deleted_attempts} riwayat latihan terhapus.` : "";
+    } catch {
+      // Server gagal tidak menghalangi pembersihan lokal di bawah.
+      serverNote = "";
+    }
+    // Bersihkan SEMUA data coba-coba yang tersimpan di perangkat ini.
+    try {
+      localStorage.removeItem(REWARD_KEY);
+      localStorage.removeItem(LEVEL_KEY);
+      localStorage.removeItem(SEEN_KEY);
+      localStorage.removeItem(SOUND_KEY);
+      localStorage.removeItem(TOKEN_KEY);
+    } catch { /* abaikan */ }
+    // Putar ID perangkat baru supaya riwayat lama benar-benar tidak terbawa.
+    let newDeviceId = deviceId;
+    try {
+      const nid = crypto.randomUUID();
+      localStorage.setItem(DEVICE_KEY, nid);
+      newDeviceId = nid;
+    } catch { /* abaikan */ }
+    setDeviceId(newDeviceId);
+    setRewards({ ...EMPTY_REWARDS });
+    setLevelStore({});
+    setLevel(1);
+    setName("");
+    setNameError("");
+    setMonitorCode("");
+    setLastResult(null);
+    setSessionQ([]);
+    setNewBadges([]);
+    setEarnedPoints(0);
+    setUnlockedNow(null);
+    setToken("");
+    setSoundOn(true);
+    setShowWelcome(true);
+    setShowReset(false);
+    setResetText("");
+    setResetDoneMsg(`✅ Berhasil direset! Semua data coba-coba sudah bersih.${serverNote} Sekarang ZIQVA OLIM seperti baru pertama kali dibuka — silakan mulai untuk anak dengan nama aslinya.`);
+    queryClient.invalidateQueries({ queryKey: ["attempts"] });
+    queryClient.invalidateQueries({ queryKey: ["monitor"] });
+    queryClient.invalidateQueries({ queryKey: ["me"] });
+    setView("home");
+    window.scrollTo({ top: 0 });
+  };
   function alertSaveError(e: unknown) {
     // Kegagalan simpan tidak menghalangi layar hasil; tampilkan pesan singkat.
     console.warn("saveAttempt failed", e);
@@ -964,6 +1024,13 @@ export function App() {
 
       {view === "home" && (
         <main className="mx-auto w-full max-w-5xl px-4 pb-10">
+          {resetDoneMsg && (
+            <section className="pop-in mt-4 flex items-start gap-3 rounded-3xl p-5 shadow-sm" style={{ background: "#E2F4E9", border: "2px solid #1E7A46" }} role="status" aria-label="Reset berhasil">
+              <span className="text-3xl" aria-hidden>🎉</span>
+              <p className="flex-1 text-[15px] leading-relaxed font-semibold">{resetDoneMsg}</p>
+              <button type="button" onClick={() => setResetDoneMsg("")} aria-label="Tutup pesan reset berhasil" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold" style={{ background: "#fff" }}>✕</button>
+            </section>
+          )}
           {showWelcome && (
             <section className="pop-in relative mt-4 overflow-hidden rounded-3xl p-5 text-center shadow-sm sm:p-6" style={{ background: "linear-gradient(150deg,#FFF3DC,#FDE7F3)", border: "2px solid var(--gold)" }} aria-label="Sambutan selamat datang">
               <button type="button" onClick={() => setShowWelcome(false)} aria-label="Tutup sambutan" className="absolute top-3 right-3 flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold" style={{ background: "rgba(255,255,255,.7)", color: "#92600A" }}>✕</button>
@@ -1171,6 +1238,21 @@ export function App() {
             </ul>
             <p className="mt-2 text-sm" style={{ color: "var(--dim)" }}>ZIQVA OLIM memakai pola persis itu, lalu menaikkannya bertingkat: soal makin menantang dari TK → SD → SMP → SMA sesuai kurikulum tiap jenjang &amp; jenis sekolah.</p>
           </section>
+
+          {/* Reset semua — untuk orang tua / guru yang baru coba-coba */}
+          <section className="mt-5 flex flex-col gap-3 rounded-3xl p-5 shadow-sm sm:flex-row sm:items-center" style={{ background: "var(--surface)", border: "2px dashed #D6336C" }} aria-label="Reset semua data coba-coba">
+            <div className="text-4xl" aria-hidden>🔄</div>
+            <div className="flex-1">
+              <h2 className="font-display text-lg font-bold">Baru coba-coba &amp; sudah cocok?</h2>
+              <p className="text-sm leading-relaxed" style={{ color: "var(--dim)" }}>
+                Tekan <strong>Reset Semua</strong> untuk menghapus seluruh data percobaan di perangkat ini — riwayat skor, poin, lencana, progres level, dan daftar pantau — lalu mulai bersih untuk anak dengan data aslinya.
+              </p>
+            </div>
+            <button type="button" onClick={() => { setResetText(""); setResetError(""); setShowReset(true); }} aria-label="Buka konfirmasi reset semua data"
+              className="font-display min-h-[52px] shrink-0 rounded-2xl px-6 font-bold text-white" style={{ background: "#D6336C" }}>
+              🗑️ Reset Semua
+            </button>
+          </section>
         </main>
       )}
 
@@ -1352,7 +1434,62 @@ export function App() {
               </div>
             </>
           )}
+
+          {/* Zona Reset — hapus semua data coba-coba */}
+          <section className="mt-6 rounded-3xl p-5" style={{ background: "#FFF5F7", border: "2px dashed #D6336C" }} aria-label="Zona reset semua data">
+            <h2 className="font-display text-lg font-extrabold" style={{ color: "#A4133C" }}>🔄 Zona Reset — Mulai dari Nol Lagi</h2>
+            <p className="mt-1 text-sm leading-relaxed" style={{ color: "var(--dim)" }}>
+              Untuk Bapak/Ibu yang tadi <strong>baru coba-coba dulu</strong> dan sekarang sudah cocok: tombol ini menghapus <strong>SEMUA</strong> data percobaan di perangkat ini sekaligus —
+              riwayat Prestasiku, poin &amp; bintang, streak, semua lencana, progres level (kembali ke Level 1), riwayat soal yang sudah keluar, nama peserta, dan daftar pantau Guru/Ortu (kamu juga akan keluar dari akun pantau di perangkat ini).
+              Setelah reset, tampilannya seperti baru pertama kali dibuka.
+            </p>
+            <p className="mt-2 text-sm leading-relaxed font-bold" style={{ color: "#A4133C" }}>⚠️ Data yang sudah direset tidak bisa dikembalikan. Akun Guru/Ortu tetap ada dan bisa dipakai masuk lagi — hanya daftar pantau &amp; riwayat coba-cobanya yang dikosongkan.</p>
+            <button type="button" onClick={() => { setResetText(""); setResetError(""); setShowReset(true); }} aria-label="Buka konfirmasi reset semua data"
+              className="font-display mt-4 min-h-[56px] w-full rounded-2xl text-lg font-extrabold text-white" style={{ background: "#D6336C" }}>
+              🗑️ Reset Semua Data
+            </button>
+          </section>
         </main>
+      )}
+
+      {showReset && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-4 sm:items-center" role="dialog" aria-modal="true" aria-label="Konfirmasi reset semua data">
+          <div className="pop-in max-h-[90vh] w-full max-w-md overflow-y-auto rounded-3xl p-6" style={{ background: "var(--surface)" }}>
+            <div className="text-center text-5xl" aria-hidden>🗑️</div>
+            <h2 className="font-display mt-2 text-center text-xl font-extrabold">Reset Semua Data?</h2>
+            <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--dim)" }}>
+              Semua data coba-coba di <strong>perangkat ini</strong> akan dihapus permanen:
+            </p>
+            <ul className="mt-2 grid gap-1 text-sm leading-relaxed font-semibold">
+              <li>• 📜 Riwayat latihan &amp; skor di Prestasiku{stats && stats.total_attempts > 0 ? ` (${stats.total_attempts}× latihan)` : ""}</li>
+              <li>• 🪙 Poin ({rewards.points}), ⭐ bintang ({rewards.totalCorrect}), 🔥 streak ({rewards.streak} hari) &amp; {rewards.badges.length} lencana</li>
+              <li>• 🎚️ Progres level semua mapel — kembali ke Level 1</li>
+              <li>• 🎲 Riwayat soal yang sudah pernah keluar (soal jadi fresh lagi)</li>
+              <li>• 👤 Nama peserta yang terisi &amp; pengaturan suara</li>
+              {sessionUser && <li>• 👀 Daftar pantau {sessionUser.name} dikosongkan &amp; kamu keluar dari akun pantau di perangkat ini</li>}
+            </ul>
+            <p className="mt-3 rounded-xl px-3 py-2 text-xs leading-relaxed font-bold" style={{ background: "#FBF0DA", color: "#92600A" }}>
+              Yang TIDAK ikut terhapus: bank soal, Bahan Belajar, dan akun Guru/Ortu (tetap bisa dipakai masuk lagi). Reset ini hanya membersihkan perangkat ini — perangkat lain tidak terpengaruh.
+            </p>
+            <div className="mt-4">
+              <label htmlFor="reset-confirm" className="font-display text-sm font-bold">Ketik <span style={{ color: "#D6336C" }}>RESET</span> untuk memastikan</label>
+              <input id="reset-confirm" value={resetText} onChange={(e) => setResetText(e.target.value.toUpperCase())} placeholder="Ketik RESET di sini" maxLength={10} autoComplete="off"
+                className="font-display mt-1.5 min-h-[52px] w-full rounded-2xl px-4 text-center text-lg font-extrabold tracking-[0.25em] uppercase outline-none" style={{ background: "var(--surface2)", border: "2px solid var(--border)" }} />
+            </div>
+            {resetError && <p className="mt-2 text-sm font-bold text-red-500" role="alert">{resetError}</p>}
+            <div className="mt-5 grid gap-2">
+              <button type="button" disabled={resetText.trim().toUpperCase() !== "RESET" || resetAll.isPending} onClick={() => void doResetAll()}
+                aria-label="Ya, reset semua data sekarang"
+                className="font-display min-h-[56px] rounded-2xl text-lg font-extrabold text-white disabled:opacity-40" style={{ background: "#D6336C" }}>
+                {resetAll.isPending ? "Sedang mereset…" : "Ya, Reset Semua Sekarang 🗑️"}
+              </button>
+              <button type="button" onClick={() => { setShowReset(false); setResetText(""); setResetError(""); }} aria-label="Batalkan reset"
+                className="font-display min-h-[52px] rounded-2xl font-bold" style={{ background: "var(--surface2)" }}>
+                Batal, Jangan Reset
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <footer className="mx-auto max-w-5xl px-4 pb-8 text-center text-xs" style={{ color: "var(--dim)" }}>

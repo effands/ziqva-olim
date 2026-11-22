@@ -371,4 +371,51 @@ export const Actions = {
       return { ok: true };
     },
   }),
+
+  resetAllData: defineAction({
+    description: "Resets all trial data on this device: deletes its practice history, orphaned monitoring codes, and (when a parent/teacher token is given) that account's watch list and session, so the app starts completely fresh.",
+    request: z.object({
+      device_id: z.string().max(100).default(""),
+      token: z.string().max(200).default(""),
+    }),
+    response: z.object({ ok: z.literal(true), deleted_attempts: z.number(), cleared_watched: z.number() }),
+    async handler(ctx, args): Promise<{ ok: true; deleted_attempts: number; cleared_watched: number }> {
+      const db = ctx.db<typeof schema>();
+      let deletedAttempts = 0;
+      let clearedWatched = 0;
+
+      if (args.device_id) {
+        const deviceRows = await db.select().from(schema.attempts).where(eq(schema.attempts.deviceId, args.device_id));
+        deletedAttempts = deviceRows.length;
+        if (deviceRows.length > 0) {
+          const nameKeys = [...new Set(deviceRows.map((r) => nameKey(r.studentName)))];
+          await db.delete(schema.attempts).where(eq(schema.attempts.deviceId, args.device_id));
+          // Hapus Kode Pantau yang sudah tidak punya riwayat latihan sama sekali
+          // (dari perangkat mana pun), supaya mulai benar-benar bersih.
+          const remainingAll = await db.select().from(schema.attempts).limit(5000);
+          for (const key of nameKeys) {
+            const hasAny = remainingAll.some((a) => nameKey(a.studentName) === key);
+            if (!hasAny) {
+              await db.delete(schema.studentCodes).where(eq(schema.studentCodes.nameKey, key));
+            }
+          }
+        }
+      }
+
+      if (args.token) {
+        try {
+          const user = await userForToken(ctx, args.token);
+          const watchedRows = await db.select().from(schema.watchedStudents).where(eq(schema.watchedStudents.userId, user.id));
+          clearedWatched = watchedRows.length;
+          await db.delete(schema.watchedStudents).where(eq(schema.watchedStudents.userId, user.id));
+          await db.delete(schema.sessions).where(eq(schema.sessions.token, args.token));
+        } catch {
+          // Token sudah tidak valid — reset perangkat tetap dilanjutkan.
+        }
+      }
+
+      ctx.invalidateQueries();
+      return { ok: true as const, deleted_attempts: deletedAttempts, cleared_watched: clearedWatched };
+    },
+  }),
 } satisfies ActionsModule;
