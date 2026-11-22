@@ -74,7 +74,7 @@
     if (!user) throw new Error("Sesi login sudah berakhir. Silakan masuk lagi.");
     return user;
   }
-  function toUser(u) { return { id: u.id, name: u.name, username: u.username, role: u.role, organization: u.organization }; }
+  function toUser(u) { return { id: u.id, name: u.name, username: u.username, role: u.role, organization: u.organization, whatsapp: u.whatsapp || "", email: u.email || "", child_name: u.child_name || "", city: u.city || "", school_address: u.school_address || "" }; }
   async function newSession(userId) {
     var token = crypto.randomUUID() + "-" + crypto.randomUUID();
     await sb("app_sessions", { method: "POST", prefer: "return=minimal", body: { token: token, user_id: userId } });

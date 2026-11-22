@@ -1452,14 +1452,19 @@ function AdminView(props: { token: string; user: SessionUser; onLogout: () => vo
 
   const data = dash.data;
   const t = data?.totals;
+  // Baris tabel selalu berupa array (kosong saat memuat/gagal) supaya
+  // struktur panel — header tabel + baris kosong yang sopan — tetap tampil.
+  const users = data?.users ?? [];
+  const classes = data?.classes ?? [];
+  const recentAttempts = data?.recent_attempts ?? [];
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 pb-10">
       <section className="mt-5 rounded-3xl p-5 shadow-sm" style={{ background: "var(--surface)", border: "2px solid var(--gold)" }}>
         <div className="flex flex-wrap items-center gap-3">
           <span className="flex h-14 w-14 items-center justify-center rounded-2xl text-3xl" style={{ background: "#FFF3DC" }} aria-hidden>🛡️</span>
-          <div className="min-w-0 flex-1">
-            <h1 className="font-display truncate text-xl font-extrabold">Panel Superadmin — Halo, {user.name}!</h1>
+          <div className="min-w-0 flex-1 basis-48">
+            <h1 className="font-display text-xl font-extrabold">Panel Superadmin — Halo, {user.name}!</h1>
             <p className="text-sm font-semibold" style={{ color: "var(--dim)" }}>
               🛡️ Superadmin • @{user.username}{user.organization ? ` • ${user.organization}` : ""} • Pantau jumlah &amp; kelola seluruh data ZIQVA OLIM
             </p>
@@ -1469,64 +1474,81 @@ function AdminView(props: { token: string; user: SessionUser; onLogout: () => vo
         </div>
       </section>
 
-      {dash.isPending && <p className="mt-4" style={{ color: "var(--dim)" }}>Memuat data superadmin…</p>}
+      {/* Struktur panel SELALU tampil — kartu statistik + tiga tabel dengan
+          header kolom — walau data masih kosong, sedang dimuat, atau gagal
+          dimuat, supaya panel tidak pernah tampil kosong polos. */}
       {dash.isError && (
-        <div className="mt-4 rounded-3xl p-6 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-          <p className="font-display text-lg font-bold">Panel belum bisa dimuat</p>
-          <p className="mt-1 text-sm" style={{ color: "var(--dim)" }}>Sesi login mungkin sudah berakhir, atau akun ini bukan Superadmin.</p>
-          <button type="button" onClick={props.onLogout} className="font-display mt-4 min-h-[52px] rounded-2xl px-6 font-bold text-white" style={{ background: "var(--accent)" }}>Masuk Lagi</button>
+        <div className="mt-4 rounded-3xl p-6 text-center" style={{ background: "var(--surface)", border: "2px solid #D6336C" }} role="alert">
+          <p className="font-display text-lg font-bold">⚠️ Data superadmin gagal dimuat</p>
+          <p className="mt-1 text-sm" style={{ color: "var(--dim)" }}>Koneksi atau server sedang bermasalah, atau sesi login sudah berakhir. Struktur panel tetap ditampilkan di bawah — coba muat ulang datanya ya.</p>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <button type="button" onClick={() => dash.refetch()} className="font-display min-h-[52px] rounded-2xl px-6 font-bold text-white" style={{ background: "var(--accent)" }}>🔄 Coba Lagi</button>
+            <button type="button" onClick={props.onLogout} className="font-display min-h-[52px] rounded-2xl px-6 font-bold" style={{ background: "var(--surface2)" }}>Masuk Lagi</button>
+          </div>
         </div>
       )}
 
-      {data && t && (
-        <>
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {[
-              { label: "Total Peserta", value: `${t.unique_students}`, icon: "🧒" },
-              { label: "Total Sesi Latihan/Ujian", value: `${t.total_attempts}`, icon: "🎯" },
-              { label: "Akun Guru", value: `${t.guru}`, icon: "👨‍🏫" },
-              { label: "Akun Orang Tua", value: `${t.orangtua}`, icon: "👨‍👩‍👧" },
-              { label: "Kelas Aktif", value: `${t.open_classes}`, icon: "🏫" },
-              { label: "Sedang Online", value: `${t.online}`, icon: "🟢" },
-            ].map((c) => (
-              <div key={c.label} className="rounded-2xl p-4 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                <div className="text-2xl" aria-hidden>{c.icon}</div>
-                <div className="font-display text-2xl font-extrabold">{c.value}</div>
-                <div className="text-xs font-semibold" style={{ color: "var(--dim)" }}>{c.label}</div>
-              </div>
-            ))}
+      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3" aria-busy={dash.isPending}>
+        {[
+          { label: "Total Peserta", value: t ? `${t.unique_students}` : "0", icon: "🧒" },
+          { label: "Total Sesi Latihan/Ujian", value: t ? `${t.total_attempts}` : "0", icon: "🎯" },
+          { label: "Akun Guru", value: t ? `${t.guru}` : "0", icon: "👨‍🏫" },
+          { label: "Akun Orang Tua", value: t ? `${t.orangtua}` : "0", icon: "👨‍👩‍👧" },
+          { label: "Kelas Aktif", value: t ? `${t.open_classes}` : "0", icon: "🏫" },
+          { label: "Sedang Online", value: t ? `${t.online}` : "0", icon: "🟢" },
+        ].map((c) => (
+          <div key={c.label} className="rounded-2xl p-4 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+            <div className="text-2xl" aria-hidden>{c.icon}</div>
+            {dash.isPending ? (
+              <div className="mx-auto mt-1 h-8 w-14 animate-pulse rounded-lg" style={{ background: "var(--surface2)" }} role="status" aria-label="Memuat angka statistik" />
+            ) : (
+              <div className="font-display text-2xl font-extrabold">{c.value}</div>
+            )}
+            <div className="text-xs font-semibold" style={{ color: "var(--dim)" }}>{c.label}</div>
           </div>
-          <p className="mt-2 text-center text-xs font-semibold" style={{ color: "var(--dim)" }}>
-            Total akun terdaftar: {t.total_users} (termasuk {t.admin} Superadmin) • Total Kelas Ujian: {t.total_classes} ({t.open_classes} aktif, {t.closed_classes} ditutup) • Total peserta kelas: {t.class_participants}
-          </p>
+        ))}
+      </div>
+      <p className="mt-2 text-center text-xs font-semibold" style={{ color: "var(--dim)" }}>
+        Total akun terdaftar: {t?.total_users ?? 0} (termasuk {t?.admin ?? 0} Superadmin) • Total Kelas Ujian: {t?.total_classes ?? 0} ({t?.open_classes ?? 0} aktif, {t?.closed_classes ?? 0} ditutup) • Total peserta kelas: {t?.class_participants ?? 0}
+      </p>
+      {dash.isPending && <p className="mt-3 text-center text-sm font-semibold" style={{ color: "var(--dim)" }} role="status">⏳ Memuat data superadmin…</p>}
 
-          <h2 className="font-display mt-6 text-lg font-bold">👥 Akun Terdaftar ({data.users.length})</h2>
-          {data.users.length === 0 ? (
-            <p className="mt-2 text-sm" style={{ color: "var(--dim)" }}>Belum ada akun terdaftar.</p>
-          ) : (
-            <div className="mt-2 grid gap-2">
-              {data.users.map((u) => {
-                const isSelf = u.id === user.id;
-                const isAdmin = u.role === "admin";
-                return (
-                  <div key={u.id} className="flex items-center gap-3 rounded-2xl p-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate font-display font-bold">{u.name} <span className="text-xs font-bold" style={{ color: "var(--dim)" }}>@{u.username}</span></div>
-                      <div className="text-xs font-semibold" style={{ color: "var(--dim)" }}>
-                        {adminRoleLabel(u.role)}{u.organization ? ` • ${u.organization}` : ""} • Daftar {new Date(u.created_at).toLocaleString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
-                      </div>
-                      {(u.whatsapp || u.email) && (
-                        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold">
-                          {u.whatsapp && (
-                            <a href={waChatUrl(u.whatsapp)} target="_blank" rel="noreferrer" aria-label={`Chat WhatsApp ${u.name}`}
-                              className="inline-flex min-h-[32px] items-center rounded-full px-3 py-1 font-bold text-white" style={{ background: "#1E7A46" }}>💬 Chat WA • {u.whatsapp}</a>
-                          )}
-                          {u.email && (
-                            <a href={`mailto:${u.email}`} aria-label={`Kirim email ke ${u.name}`} className="underline" style={{ color: "var(--accent)" }}>✉️ {u.email}</a>
-                          )}
-                        </div>
-                      )}
-                    </div>
+      <h2 className="font-display mt-6 text-lg font-bold">👥 Akun Terdaftar ({users.length})</h2>
+      <div className="mt-2 overflow-x-auto rounded-2xl" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+        <table className="w-full min-w-[880px] border-collapse text-left text-sm">
+          <thead>
+            <tr style={{ background: "var(--surface2)" }}>
+              {["Nama", "Username", "Peran", "Organisasi", "WhatsApp", "Email", "Terdaftar", "Aksi"].map((h) => (
+                <th key={h} scope="col" className="px-3 py-2.5 text-xs font-extrabold whitespace-nowrap" style={{ color: "var(--dim)" }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {dash.isPending ? (
+              <tr><td colSpan={8} className="px-3 py-6 text-center font-semibold" style={{ color: "var(--dim)" }}>⏳ Memuat data akun…</td></tr>
+            ) : users.length === 0 ? (
+              <tr><td colSpan={8} className="px-3 py-6 text-center font-semibold" style={{ color: "var(--dim)" }}>Belum ada akun terdaftar.</td></tr>
+            ) : users.map((u) => {
+              const isSelf = u.id === user.id;
+              const isAdmin = u.role === "admin";
+              return (
+                <tr key={u.id} style={{ borderTop: "1px solid var(--border)" }}>
+                  <td className="px-3 py-3 font-display font-bold whitespace-nowrap">{u.name}</td>
+                  <td className="px-3 py-3 whitespace-nowrap" style={{ color: "var(--dim)" }}>@{u.username}</td>
+                  <td className="px-3 py-3 whitespace-nowrap">{adminRoleLabel(u.role)}</td>
+                  <td className="px-3 py-3">{u.organization || "—"}</td>
+                  <td className="px-3 py-3 whitespace-nowrap">
+                    {u.whatsapp ? (
+                      <a href={waChatUrl(u.whatsapp)} target="_blank" rel="noreferrer" aria-label={`Chat WhatsApp ${u.name}`} className="font-bold underline" style={{ color: "#1E7A46" }}>💬 {u.whatsapp}</a>
+                    ) : "—"}
+                  </td>
+                  <td className="px-3 py-3">
+                    {u.email ? (
+                      <a href={`mailto:${u.email}`} aria-label={`Kirim email ke ${u.name}`} className="underline" style={{ color: "var(--accent)" }}>{u.email}</a>
+                    ) : "—"}
+                  </td>
+                  <td className="px-3 py-3 whitespace-nowrap" style={{ color: "var(--dim)" }}>{new Date(u.created_at).toLocaleString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</td>
+                  <td className="px-3 py-3 whitespace-nowrap">
                     {isSelf ? (
                       <span className="rounded-full px-3 py-1.5 text-xs font-bold" style={{ background: "#FFF3DC", color: "#92600A" }}>Akun kamu</span>
                     ) : isAdmin ? (
@@ -1534,61 +1556,89 @@ function AdminView(props: { token: string; user: SessionUser; onLogout: () => vo
                     ) : (
                       <button type="button" onClick={() => { setActionError(""); setConfirm({ kind: "user", id: u.id, label: `akun ${u.name} (@${u.username})` }); }}
                         aria-label={`Hapus akun ${u.name}`}
-                        className="min-h-[40px] shrink-0 rounded-full px-4 font-display text-sm font-bold text-white" style={{ background: "#D6336C" }}>🗑️ Hapus</button>
+                        className="min-h-[40px] rounded-full px-4 font-display text-sm font-bold text-white" style={{ background: "#D6336C" }}>🗑️ Hapus</button>
                     )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
-          <h2 className="font-display mt-6 text-lg font-bold">🏫 Semua Kelas Ujian ({data.classes.length})</h2>
-          {data.classes.length === 0 ? (
-            <p className="mt-2 text-sm" style={{ color: "var(--dim)" }}>Belum ada Kelas Ujian yang dibuat guru.</p>
-          ) : (
-            <div className="mt-2 grid gap-2">
-              {data.classes.map((c) => (
-                <div key={c.id} className="flex items-center gap-3 rounded-2xl p-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate font-display font-bold">{c.class_name}</div>
-                    <div className="text-xs font-semibold" style={{ color: "var(--dim)" }}>
-                      Guru: {c.teacher_name} • {c.jenjang} • {c.subject_name} • Level {c.level} • {c.status === "open" ? "🟢 Aktif" : "🔴 Ditutup"} • {c.participant_count} peserta, {c.finished_count} selesai
-                    </div>
-                  </div>
+      <h2 className="font-display mt-6 text-lg font-bold">🏫 Semua Kelas Ujian ({classes.length})</h2>
+      <div className="mt-2 overflow-x-auto rounded-2xl" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+        <table className="w-full min-w-[820px] border-collapse text-left text-sm">
+          <thead>
+            <tr style={{ background: "var(--surface2)" }}>
+              {["Nama Kelas", "Guru", "Jenjang", "Mapel", "Level", "Status", "Peserta", "Selesai", "Aksi"].map((h) => (
+                <th key={h} scope="col" className="px-3 py-2.5 text-xs font-extrabold whitespace-nowrap" style={{ color: "var(--dim)" }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {dash.isPending ? (
+              <tr><td colSpan={9} className="px-3 py-6 text-center font-semibold" style={{ color: "var(--dim)" }}>⏳ Memuat data kelas…</td></tr>
+            ) : classes.length === 0 ? (
+              <tr><td colSpan={9} className="px-3 py-6 text-center font-semibold" style={{ color: "var(--dim)" }}>Belum ada kelas.</td></tr>
+            ) : classes.map((c) => (
+              <tr key={c.id} style={{ borderTop: "1px solid var(--border)" }}>
+                <td className="px-3 py-3 font-display font-bold whitespace-nowrap">{c.class_name}</td>
+                <td className="px-3 py-3 whitespace-nowrap">{c.teacher_name}</td>
+                <td className="px-3 py-3 whitespace-nowrap">{c.jenjang}</td>
+                <td className="px-3 py-3">{c.subject_name}</td>
+                <td className="px-3 py-3 whitespace-nowrap">Level {c.level}</td>
+                <td className="px-3 py-3 whitespace-nowrap">{c.status === "open" ? "🟢 Aktif" : "🔴 Ditutup"}</td>
+                <td className="px-3 py-3 whitespace-nowrap">{c.participant_count} peserta</td>
+                <td className="px-3 py-3 whitespace-nowrap">{c.finished_count} selesai</td>
+                <td className="px-3 py-3 whitespace-nowrap">
                   <button type="button" onClick={() => { setActionError(""); setConfirm({ kind: "class", id: c.id, label: `kelas "${c.class_name}" beserta semua pesertanya` }); }}
                     aria-label={`Hapus kelas ${c.class_name}`}
-                    className="min-h-[40px] shrink-0 rounded-full px-4 font-display text-sm font-bold text-white" style={{ background: "#D6336C" }}>🗑️ Hapus</button>
-                </div>
-              ))}
-            </div>
-          )}
+                    className="min-h-[40px] rounded-full px-4 font-display text-sm font-bold text-white" style={{ background: "#D6336C" }}>🗑️ Hapus</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-          <h2 className="font-display mt-6 text-lg font-bold">🕐 Aktivitas Nilai Terakhir (50 terbaru)</h2>
-          {data.recent_attempts.length === 0 ? (
-            <p className="mt-2 text-sm" style={{ color: "var(--dim)" }}>Belum ada peserta yang menyelesaikan latihan / ujian.</p>
-          ) : (
-            <div className="mt-2 grid gap-2">
-              {data.recent_attempts.map((a) => (
-                <div key={a.id} className="flex items-center gap-3 rounded-2xl p-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                  <div className="font-display flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-2xl text-white" style={{ background: a.score >= 75 ? "#1E7A46" : a.score >= 60 ? "#D97706" : "#6E6785" }}>
-                    <span className="text-lg leading-none font-extrabold">{a.score}</span>
-                    <span className="text-[9px] font-bold">SKOR</span>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate font-display font-bold">{a.student_name} — {a.mapel} • {a.jenjang}</div>
-                    <div className="text-xs font-semibold" style={{ color: "var(--dim)" }}>
-                      {a.correct}/{a.total} benar • {a.mode === "ujian" ? "🏆 Ujian" : "✏️ Latihan"} • {fmtDur(a.duration_sec)} • {new Date(a.created_at).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                    </div>
-                  </div>
+      <h2 className="font-display mt-6 text-lg font-bold">🕐 Aktivitas Nilai Terakhir (50 terbaru)</h2>
+      <div className="mt-2 overflow-x-auto rounded-2xl" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+        <table className="w-full min-w-[820px] border-collapse text-left text-sm">
+          <thead>
+            <tr style={{ background: "var(--surface2)" }}>
+              {["Peserta", "Jenjang", "Mapel", "Mode", "Skor", "Hasil", "Durasi", "Waktu", "Aksi"].map((h) => (
+                <th key={h} scope="col" className="px-3 py-2.5 text-xs font-extrabold whitespace-nowrap" style={{ color: "var(--dim)" }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {dash.isPending ? (
+              <tr><td colSpan={9} className="px-3 py-6 text-center font-semibold" style={{ color: "var(--dim)" }}>⏳ Memuat aktivitas nilai…</td></tr>
+            ) : recentAttempts.length === 0 ? (
+              <tr><td colSpan={9} className="px-3 py-6 text-center font-semibold" style={{ color: "var(--dim)" }}>Belum ada aktivitas nilai.</td></tr>
+            ) : recentAttempts.map((a) => (
+              <tr key={a.id} style={{ borderTop: "1px solid var(--border)" }}>
+                <td className="px-3 py-3 font-display font-bold whitespace-nowrap">{a.student_name}</td>
+                <td className="px-3 py-3 whitespace-nowrap">{a.jenjang}</td>
+                <td className="px-3 py-3">{a.mapel}</td>
+                <td className="px-3 py-3 whitespace-nowrap">{a.mode === "ujian" ? "🏆 Ujian" : "✏️ Latihan"}</td>
+                <td className="px-3 py-3 whitespace-nowrap">
+                  <span className="font-display inline-flex min-w-[44px] items-center justify-center rounded-lg px-2 py-1 font-extrabold text-white" style={{ background: a.score >= 75 ? "#1E7A46" : a.score >= 60 ? "#D97706" : "#6E6785" }}>{a.score}</span>
+                </td>
+                <td className="px-3 py-3 whitespace-nowrap">{a.correct}/{a.total} benar</td>
+                <td className="px-3 py-3 whitespace-nowrap">{fmtDur(a.duration_sec)}</td>
+                <td className="px-3 py-3 whitespace-nowrap" style={{ color: "var(--dim)" }}>{new Date(a.created_at).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</td>
+                <td className="px-3 py-3 whitespace-nowrap">
                   <button type="button" onClick={() => { setActionError(""); setConfirm({ kind: "attempt", id: a.id, label: `nilai ${a.student_name} (${a.mapel}, skor ${a.score})` }); }}
                     aria-label={`Hapus nilai ${a.student_name} pada ${a.mapel}`}
-                    className="min-h-[40px] shrink-0 rounded-full px-4 font-display text-sm font-bold text-white" style={{ background: "#D6336C" }}>🗑️ Hapus</button>
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
+                    className="min-h-[40px] rounded-full px-4 font-display text-sm font-bold text-white" style={{ background: "#D6336C" }}>🗑️ Hapus</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       {confirm && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-4 sm:items-center" role="dialog" aria-modal="true" aria-label="Konfirmasi hapus data">
@@ -2416,7 +2466,7 @@ export function App() {
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl text-lg sm:h-10 sm:w-10 sm:text-xl" style={{ background: "var(--gold)" }} aria-hidden>🏆</span>
               <span className="leading-none">
                 <span className="font-display block text-lg font-extrabold tracking-wide whitespace-nowrap text-white sm:text-xl">ZIQVA <span style={{ color: "var(--gold)" }}>OLIM</span></span>
-                <span className="mt-0.5 hidden text-[11px] font-semibold text-white/70 min-[480px]:block">Latihan Olimpiade TK – SMA</span>
+                <span className="mt-0.5 hidden text-[11px] font-semibold text-white/70 min-[480px]:block">Platform Olimpiade Digital Indonesia</span>
               </span>
             </button>
             <span className="ml-1 hidden min-h-[32px] shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold text-white min-[560px]:flex"
@@ -3221,7 +3271,7 @@ export function App() {
       )}
 
       <footer className="mx-auto max-w-5xl px-4 pb-8 text-center text-xs" style={{ color: "var(--dim)" }}>
-        ZIQVA OLIM — Latihan Olimpiade TK/PAUD, SD/MI, SMP/MTs, SMA/SMK/MA, Sekolah Kristen &amp; Cambridge. Berlatih setiap hari, raih medali emasmu! 🏆
+        ZIQVA OLIM — Platform Olimpiade Digital Indonesia untuk TK/PAUD, SD/MI, SMP/MTs, SMA/SMK/MA, Sekolah Kristen &amp; Cambridge. Berlatih setiap hari, raih medali emasmu! 🏆
       </footer>
     </div>
   );
