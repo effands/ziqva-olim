@@ -2904,22 +2904,34 @@ export function drawCertificate(canvas: HTMLCanvasElement, data: CertData, displ
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
-  const NAVY = "#1E2A78", GOLD = "#C9A227", GOLD_DARK = "#9A7B1C", CREAM = "#FFF9EC", INK = "#2B2440", RED = "#B02A37";
+  // Palet warna per jenjang: bingkai, judul, nama penerima, dan pita medali
+  // mengikuti warna khas jenjangnya; emas & kertas makin kaya di jenjang atas.
+  const SD_PALETTE = { primary: "#1E2A78", gold: "#C9A227", goldDark: "#9A7B1C", goldLight: "#F7E7B4", paperA: "#FFFCF3", paperB: "#FFF1D4", ribbon: "#1E2A78" };
+  const PALETTES: Record<string, typeof SD_PALETTE> = {
+    TK: { primary: "#8A5FBF", gold: "#D9B84A", goldDark: "#A9852A", goldLight: "#FAEFC0", paperA: "#FEFAFF", paperB: "#FCECF5", ribbon: "#C86BA5" },
+    SD: SD_PALETTE,
+    SMP: { primary: "#0B5D50", gold: "#C9A227", goldDark: "#9A7B1C", goldLight: "#F7E7B4", paperA: "#F7FCF9", paperB: "#E7F4EC", ribbon: "#0B5D50" },
+    SMA: { primary: "#6E1423", gold: "#C9971F", goldDark: "#96700F", goldLight: "#F9E9B8", paperA: "#FDF9EE", paperB: "#F5E8CB", ribbon: "#6E1423" },
+  };
+  const P = PALETTES[data.jenjang] ?? SD_PALETTE;
+  const NAVY = P.primary, GOLD = P.gold, GOLD_DARK = P.goldDark, INK = "#2B2440", RED = "#B02A37";
   const cx = W / 2;
 
-  // Kertas krem + watermark bintang samar di tengah.
-  ctx.fillStyle = CREAM; ctx.fillRect(0, 0, W, H);
+  // Kertas bergradasi halus khas jenjang + watermark bintang samar di tengah.
+  const paperGrad = ctx.createLinearGradient(0, 0, W, H);
+  paperGrad.addColorStop(0, P.paperA); paperGrad.addColorStop(1, P.paperB);
+  ctx.fillStyle = paperGrad; ctx.fillRect(0, 0, W, H);
   ctx.save();
   ctx.globalAlpha = 0.055; ctx.fillStyle = GOLD_DARK;
   ctx.font = "620px Georgia, serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.fillText("★", cx, 640);
   ctx.restore();
 
-  // Bingkai ganda: biru dongker tebal di luar, emas di dalam.
+  // Bingkai ganda: warna utama jenjang tebal di luar, emas di dalam.
   ctx.strokeStyle = NAVY; ctx.lineWidth = 10; ctx.strokeRect(28, 28, W - 56, H - 56);
   ctx.strokeStyle = GOLD; ctx.lineWidth = 3; ctx.strokeRect(52, 52, W - 104, H - 104);
   ctx.strokeStyle = NAVY; ctx.lineWidth = 1.5; ctx.strokeRect(66, 66, W - 132, H - 132);
-  // Ornamen sudut: belah ketupat emas + garis siku dongker.
+  // Ornamen sudut: belah ketupat emas + garis siku warna jenjang.
   const corner = (x: number, y: number, sx: number, sy: number) => {
     ctx.save(); ctx.translate(x, y); ctx.scale(sx, sy);
     ctx.strokeStyle = NAVY; ctx.lineWidth = 5;
@@ -2930,34 +2942,75 @@ export function drawCertificate(canvas: HTMLCanvasElement, data: CertData, displ
   };
   corner(84, 84, 1, 1); corner(W - 84, 84, -1, 1); corner(84, H - 84, 1, -1); corner(W - 84, H - 84, -1, -1);
 
+  // Pita motif berlian/permata kecil emas samar mengelilingi bagian dalam
+  // bingkai (sisi bawah bagian tengah dikosongkan untuk catatan kaki).
+  ctx.save();
+  ctx.globalAlpha = 0.5; ctx.fillStyle = GOLD;
+  const bandDia = (x: number, y: number) => {
+    ctx.beginPath(); ctx.moveTo(x, y - 6); ctx.lineTo(x + 6, y); ctx.lineTo(x, y + 6); ctx.lineTo(x - 6, y); ctx.closePath(); ctx.fill();
+  };
+  for (let x = 190; x <= W - 190; x += 46) {
+    bandDia(x, 92);
+    if (Math.abs(x - cx) > 430) bandDia(x, H - 92);
+  }
+  for (let y = 190; y <= H - 190; y += 46) { bandDia(92, y); bandDia(W - 92, y); }
+  ctx.restore();
+
   ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
 
-  // Lingkaran bintang emas di atas kop.
-  ctx.beginPath(); ctx.arc(cx, 168, 52, 0, Math.PI * 2);
-  ctx.fillStyle = "#F7E7B4"; ctx.fill();
-  ctx.lineWidth = 4; ctx.strokeStyle = GOLD; ctx.stroke();
-  ctx.beginPath(); ctx.arc(cx, 168, 42, 0, Math.PI * 2);
-  ctx.lineWidth = 1.5; ctx.stroke();
-  ctx.fillStyle = GOLD_DARK; ctx.font = "52px Georgia, serif"; ctx.textBaseline = "middle";
-  ctx.fillText("★", cx, 172);
+  // Emblem medali emas di atas kop: cakram emas berisi bintang dengan cincin
+  // ganda, dan dua pita kecil berwarna jenjang menggantung di bawah medali.
+  const medalY = 158;
+  const drawRibbon = (dir: number) => {
+    ctx.save(); ctx.translate(cx + dir * 24, medalY + 44); ctx.rotate(dir * 0.16);
+    ctx.beginPath();
+    ctx.moveTo(-13, -26); ctx.lineTo(13, -26); ctx.lineTo(13, 52); ctx.lineTo(0, 38); ctx.lineTo(-13, 52);
+    ctx.closePath();
+    ctx.fillStyle = P.ribbon; ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = GOLD_DARK; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, -26); ctx.lineTo(0, 34);
+    ctx.lineWidth = 3; ctx.strokeStyle = GOLD; ctx.stroke();
+    ctx.restore();
+  };
+  drawRibbon(-1); drawRibbon(1);
+  // Cincin luar tipis — cincin kedua medali.
+  ctx.beginPath(); ctx.arc(cx, medalY, 66, 0, Math.PI * 2);
+  ctx.lineWidth = 3; ctx.strokeStyle = GOLD; ctx.stroke();
+  // Cakram medali bergradasi emas dengan lingkaran bintang di dalamnya.
+  const medalGrad = ctx.createRadialGradient(cx - 18, medalY - 20, 8, cx, medalY, 58);
+  medalGrad.addColorStop(0, P.goldLight); medalGrad.addColorStop(0.65, GOLD); medalGrad.addColorStop(1, GOLD_DARK);
+  ctx.beginPath(); ctx.arc(cx, medalY, 56, 0, Math.PI * 2);
+  ctx.fillStyle = medalGrad; ctx.fill();
+  ctx.lineWidth = 2.5; ctx.strokeStyle = GOLD_DARK; ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, medalY, 45, 0, Math.PI * 2);
+  ctx.fillStyle = P.goldLight; ctx.fill();
+  ctx.lineWidth = 1.5; ctx.strokeStyle = GOLD_DARK; ctx.stroke();
+  ctx.fillStyle = GOLD_DARK; ctx.font = "46px Georgia, serif"; ctx.textBaseline = "middle";
+  ctx.fillText("★", cx, medalY + 3);
   ctx.textBaseline = "alphabetic";
 
   // Kop resmi.
   ctx.fillStyle = NAVY; ctx.font = "800 64px 'Baloo 2', Georgia, serif";
-  ctx.fillText("ZIQVA OLIM", cx, 282);
+  ctx.fillText("ZIQVA OLIM", cx, 312);
   ctx.fillStyle = GOLD_DARK; ctx.font = "700 25px Georgia, serif";
-  ctx.fillText("P L A T F O R M   O L I M P I A D E   D I G I T A L   I N D O N E S I A", cx, 322);
+  ctx.fillText("P L A T F O R M   O L I M P I A D E   D I G I T A L   I N D O N E S I A", cx, 350);
+  // Garis pemisah emas berujung berlian, dengan berlian di tengahnya.
   ctx.strokeStyle = GOLD; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(cx - 330, 344); ctx.lineTo(cx + 330, 344); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx - 330, 372); ctx.lineTo(cx + 330, 372); ctx.stroke();
+  ctx.fillStyle = GOLD;
+  const sepDia = (x: number, s: number) => {
+    ctx.beginPath(); ctx.moveTo(x, 372 - s); ctx.lineTo(x + s, 372); ctx.lineTo(x, 372 + s); ctx.lineTo(x - s, 372); ctx.closePath(); ctx.fill();
+  };
+  sepDia(cx - 330, 8); sepDia(cx + 330, 8); sepDia(cx, 9);
 
   // Judul + nomor sertifikat.
   ctx.fillStyle = NAVY; ctx.font = "700 76px Georgia, 'Times New Roman', serif";
-  ctx.fillText("SERTIFIKAT PRESTASI", cx, 436);
+  ctx.fillText("SERTIFIKAT PRESTASI", cx, 462);
   ctx.fillStyle = "#6E6785"; ctx.font = "600 24px Georgia, serif";
-  ctx.fillText(`Nomor: ${certNumber(data.id, data.created_at)}`, cx, 478);
+  ctx.fillText(`Nomor: ${certNumber(data.id, data.created_at)}`, cx, 504);
 
   ctx.fillStyle = INK; ctx.font = "italic 30px Georgia, serif";
-  ctx.fillText("Diberikan dengan bangga kepada:", cx, 548);
+  ctx.fillText("Diberikan dengan bangga kepada:", cx, 570);
 
   // Nama peserta besar + garis bawah emas.
   const nameText = (displayName.trim() || data.student_name).slice(0, 48);
@@ -2965,16 +3018,16 @@ export function drawCertificate(canvas: HTMLCanvasElement, data: CertData, displ
   ctx.font = `800 ${nameSize}px 'Baloo 2', Georgia, serif`;
   while (ctx.measureText(nameText).width > 1300 && nameSize > 40) { nameSize -= 4; ctx.font = `800 ${nameSize}px 'Baloo 2', Georgia, serif`; }
   ctx.fillStyle = NAVY;
-  ctx.fillText(nameText, cx, 646);
+  ctx.fillText(nameText, cx, 664);
   const nameW = Math.min(ctx.measureText(nameText).width + 30, 1360);
   ctx.strokeStyle = GOLD; ctx.lineWidth = 4;
-  ctx.beginPath(); ctx.moveTo(cx - nameW / 2, 668); ctx.lineTo(cx + nameW / 2, 668); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx - nameW / 2, 686); ctx.lineTo(cx + nameW / 2, 686); ctx.stroke();
 
   // Keterangan pencapaian di bawah nama (huruf emas kapital).
   const medal = medalFor(data.score);
   const achievement = `PERAIH ${medal.label.toUpperCase()}`;
   ctx.fillStyle = GOLD_DARK; ctx.font = "800 34px Georgia, serif";
-  ctx.fillText(achievement.split("").join(" "), cx, 724);
+  ctx.fillText(achievement.split("").join(" "), cx, 740);
 
   // Kalimat resmi — lebar dibatasi 1080px supaya tidak menabrak stempel.
   const body = `Atas prestasi dan keberhasilannya menyelesaikan seluruh 5 Level Olimpiade ${data.mapel} Jenjang ${data.jenjang} dan lulus Ujian Sertifikat ZIQVA OLIM dengan skor ${data.score} (${data.correct} dari ${data.total} soal benar).`;
@@ -2987,7 +3040,7 @@ export function drawCertificate(canvas: HTMLCanvasElement, data: CertData, displ
     if (ctx.measureText(test).width > 1080 && line) { lines.push(line); line = w; } else line = test;
   }
   if (line) lines.push(line);
-  lines.forEach((l, i) => ctx.fillText(l, cx, 786 + i * 42));
+  lines.forEach((l, i) => ctx.fillText(l, cx, 800 + i * 42));
 
   // Blok bawah: tanggal (kiri), stempel (tengah-kiri), tanda tangan (kanan).
   const bottomY = 1010;
