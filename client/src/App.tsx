@@ -137,18 +137,64 @@ export interface SpeakOpts {
    natural. Pitch dibuat sedikit lebih tinggi & hangat (1,1 — tidak pernah
    di bawah 1,0), rate sedikit lebih lambat (0,92–0,95) agar jelas dan mudah
    diikuti anak. Teks panjang dipecah per kalimat dan diucapkan berurutan
-   supaya intonasinya hidup, bukan satu napas monoton. */
+   supaya intonasinya hidup, bukan satu napas monoton. Prioritas natural
+   berlaku untuk SEMUA bahasa narasi (Indonesia, Inggris, Mandarin,
+   Korea, Jepang, Arab, Jawa): nama yang memuat "Natural", "Neural",
+   atau "Online", suara Google, dan suara Microsoft yang dikenal natural
+   (mis. "Gadis"/"Ardi" untuk Indonesia) selalu didahulukan dari suara
+   bawaan robotik. Di atas itu, pilihan user dari panel 🎙️ Pilih Suara
+   Narator (tersimpan per perangkat) selalu menang. */
 function voiceScore(v: SpeechSynthesisVoice): number {
   const n = v.name.toLowerCase();
   let s = 0;
   if (n.includes("google")) s += 100;
-  if (/natural|neural|enhanced|premium/.test(n)) s += 60;
+  if (/natural|neural|online|enhanced|premium/.test(n)) s += 60;
+  // Suara Microsoft yang dikenal natural walau namanya tidak memuat kata
+  // "Natural"/"Online" — mis. suara Indonesia "Gadis" & "Ardi" (Edge).
+  if (/\b(gadis|ardi)\b/.test(n)) s += 50;
   if (/espeak|fred|albert|bad news|bubbles|cellos|deranged|hysterical|trinoids|whisper|zarvox|grandpa|grandma/.test(n)) s -= 120;
   if (v.default) s += 5;
   return s;
 }
+/** Apakah voice ini tergolong NATURAL (suara saraf/neural atau suara
+    Google/Microsoft yang dikenal natural) — dipakai untuk label kecil
+    "Natural" di panel Pilih Suara Narator dan untuk skor otomatis. */
+export function isNaturalVoice(v: SpeechSynthesisVoice): boolean {
+  const n = v.name.toLowerCase();
+  if (/natural|neural|online|enhanced|premium/.test(n)) return true;
+  if (n.includes("google")) return true;
+  if (/\b(gadis|ardi)\b/.test(n)) return true;
+  return false;
+}
+
+/* Pilihan suara narator dari user (panel 🎙️ Pilih Suara Narator):
+   tersimpan per perangkat di localStorage sebagai peta awalan bahasa →
+   voiceURI. Bahasa yang tidak punya entri memakai pilihan otomatis
+   (paling natural). Dipakai oleh SEMUA jalur bacaan karena semuanya
+   bermuara ke pickVoice(). */
+const VOICE_PREF_KEY = "ziqva-voice-pref-v1";
+type VoicePrefs = Record<string, string>;
+function loadVoicePrefs(): VoicePrefs {
+  try {
+    const raw = localStorage.getItem(VOICE_PREF_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed as VoicePrefs;
+    return {};
+  } catch { return {}; }
+}
+function saveVoicePref(prefix: string, voiceURI: string | null) {
+  try {
+    const prefs = loadVoicePrefs();
+    if (voiceURI) prefs[prefix] = voiceURI;
+    else delete prefs[prefix];
+    localStorage.setItem(VOICE_PREF_KEY, JSON.stringify(prefs));
+  } catch { /* abaikan */ }
+}
+
 interface PickedVoice { voice?: SpeechSynthesisVoice; matched: boolean; natural: boolean }
-function pickVoice(lang: string): PickedVoice {
+/** Pilihan OTOMATIS: voice dengan skor natural tertinggi untuk bahasa ini. */
+function pickAutoVoice(lang: string): PickedVoice {
   const voices = voiceCache;
   if (!voices.length) return { matched: false, natural: false };
   const norm = (s: string) => s.toLowerCase().replace("_", "-");
@@ -159,10 +205,25 @@ function pickVoice(lang: string): PickedVoice {
   const pool = exact.length ? exact : byPrefix;
   if (!pool.length) {
     const fb = voices.find((v) => v.default) ?? [...voices].sort((a, b) => voiceScore(b) - voiceScore(a))[0];
-    return { voice: fb, matched: false, natural: fb ? voiceScore(fb) >= 60 : false };
+    return { voice: fb, matched: false, natural: fb ? isNaturalVoice(fb) : false };
   }
   const best = [...pool].sort((a, b) => voiceScore(b) - voiceScore(a))[0];
-  return { voice: best, matched: true, natural: best ? voiceScore(best) >= 60 : false };
+  return { voice: best, matched: true, natural: best ? isNaturalVoice(best) : false };
+}
+/** Voice yang dipakai untuk satu bahasa: pilihan tersimpan user untuk
+    bahasa itu (bila voice-nya masih terpasang) mengalahkan skor otomatis;
+    selain itu voice paling natural yang tersedia di perangkat. */
+function pickVoice(lang: string): PickedVoice {
+  const voices = voiceCache;
+  if (!voices.length) return { matched: false, natural: false };
+  const norm = (s: string) => s.toLowerCase().replace("_", "-");
+  const prefix = norm(lang).split("-")[0] ?? norm(lang);
+  const prefURI = loadVoicePrefs()[prefix];
+  if (prefURI) {
+    const pv = voices.find((v) => v.voiceURI === prefURI);
+    if (pv) return { voice: pv, matched: norm(pv.lang).startsWith(prefix), natural: isNaturalVoice(pv) };
+  }
+  return pickAutoVoice(lang);
 }
 function rateForLang(lang: string): number {
   const p = lang.toLowerCase().split("-")[0] ?? "";
@@ -806,7 +867,7 @@ function runSoundTest(opts: { onLines: (lines: string[]) => void; setSpeaking?: 
   if (picked.voice) {
     push(`🎙️ Voice untuk Bahasa Indonesia: "${picked.voice.name}" (${picked.voice.lang})${picked.natural ? " — voice natural, bagus!" : ""}`);
   }
-  if (vs.length > 0 && !vs.some((v) => voiceScore(v) >= 60)) {
+  if (vs.length > 0 && !vs.some((v) => isNaturalVoice(v))) {
     push("💡 Perangkat ini hanya memiliki voice bawaan yang memang terdengar kaku seperti robot — itu sifat voice-nya, bukan kesalahan kamu. Agar suara jauh lebih natural dan ramah anak, pasang \"Speech Services by Google\" dari Play Store, lalu pilih suara \"Google Bahasa Indonesia\" di Pengaturan › Bahasa & masukan › Text-to-speech. Setelah itu buka lagi ZIQVA OLIM dan ketuk Tes Suara.");
   }
   let ttsStarted = false;
@@ -818,6 +879,181 @@ function runSoundTest(opts: { onLines: (lines: string[]) => void; setSpeaking?: 
   window.setTimeout(() => {
     if (!ttsStarted) push("⚠️ Kalimat tes belum mulai dibacakan setelah 3 detik — TTS tidak merespons di browser ini. Coba buka ZIQVA OLIM dengan Chrome (Android) / Safari (iPhone), dan pastikan Speech Services by Google aktif.");
   }, 3000);
+}
+
+/* ---------------- 🎙️ PILIH SUARA NARATOR ----------------
+   Panel yang dibuka dari gugus kontrol suara (header & kartu soal):
+   daftar voice perangkat dikelompokkan per bahasa narasi aplikasi —
+   Bahasa Indonesia WAJIB paling atas — dan mengetuk satu voice langsung
+   memutar contoh kalimat ramah dengan voice itu sekaligus menyimpannya
+   sebagai pilihan bahasa tersebut. Pilihan "Otomatis (paling natural)"
+   adalah bawaan (tanpa entri tersimpan). Semua jalur bacaan (Dengarkan
+   Soal, Dengarkan Modul Ini, Tes Suara, sambutan) memakai pickVoice(),
+   jadi pilihan di sini langsung berlaku di mana-mana. */
+const VOICE_LANG_GROUPS: { prefix: string; label: string; lang: string; sample: string }[] = [
+  { prefix: "id", label: "Bahasa Indonesia", lang: "id-ID", sample: "Halo! Aku narator ZIQVA OLIM. Selamat belajar dan semangat juara!" },
+  { prefix: "en", label: "Bahasa Inggris", lang: "en-US", sample: "Hello! I am the ZIQVA OLIM narrator. Happy learning, and good luck, champion!" },
+  { prefix: "zh", label: "Bahasa Mandarin", lang: "zh-CN", sample: "你好！我是 ZIQVA OLIM 的朗读员。祝你学习愉快，加油！" },
+  { prefix: "ko", label: "Bahasa Korea", lang: "ko-KR", sample: "안녕하세요! 저는 ZIQVA OLIM의 나레이터예요. 즐겁게 공부해요!" },
+  { prefix: "ja", label: "Bahasa Jepang", lang: "ja-JP", sample: "こんにちは！ZIQVA OLIMのナレーターです。楽しく勉強しましょう！" },
+  { prefix: "ar", label: "Bahasa Arab", lang: "ar-SA", sample: "مرحبًا! أنا راوي ZIQVA OLIM. تعلّم سعيد وبالتوفيق!" },
+  { prefix: "jv", label: "Bahasa Jawa", lang: "jv-ID", sample: "Halo! Aku narator ZIQVA OLIM. Sugeng sinau lan semangat juara!" },
+];
+function voiceLangPrefix(v: SpeechSynthesisVoice): string {
+  return v.lang.toLowerCase().replace("_", "-").split("-")[0] ?? "";
+}
+
+/** Putar contoh kalimat dengan SATU voice tertentu (pratinjau panel).
+    Bacaan yang sedang berjalan dihentikan total lebih dulu; generasi
+    dinaikkan sekali lagi sesudah stopSpeaking() supaya cancel ulangan
+    terjadwal dari stop itu tidak membunuh pratinjau ini. Rate 1,0 dan
+    pitch 1,1 — sama seperti narasi biasa, tidak berubah. */
+function previewVoice(voice: SpeechSynthesisVoice | undefined, lang: string, text: string, onDone?: () => void) {
+  if (!("speechSynthesis" in window)) { onDone?.(); return; }
+  stopSpeaking();
+  const gen = ++speechGeneration;
+  const synth = window.speechSynthesis;
+  window.setTimeout(() => {
+    if (gen !== speechGeneration) { onDone?.(); return; }
+    try {
+      const u = new SpeechSynthesisUtterance(text);
+      if (voice) { u.voice = voice; u.lang = voice.lang; }
+      else u.lang = lang;
+      u.rate = 1.0;
+      u.pitch = 1.1;
+      u.onend = () => onDone?.();
+      u.onerror = () => onDone?.();
+      try { synth.resume(); } catch { /* abaikan */ }
+      synth.speak(u);
+    } catch { onDone?.(); }
+  }, 90);
+}
+
+export function VoicePickerButton(props: { variant: "header" | "quiz" }) {
+  const [open, setOpen] = useState(false);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>(() => voiceCache);
+  const [prefs, setPrefs] = useState<VoicePrefs>(() => loadVoicePrefs());
+  const [previewKey, setPreviewKey] = useState("");
+
+  // Daftar voice perangkat bisa datang terlambat (voiceschanged) — segarkan
+  // setiap panel dibuka dan selama panel terbuka.
+  useEffect(() => {
+    if (!open) return;
+    refreshVoices();
+    setVoices([...voiceCache]);
+    setPrefs(loadVoicePrefs());
+    if (!("speechSynthesis" in window)) return;
+    const onChange = () => { refreshVoices(); setVoices([...voiceCache]); };
+    try { window.speechSynthesis.addEventListener("voiceschanged", onChange); } catch { /* abaikan */ }
+    return () => { try { window.speechSynthesis.removeEventListener("voiceschanged", onChange); } catch { /* abaikan */ } };
+  }, [open ]);
+
+  const close = () => { stopSpeaking(); setPreviewKey(""); setOpen(false); };
+
+  const choose = (group: (typeof VOICE_LANG_GROUPS)[number], voice: SpeechSynthesisVoice | null) => {
+    unlockAudio();
+    saveVoicePref(group.prefix, voice ? voice.voiceURI : null);
+    setPrefs(loadVoicePrefs());
+    refreshVoices();
+    const effective = voice ?? pickAutoVoice(group.lang).voice;
+    const key = voice ? voice.voiceURI : `auto-${group.prefix}`;
+    setPreviewKey(key);
+    previewVoice(effective, group.lang, group.sample, () => setPreviewKey((k) => (k === key ? "" : k)));
+  };
+
+  const groups = VOICE_LANG_GROUPS
+    .map((g) => ({ ...g, list: voices.filter((v) => voiceLangPrefix(v) === g.prefix).sort((a, b) => voiceScore(b) - voiceScore(a)) }))
+    .filter((g) => g.list.length > 0);
+  const anyNatural = voices.some((v) => isNaturalVoice(v));
+  // Penjelasan kualitas tampil bila perangkat hanya punya satu suara atau
+  // tidak ada satu pun suara natural/neural di perangkat ini.
+  const showQualityNote = voices.length > 0 && (voices.length <= 1 || !anyNatural);
+
+  return (
+    <>
+      {props.variant === "header" ? (
+        <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-expanded={open}
+          aria-label="Pilih suara narator: buka daftar suara narator yang tersedia di perangkat ini" title="Pilih Suara Narator"
+          className="font-display flex h-8 items-center gap-1 rounded-full px-2 text-[11px] font-bold text-white transition hover:bg-white/10">
+          <span aria-hidden>🎙️</span><span className="hidden sm:inline">Narator</span>
+        </button>
+      ) : (
+        <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-expanded={open}
+          aria-label="Pilih suara narator: buka daftar suara narator yang tersedia di perangkat ini"
+          className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-bold"
+          style={{ background: "var(--surface2)", color: "var(--accent)", border: "2px solid var(--accent)" }}>
+          🎙️ Suara Narator
+        </button>
+      )}
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label="Pilih suara narator">
+          <button type="button" aria-label="Tutup panel pilih suara narator" className="absolute inset-0 cursor-default" style={{ background: "rgba(20,16,40,.55)" }} onClick={close} />
+          <div className="pop-in relative flex max-h-[86vh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl shadow-xl sm:rounded-3xl" style={{ background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border)" }}>
+            <div className="flex items-center gap-2 px-5 pt-4 pb-1">
+              <h2 className="font-display flex-1 text-lg font-extrabold">🎙️ Pilih Suara Narator</h2>
+              <button type="button" onClick={close} aria-label="Tutup panel pilih suara narator"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-base font-bold" style={{ background: "var(--surface2)", color: "var(--dim)" }}>✕</button>
+            </div>
+            <p className="px-5 text-sm leading-relaxed" style={{ color: "var(--dim)" }}>
+              Suara narator memakai suara yang terpasang di perangkat ini. Ketuk satu suara untuk mendengar contohnya — pilihanmu tersimpan di perangkat ini dan dipakai untuk Dengarkan Soal, Dengarkan Modul Ini, dan Tes Suara.
+            </p>
+            <div className="overflow-y-auto px-5 pt-1 pb-5">
+              {voices.length === 0 && (
+                <p className="mt-3 rounded-2xl px-4 py-3 text-sm font-semibold" style={{ background: "var(--surface2)" }}>
+                  Daftar suara perangkat belum tersedia. Di Android, pasang/aktifkan "Speech Services by Google" dari Play Store, lalu buka lagi panel ini.
+                </p>
+              )}
+              {groups.map((g) => {
+                const prefURI = prefs[g.prefix];
+                const autoName = pickAutoVoice(g.lang).voice?.name;
+                return (
+                  <section key={g.prefix} className="mt-4" aria-label={`Suara narator ${g.label}`}>
+                    <h3 className="font-display text-sm font-extrabold tracking-wide" style={{ color: "var(--accent)" }}>{g.label}</h3>
+                    <div className="mt-1.5 grid gap-1.5">
+                      <button type="button" onClick={() => choose(g, null)} aria-pressed={!prefURI}
+                        aria-label={`Suara narator ${g.label} otomatis, paling natural${autoName ? `, saat ini ${autoName}` : ""}. Ketuk untuk mendengar contohnya`}
+                        className="flex min-h-[52px] items-center gap-3 rounded-2xl px-4 py-2.5 text-left transition"
+                        style={{ background: !prefURI ? "var(--surface2)" : "var(--surface)", border: `2px solid ${!prefURI ? "var(--accent)" : "var(--border)"}` }}>
+                        <span className="font-display flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-extrabold" style={{ background: !prefURI ? "var(--accent)" : "var(--surface2)", color: !prefURI ? "#fff" : "var(--dim)" }} aria-hidden>{!prefURI ? "✓" : ""}</span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-[15px] font-bold">Otomatis (paling natural)</span>
+                          {autoName && <span className="block truncate text-xs font-semibold" style={{ color: "var(--dim)" }}>Saat ini: {autoName}</span>}
+                        </span>
+                        {previewKey === `auto-${g.prefix}` && <span className="shrink-0 text-base" aria-hidden>🔊</span>}
+                      </button>
+                      {g.list.map((v) => {
+                        const selected = prefURI === v.voiceURI;
+                        const natural = isNaturalVoice(v);
+                        return (
+                          <button key={v.voiceURI} type="button" onClick={() => choose(g, v)} aria-pressed={selected}
+                            aria-label={`Suara narator ${v.name}${natural ? ", suara natural" : ""}. Ketuk untuk mendengar contohnya dan memilih suara ini`}
+                            className="flex min-h-[52px] items-center gap-3 rounded-2xl px-4 py-2.5 text-left transition"
+                            style={{ background: selected ? "var(--surface2)" : "var(--surface)", border: `2px solid ${selected ? "var(--accent)" : "var(--border)"}` }}>
+                            <span className="font-display flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-extrabold" style={{ background: selected ? "var(--accent)" : "var(--surface2)", color: selected ? "#fff" : "var(--dim)" }} aria-hidden>{selected ? "✓" : ""}</span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-[15px] font-bold">{v.name}</span>
+                              <span className="block text-xs font-semibold" style={{ color: "var(--dim)" }}>{v.lang}{v.default ? " • bawaan perangkat" : ""}</span>
+                            </span>
+                            {natural && <span className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-extrabold" style={{ background: "#E2F4E9", color: "#1E7A46" }}>Natural</span>}
+                            {previewKey === v.voiceURI && <span className="shrink-0 text-base" aria-hidden>🔊</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </section>
+                );
+              })}
+              {showQualityNote && (
+                <p className="mt-4 rounded-2xl px-4 py-3 text-sm leading-relaxed font-semibold" style={{ background: "#FBF0DA", color: "#92600A" }} role="note">
+                  💡 Perangkat ini {voices.length <= 1 ? "hanya memiliki satu suara" : "belum memiliki suara natural"}, jadi kualitas narator mengikuti suara bawaan perangkat dan mungkin terdengar kaku seperti robot. Agar jauh lebih enak seperti penyiar, pasang "Speech Services by Google" dari Play Store (Android), atau buka ZIQVA OLIM lewat Microsoft Edge yang menyediakan suara Bahasa Indonesia natural (Gadis &amp; Ardi). Sesudah itu, buka lagi panel ini dan pilih suaranya.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
 
 /* ---------------- REWARDS & LEVEL (tersimpan di perangkat) ---------------- */
@@ -1027,6 +1263,7 @@ function QuizView(props: {
             style={{ background: "var(--surface2)", color: "var(--accent)", border: "2px solid var(--accent)" }}>
             🔊 Tes Suara
           </button>
+          <VoicePickerButton variant="quiz" />
         </div>
         {!props.soundOn && <p className="mt-2 text-xs font-bold" style={{ color: "#B02A37" }}>Suara sedang OFF — ketuk tombol “Suara: OFF” di atas untuk menyalakan, lalu Dengarkan Soal akan berbunyi.</p>}
         {ttsMsg && <p className="mt-2 rounded-xl px-3 py-2 text-xs font-bold" style={{ background: "#FBF0DA", color: "#92600A" }} role="status">{ttsMsg}</p>}
@@ -3913,6 +4150,7 @@ export function App() {
                   className="font-display flex h-8 items-center gap-1 rounded-full px-2 text-[11px] font-bold text-white transition hover:bg-white/10">
                   <span aria-hidden>🔊</span><span className="hidden sm:inline">Tes</span>
                 </button>
+                <VoicePickerButton variant="header" />
               </div>
               {/* Area profil kanan atas: avatar + menu akun bila sudah masuk; tombol Masuk / Daftar bila belum. */}
               {sessionUser ? (
