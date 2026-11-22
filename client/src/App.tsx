@@ -1527,50 +1527,50 @@ function AdminView(props: { token: string; user: SessionUser; onLogout: () => vo
 
       <h2 className="font-display mt-6 text-lg font-bold">👥 Akun Terdaftar ({users.length})</h2>
       <div className="mt-2 overflow-x-auto rounded-2xl" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-        <table className="w-full min-w-[1120px] border-collapse text-left text-sm">
+        <table className="w-full min-w-[600px] border-collapse text-left text-[13px]">
           <colgroup>
-            <col style={{ width: "13%" }} />
-            <col style={{ width: "11%" }} />
+            <col style={{ width: "12%" }} />
+            <col style={{ width: "10%" }} />
             <col style={{ width: "11%" }} />
             <col style={{ width: "16%" }} />
             <col style={{ width: "13%" }} />
             <col style={{ width: "18%" }} />
             <col style={{ width: "11%" }} />
-            <col style={{ width: "7%" }} />
+            <col style={{ width: "9%" }} />
           </colgroup>
           <thead>
             <tr style={{ background: "var(--surface2)" }}>
               {["Nama", "Username", "Peran", "Organisasi", "WhatsApp", "Email", "Terdaftar", "Aksi"].map((h) => (
-                <th key={h} scope="col" className="px-3 py-2.5 text-xs font-extrabold whitespace-nowrap" style={{ color: "var(--dim)" }}>{h}</th>
+                <th key={h} scope="col" className="px-2 py-2 sm:px-2.5 text-xs font-extrabold whitespace-nowrap" style={{ color: "var(--dim)" }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {dash.isPending ? (
-              <tr><td colSpan={8} className="px-3 py-6 text-center font-semibold" style={{ color: "var(--dim)" }}>⏳ Memuat data akun…</td></tr>
+              <tr><td colSpan={8} className="px-2 py-6 text-center font-semibold" style={{ color: "var(--dim)" }}>⏳ Memuat data akun…</td></tr>
             ) : users.length === 0 ? (
-              <tr><td colSpan={8} className="px-3 py-6 text-center font-semibold" style={{ color: "var(--dim)" }}>Belum ada akun terdaftar.</td></tr>
+              <tr><td colSpan={8} className="px-2 py-6 text-center font-semibold" style={{ color: "var(--dim)" }}>Belum ada akun terdaftar.</td></tr>
             ) : users.map((u) => {
               const isSelf = u.id === user.id;
               const isAdmin = u.role === "admin";
               return (
                 <tr key={u.id} style={{ borderTop: "1px solid var(--border)" }}>
-                  <td className="px-3 py-3 font-display font-bold whitespace-nowrap">{u.name}</td>
-                  <td className="px-3 py-3 whitespace-nowrap" style={{ color: "var(--dim)" }}>@{u.username}</td>
-                  <td className="px-3 py-3 whitespace-nowrap">{adminRoleLabel(u.role)}</td>
-                  <td className="px-3 py-3 whitespace-nowrap">{u.organization || "—"}</td>
-                  <td className="px-3 py-3 whitespace-nowrap">
+                  <td className="px-2 py-2.5 sm:px-2.5 font-display font-bold whitespace-nowrap">{u.name}</td>
+                  <td className="px-2 py-2.5 sm:px-2.5 whitespace-nowrap" style={{ color: "var(--dim)" }}>@{u.username}</td>
+                  <td className="px-2 py-2.5 sm:px-2.5 whitespace-nowrap">{adminRoleLabel(u.role)}</td>
+                  <td className="px-2 py-2.5 sm:px-2.5 whitespace-nowrap">{u.organization || "—"}</td>
+                  <td className="px-2 py-2.5 sm:px-2.5 whitespace-nowrap">
                     {u.whatsapp ? (
                       <a href={waChatUrl(u.whatsapp)} target="_blank" rel="noreferrer" aria-label={`Chat WhatsApp ${u.name}`} className="font-bold underline" style={{ color: "#1E7A46" }}>💬 {u.whatsapp}</a>
                     ) : "—"}
                   </td>
-                  <td className="px-3 py-3 whitespace-nowrap">
+                  <td className="px-2 py-2.5 sm:px-2.5 whitespace-nowrap">
                     {u.email ? (
                       <a href={`mailto:${u.email}`} aria-label={`Kirim email ke ${u.name}`} className="underline" style={{ color: "var(--accent)" }}>{u.email}</a>
                     ) : "—"}
                   </td>
-                  <td className="px-3 py-3 whitespace-nowrap" style={{ color: "var(--dim)" }}>{new Date(u.created_at).toLocaleString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</td>
-                  <td className="px-3 py-3 whitespace-nowrap">
+                  <td className="px-2 py-2.5 sm:px-2.5 whitespace-nowrap" style={{ color: "var(--dim)" }}>{new Date(u.created_at).toLocaleString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</td>
+                  <td className="px-2 py-2.5 sm:px-2.5 whitespace-nowrap">
                     {isSelf ? (
                       <span className="rounded-full px-3 py-1.5 text-xs font-bold" style={{ background: "#FFF3DC", color: "#92600A" }}>Akun kamu</span>
                     ) : isAdmin ? (
@@ -1578,7 +1578,7 @@ function AdminView(props: { token: string; user: SessionUser; onLogout: () => vo
                     ) : (
                       <button type="button" onClick={() => { setActionError(""); setConfirm({ kind: "user", id: u.id, label: `akun ${u.name} (@${u.username})` }); }}
                         aria-label={`Hapus akun ${u.name}`}
-                        className="min-h-[40px] rounded-full px-4 font-display text-sm font-bold text-white" style={{ background: "#D6336C" }}>🗑️ Hapus</button>
+                        className="min-h-[40px] rounded-full px-3 font-display text-[13px] font-bold text-white" style={{ background: "#D6336C" }}>🗑️ Hapus</button>
                     )}
                   </td>
                 </tr>
@@ -1590,7 +1590,7 @@ function AdminView(props: { token: string; user: SessionUser; onLogout: () => vo
 
       <h2 className="font-display mt-6 text-lg font-bold">🏫 Semua Kelas Ujian ({classes.length})</h2>
       <div className="mt-2 overflow-x-auto rounded-2xl" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-        <table className="w-full min-w-[980px] border-collapse text-left text-sm">
+        <table className="w-full min-w-[560px] border-collapse text-left text-[13px]">
           <colgroup>
             <col style={{ width: "17%" }} />
             <col style={{ width: "14%" }} />
@@ -1605,29 +1605,29 @@ function AdminView(props: { token: string; user: SessionUser; onLogout: () => vo
           <thead>
             <tr style={{ background: "var(--surface2)" }}>
               {["Nama Kelas", "Guru", "Jenjang", "Mapel", "Level", "Status", "Peserta", "Selesai", "Aksi"].map((h) => (
-                <th key={h} scope="col" className="px-3 py-2.5 text-xs font-extrabold whitespace-nowrap" style={{ color: "var(--dim)" }}>{h}</th>
+                <th key={h} scope="col" className="px-2 py-2 sm:px-2.5 text-xs font-extrabold whitespace-nowrap" style={{ color: "var(--dim)" }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {dash.isPending ? (
-              <tr><td colSpan={9} className="px-3 py-6 text-center font-semibold" style={{ color: "var(--dim)" }}>⏳ Memuat data kelas…</td></tr>
+              <tr><td colSpan={9} className="px-2 py-6 text-center font-semibold" style={{ color: "var(--dim)" }}>⏳ Memuat data kelas…</td></tr>
             ) : classes.length === 0 ? (
-              <tr><td colSpan={9} className="px-3 py-6 text-center font-semibold" style={{ color: "var(--dim)" }}>Belum ada kelas.</td></tr>
+              <tr><td colSpan={9} className="px-2 py-6 text-center font-semibold" style={{ color: "var(--dim)" }}>Belum ada kelas.</td></tr>
             ) : classes.map((c) => (
               <tr key={c.id} style={{ borderTop: "1px solid var(--border)" }}>
-                <td className="px-3 py-3 font-display font-bold whitespace-nowrap">{c.class_name}</td>
-                <td className="px-3 py-3 whitespace-nowrap">{c.teacher_name}</td>
-                <td className="px-3 py-3 whitespace-nowrap">{c.jenjang}</td>
-                <td className="px-3 py-3 whitespace-nowrap">{c.subject_name}</td>
-                <td className="px-3 py-3 whitespace-nowrap">Level {c.level}</td>
-                <td className="px-3 py-3 whitespace-nowrap">{c.status === "open" ? "🟢 Aktif" : "🔴 Ditutup"}</td>
-                <td className="px-3 py-3 whitespace-nowrap">{c.participant_count} peserta</td>
-                <td className="px-3 py-3 whitespace-nowrap">{c.finished_count} selesai</td>
-                <td className="px-3 py-3 whitespace-nowrap">
+                <td className="px-2 py-2.5 sm:px-2.5 font-display font-bold whitespace-nowrap">{c.class_name}</td>
+                <td className="px-2 py-2.5 sm:px-2.5 whitespace-nowrap">{c.teacher_name}</td>
+                <td className="px-2 py-2.5 sm:px-2.5 whitespace-nowrap">{c.jenjang}</td>
+                <td className="px-2 py-2.5 sm:px-2.5 whitespace-nowrap">{c.subject_name}</td>
+                <td className="px-2 py-2.5 sm:px-2.5 whitespace-nowrap">Level {c.level}</td>
+                <td className="px-2 py-2.5 sm:px-2.5 whitespace-nowrap">{c.status === "open" ? "🟢 Aktif" : "🔴 Ditutup"}</td>
+                <td className="px-2 py-2.5 sm:px-2.5 whitespace-nowrap">{c.participant_count} peserta</td>
+                <td className="px-2 py-2.5 sm:px-2.5 whitespace-nowrap">{c.finished_count} selesai</td>
+                <td className="px-2 py-2.5 sm:px-2.5 whitespace-nowrap">
                   <button type="button" onClick={() => { setActionError(""); setConfirm({ kind: "class", id: c.id, label: `kelas "${c.class_name}" beserta semua pesertanya` }); }}
                     aria-label={`Hapus kelas ${c.class_name}`}
-                    className="min-h-[40px] rounded-full px-4 font-display text-sm font-bold text-white" style={{ background: "#D6336C" }}>🗑️ Hapus</button>
+                    className="min-h-[40px] rounded-full px-3 font-display text-[13px] font-bold text-white" style={{ background: "#D6336C" }}>🗑️ Hapus</button>
                 </td>
               </tr>
             ))}
@@ -1637,7 +1637,7 @@ function AdminView(props: { token: string; user: SessionUser; onLogout: () => vo
 
       <h2 className="font-display mt-6 text-lg font-bold">🕐 Aktivitas Nilai Terakhir (50 terbaru)</h2>
       <div className="mt-2 overflow-x-auto rounded-2xl" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-        <table className="w-full min-w-[1020px] border-collapse text-left text-sm">
+        <table className="w-full min-w-[600px] border-collapse text-left text-[13px]">
           <colgroup>
             <col style={{ width: "15%" }} />
             <col style={{ width: "8%" }} />
@@ -1652,31 +1652,31 @@ function AdminView(props: { token: string; user: SessionUser; onLogout: () => vo
           <thead>
             <tr style={{ background: "var(--surface2)" }}>
               {["Peserta", "Jenjang", "Mapel", "Mode", "Skor", "Hasil", "Durasi", "Waktu", "Aksi"].map((h) => (
-                <th key={h} scope="col" className="px-3 py-2.5 text-xs font-extrabold whitespace-nowrap" style={{ color: "var(--dim)" }}>{h}</th>
+                <th key={h} scope="col" className="px-2 py-2 sm:px-2.5 text-xs font-extrabold whitespace-nowrap" style={{ color: "var(--dim)" }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {dash.isPending ? (
-              <tr><td colSpan={9} className="px-3 py-6 text-center font-semibold" style={{ color: "var(--dim)" }}>⏳ Memuat aktivitas nilai…</td></tr>
+              <tr><td colSpan={9} className="px-2 py-6 text-center font-semibold" style={{ color: "var(--dim)" }}>⏳ Memuat aktivitas nilai…</td></tr>
             ) : recentAttempts.length === 0 ? (
-              <tr><td colSpan={9} className="px-3 py-6 text-center font-semibold" style={{ color: "var(--dim)" }}>Belum ada aktivitas nilai.</td></tr>
+              <tr><td colSpan={9} className="px-2 py-6 text-center font-semibold" style={{ color: "var(--dim)" }}>Belum ada aktivitas nilai.</td></tr>
             ) : recentAttempts.map((a) => (
               <tr key={a.id} style={{ borderTop: "1px solid var(--border)" }}>
-                <td className="px-3 py-3 font-display font-bold whitespace-nowrap">{a.student_name}</td>
-                <td className="px-3 py-3 whitespace-nowrap">{a.jenjang}</td>
-                <td className="px-3 py-3 whitespace-nowrap">{a.mapel}{a.class_name === "Ujian Sertifikat" ? <span className="font-display ml-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-extrabold whitespace-nowrap" style={{ background: "#FFF3DC", color: "#92600A", border: "1px solid var(--gold)" }}>🏆 Ujian Sertifikat</span> : a.class_name ? <span className="ml-1.5 text-xs font-semibold whitespace-nowrap" style={{ color: "var(--dim)" }}>🏫 {a.class_name}</span> : null}</td>
-                <td className="px-3 py-3 whitespace-nowrap">{a.mode === "ujian" ? "🏆 Ujian" : "✏️ Latihan"}</td>
-                <td className="px-3 py-3 whitespace-nowrap">
+                <td className="px-2 py-2.5 sm:px-2.5 font-display font-bold whitespace-nowrap">{a.student_name}</td>
+                <td className="px-2 py-2.5 sm:px-2.5 whitespace-nowrap">{a.jenjang}</td>
+                <td className="px-2 py-2.5 sm:px-2.5 whitespace-nowrap">{a.mapel}{a.class_name === "Ujian Sertifikat" ? <span className="font-display ml-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-extrabold whitespace-nowrap" style={{ background: "#FFF3DC", color: "#92600A", border: "1px solid var(--gold)" }}>🏆 Ujian Sertifikat</span> : a.class_name ? <span className="ml-1.5 text-xs font-semibold whitespace-nowrap" style={{ color: "var(--dim)" }}>🏫 {a.class_name}</span> : null}</td>
+                <td className="px-2 py-2.5 sm:px-2.5 whitespace-nowrap">{a.mode === "ujian" ? "🏆 Ujian" : "✏️ Latihan"}</td>
+                <td className="px-2 py-2.5 sm:px-2.5 whitespace-nowrap">
                   <span className="font-display inline-flex min-w-[44px] items-center justify-center rounded-lg px-2 py-1 font-extrabold text-white" style={{ background: a.score >= 75 ? "#1E7A46" : a.score >= 60 ? "#D97706" : "#6E6785" }}>{a.score}</span>
                 </td>
-                <td className="px-3 py-3 whitespace-nowrap">{a.correct}/{a.total} benar</td>
-                <td className="px-3 py-3 whitespace-nowrap">{fmtDur(a.duration_sec)}</td>
-                <td className="px-3 py-3 whitespace-nowrap" style={{ color: "var(--dim)" }}>{new Date(a.created_at).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</td>
-                <td className="px-3 py-3 whitespace-nowrap">
+                <td className="px-2 py-2.5 sm:px-2.5 whitespace-nowrap">{a.correct}/{a.total} benar</td>
+                <td className="px-2 py-2.5 sm:px-2.5 whitespace-nowrap">{fmtDur(a.duration_sec)}</td>
+                <td className="px-2 py-2.5 sm:px-2.5 whitespace-nowrap" style={{ color: "var(--dim)" }}>{new Date(a.created_at).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</td>
+                <td className="px-2 py-2.5 sm:px-2.5 whitespace-nowrap">
                   <button type="button" onClick={() => { setActionError(""); setConfirm({ kind: "attempt", id: a.id, label: `nilai ${a.student_name} (${a.mapel}, skor ${a.score})` }); }}
                     aria-label={`Hapus nilai ${a.student_name} pada ${a.mapel}`}
-                    className="min-h-[40px] rounded-full px-4 font-display text-sm font-bold text-white" style={{ background: "#D6336C" }}>🗑️ Hapus</button>
+                    className="min-h-[40px] rounded-full px-3 font-display text-[13px] font-bold text-white" style={{ background: "#D6336C" }}>🗑️ Hapus</button>
                 </td>
               </tr>
             ))}
