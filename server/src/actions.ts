@@ -188,6 +188,7 @@ const attemptShape = z.object({
   id: z.number(),
   student_name: z.string(),
   jenjang: z.string(),
+  kelas: z.string(),
   mapel: z.string(),
   mode: z.string(),
   score: z.number(),
@@ -338,6 +339,9 @@ export const Actions = {
     request: z.object({
       student_name: z.string().trim().min(1).max(40),
       jenjang: z.string().min(1).max(20),
+      // Kelas peserta di dalam jenjang (TK "A"/"B", SD "1".."6", SMP
+      // "7".."9", SMA "10".."12"); kosong bila klien lama tidak mengirim.
+      kelas: z.string().trim().max(10).default(""),
       mapel: z.string().min(1).max(60),
       mode: z.enum(["ujian", "latihan"]),
       score: z.number().int().min(0).max(100),
@@ -362,6 +366,7 @@ export const Actions = {
         .values({
           studentName: args.student_name,
           jenjang: args.jenjang,
+          kelas: args.kelas,
           mapel: args.mapel,
           mode: args.mode,
           score: args.score,
@@ -418,6 +423,7 @@ export const Actions = {
           id: r.id,
           student_name: r.studentName,
           jenjang: r.jenjang,
+          kelas: r.kelas ?? "",
           mapel: r.mapel,
           mode: r.mode,
           score: r.score,
@@ -764,7 +770,7 @@ export const Actions = {
         user: toUser(user),
         watched,
         attempts: visible.slice(0, 100).map((r) => ({
-          id: r.id, student_name: r.studentName, jenjang: r.jenjang, mapel: r.mapel, mode: r.mode,
+          id: r.id, student_name: r.studentName, jenjang: r.jenjang, kelas: r.kelas ?? "", mapel: r.mapel, mode: r.mode,
           score: r.score, correct: r.correct, total: r.total, duration_sec: r.durationSec,
           created_at: r.createdAt.toISOString(), monitor_code: "",
           class_id: r.classId ?? null, class_name: r.className ?? "",

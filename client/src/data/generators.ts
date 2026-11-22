@@ -372,9 +372,70 @@ export function langVocabGens(
    ================================================================ */
 export type LGen = (level: number) => Question | null;
 
+/* ================================================================
+   PITA KELAS — jenjang tidak dipukul rata. Peserta memilih KELAS di
+   dalam jenjangnya (TK: Kelompok A/B; SD: Kelas 1–6; SMP: 7–9; SMA:
+   10–12). Kelas menggeser PUSAT kesulitan & topik; Level 1–5 tetap
+   tingkat kesulitan halus DI DALAM pita kelas itu.
+
+   Mekanismenya satu koordinat kesulitan d ∈ [0,1]:
+     d = posisiKelas × 0,65 + posisiLevel × 0,35
+   - Bank pasangan/fakta: windowOf() memakai d (jendela materi 55%
+     bank yang berpusat di d) — kelas terendah tidak pernah menyentuh
+     bagian teratas bank jenjangnya, kelas tertinggi tidak pernah
+     mendapat bagian terbawahnya; generator topik khas kelas yang
+     lebih tinggi digerbang bandGate() agar tidak bocor ke bawah.
+   - Generator angka: dipanggil dengan level hasil pemetaan d
+     (genLevelForCoord) — mis. SD Kelas 1 Level 5 setara level
+     generator 2 (pecahan/FPB belum muncul), SD Kelas 6 Level 1
+     setara level generator 3 (pecahan dasar memang materi kelas 6).
+   - Generator khas kelas (mis. sdGradeMath) membaca band01Now().
+   Tanpa kelas (Mode Kelas Ujian guru & alur lama) semua perilaku
+   persis seperti sebelumnya: band tidak aktif.
+   ================================================================ */
+let activeBand01 = -1;
+let activeBandCoord = -1;
+
+/** Koordinat kesulitan gabungan kelas (0..1) + level (1..5). */
+export function bandCoordFor(level: number, band01: number): number {
+  return band01 * 0.65 + ((Math.min(5, Math.max(1, level)) - 1) / 4) * 0.35;
+}
+/** Level generator (integer 1..5) dari koordinat kesulitan. */
+export function genLevelForCoord(coord: number): number {
+  return Math.min(5, Math.max(1, 1 + Math.floor(coord * 4.999)));
+}
+/** Aktifkan pita kelas selama satu putaran generateQuestions (sinkron). */
+export function beginBand(coord: number, band01: number): void {
+  activeBandCoord = coord;
+  activeBand01 = band01;
+}
+export function endBand(): void {
+  activeBandCoord = -1;
+  activeBand01 = -1;
+}
+/** Posisi kelas aktif 0..1, atau -1 bila pita kelas tidak aktif. */
+export function band01Now(): number {
+  return activeBand01;
+}
+/**
+ * Gerbang pita kelas untuk generator topik khas kelas menengah/atas
+ * (mis. pecahan, FPB/KPK, persen): saat pita kelas aktif dan kelas
+ * peserta di bawah minBand, generator diam (null) — materi kelas tinggi
+ * tidak bocor ke kelas rendah. Tanpa pita kelas, generator berjalan
+ * seperti biasa.
+ */
+export function bandGate(minBand: number, gen: LGen): LGen {
+  return (level) => (activeBand01 >= 0 && activeBand01 < minBand ? null : gen(level));
+}
+
 export function windowOf<T>(arr: readonly T[], level: number): T[] {
   const n = arr.length;
   if (n <= 10) return [...arr];
+  if (activeBandCoord >= 0) {
+    const size = Math.max(6, Math.ceil(n * 0.55));
+    const start = Math.round(activeBandCoord * (n - size));
+    return arr.slice(start, start + size) as T[];
+  }
   const size = Math.max(6, Math.ceil(n * 0.55));
   const maxStart = n - size;
   const start = Math.round(((Math.min(5, Math.max(1, level)) - 1) / 4) * maxStart);
@@ -796,7 +857,11 @@ const tkEngArrange: LGen = () => {
 
 /* ---------- SD ---------- */
 const sdAddSub: LGen = (level) => {
-  const max = [60, 300, 1500, 12000, 150000][level - 1] ?? 60;
+  // Pita kelas membatasi besar bilangan: Kelas 1 sampai 99, Kelas 2
+  // sampai ratusan — walau level di dalam pitanya tinggi.
+  const band = band01Now();
+  const bandCap = band < 0 ? Number.POSITIVE_INFINITY : band <= 0.01 ? 99 : band <= 0.25 ? 500 : Number.POSITIVE_INFINITY;
+  const max = Math.min([60, 300, 1500, 12000, 150000][level - 1] ?? 60, bandCap);
   const a = ri(5, max);
   const b = ri(4, max);
   if (Math.random() < 0.5) return mkNum(`Hasil dari ${fmt(a)} + ${fmt(b)} adalah …`, a + b, [a + b - 10, a + b + 10, a + b - 100], `${fmt(a)} + ${fmt(b)} = ${fmt(a + b)}.`);
@@ -804,6 +869,19 @@ const sdAddSub: LGen = (level) => {
   return mkNum(`Hasil dari ${fmt(x)} − ${fmt(y)} adalah …`, x - y, [x - y + 10, x - y - 10, x - y + 100].filter((v) => v >= 0), `${fmt(x)} − ${fmt(y)} = ${fmt(x - y)}.`);
 };
 const sdMulDiv: LGen = (level) => {
+  // Kelas 2 (pita 0,2): perkalian & pembagian dasar saja — faktor dan
+  // pembagi dibatasi bilangan kecil walau level di pitanya tinggi.
+  const band = band01Now();
+  if (band >= 0 && band <= 0.25) {
+    if (Math.random() < 0.5) {
+      const a = pick([2, 3, 4, 5, 6, 7, 8, 9, 10]);
+      const b = ri(2, 10);
+      return mkNum(`Hasil dari ${a} × ${b} adalah …`, a * b, [a * b - a, a * b + a, a * b + 2], `${a} × ${b} = ${a * b}.`);
+    }
+    const b = pick([2, 3, 4, 5, 10]);
+    const q = ri(2, 10);
+    return mkNum(`Hasil dari ${b * q} : ${b} adalah …`, q, [q - 1, q + 1, q + 2], `${b * q} : ${b} = ${q}, karena ${b} × ${q} = ${b * q}.`);
+  }
   if (Math.random() < 0.5) {
     const a = level >= 4 ? ri(12, 48) : ri(3, 6 + level * 3);
     const b = level >= 5 ? ri(12, 36) : ri(3, 9);
@@ -1369,6 +1447,146 @@ const sdFracCompare: LGen = (level) => {
   const smaller = left > right ? `${c}/${d}` : `${a}/${b}`;
   return mkq(`Pecahan yang LEBIH BESAR antara ${a}/${b} dan ${c}/${d} adalah …`, bigger, [smaller, "Sama besar", `${a + c}/${b + d}`], `Samakan penyebut / kali silang: ${a}×${d}=${left} dibanding ${c}×${b}=${right}. Yang lebih besar adalah ${bigger}.`, undefined, false);
 };
+/* ---------- Topik khas KELAS — Matematika SD ----------
+   Isi soal mengikuti kurikulum kelas terpilih (dibaca dari pita kelas
+   aktif lewat band01Now): Kelas 1 bilangan s.d. 99 & tambah–kurang
+   sederhana; Kelas 2 ratusan & perkalian dasar; Kelas 3 perkalian–
+   pembagian & pecahan sederhana; Kelas 4 pecahan senilai, desimal &
+   kelipatan; Kelas 5 pecahan beda penyebut, persen & volume; Kelas 6
+   persen belanja, skala & data. Tanpa pita kelas generator ini diam
+   (null), jadi Mode Kelas Ujian guru tidak berubah. Semua kunci
+   DIHITUNG kode dari parameter soal. */
+const fracStr = (n: number, d: number): string => {
+  const g = gcd(Math.abs(n), Math.abs(d));
+  return `${n / g}/${d / g}`;
+};
+const dec1 = (x: number): string => (Math.round(x * 10) / 10).toFixed(1).replace(".", ",");
+export const sdGradeMath: LGen = (level) => {
+  const band = band01Now();
+  if (band < 0) return null;
+  const kind = ri(0, 2);
+  /* Kelas 1 — bilangan sampai 99, tambah–kurang sederhana, urutan bilangan */
+  if (band <= 0.01) {
+    const max = [10, 20, 20, 50, 99][level - 1] ?? 20;
+    if (kind === 0) {
+      const a = ri(2, max);
+      const b = ri(1, max);
+      if (Math.random() < 0.5) return mkNum(`Hasil dari ${a} + ${b} adalah …`, a + b, [a + b - 1, a + b + 1, a + b + 2, a + b - 2].filter((x) => x >= 0), `${a} + ${b} = ${a + b}.`, "🔢");
+      const [x, y] = a >= b ? [a, b] : [b, a];
+      return mkNum(`Hasil dari ${x} − ${y} adalah …`, x - y, [x - y + 1, x - y - 1, x - y + 2, x - y + 10].filter((v) => v >= 0), `${x} − ${y} = ${x - y}.`, "🔢");
+    }
+    if (kind === 1) {
+      const set = sample(Array.from({ length: max }, (_, i) => i + 1), 4);
+      const biggest = Math.random() < 0.5;
+      const ans = biggest ? Math.max(...set) : Math.min(...set);
+      return mkq(`Perhatikan bilangan: ${set.join(", ")}. Bilangan yang paling ${biggest ? "BESAR" : "KECIL"} adalah …`, String(ans), set.filter((v) => v !== ans).map(String), `Urutkan dulu: ${[...set].sort((p, q) => p - q).join(" < ")}. Paling ${biggest ? "besar" : "kecil"} adalah ${ans}.`, "🔢");
+    }
+    const step = pick([1, 2, 5, 10]);
+    const start = ri(1, 40);
+    const seq = [0, 1, 2, 3].map((i) => start + i * step);
+    const ans = start + 4 * step;
+    return mkNum(`Pola bilangan: ${seq.join(", ")}, … Bilangan berikutnya adalah …`, ans, [ans - step, ans + step, ans + 1, ans - 1].filter((v) => v > 0 && v !== ans), `Polanya selalu +${step}, jadi setelah ${seq[3]} adalah ${ans}.`, "🔢");
+  }
+  /* Kelas 2 — tambah–kurang ratusan, perkalian sebagai penjumlahan berulang, berbagi rata */
+  if (band <= 0.25) {
+    if (kind === 0) {
+      const a = ri(15, 90 + level * 30);
+      const b = ri(11, 90 + level * 20);
+      if (Math.random() < 0.5) return mkNum(`Hasil dari ${a} + ${b} adalah …`, a + b, [a + b - 10, a + b + 10, a + b - 1, a + b + 1], `${a} + ${b} = ${a + b}. Jumlahkan satuan dengan satuan, puluhan dengan puluhan.`);
+      const [x, y] = a >= b ? [a, b] : [b, a];
+      return mkNum(`Hasil dari ${x} − ${y} adalah …`, x - y, [x - y + 10, x - y - 10, x - y + 1, x - y - 1].filter((v) => v >= 0), `${x} − ${y} = ${x - y}.`);
+    }
+    if (kind === 1) {
+      const a = pick([2, 3, 4, 5, 10]);
+      const b = ri(2, 10);
+      return mkNum(`Hasil dari ${a} × ${b} adalah …`, a * b, [a * b - a, a * b + a, a * (b + 1), a * b + 2], `${a} × ${b} artinya ${a} dijumlahkan ${b} kali = ${a * b}.`);
+    }
+    const d = pick([2, 5, 10]);
+    const q = ri(2, 9);
+    return mkNum(`${pick(NAMES)} punya ${d * q} permen, dibagikan sama rata kepada ${d} anak. Setiap anak menerima … permen`, q, [q - 1, q + 1, q + 2, d].filter((v) => v > 0 && v !== q), `${d * q} : ${d} = ${q}, karena ${d} × ${q} = ${d * q}.`);
+  }
+  /* Kelas 3 — perkalian dua angka, pembagian dasar, pecahan sederhana dari benda utuh */
+  if (band <= 0.45) {
+    if (kind === 0) {
+      const a = ri(12, 25 + level * 6);
+      const b = ri(3, 9);
+      return mkNum(`Hasil dari ${a} × ${b} adalah …`, a * b, [a * b - a, a * b + b, a * b + 10, a * b - 10], `${a} × ${b} = ${a * b}.`);
+    }
+    if (kind === 1) {
+      const b = ri(3, 9);
+      const q = ri(11, 25 + level * 3);
+      return mkNum(`Hasil dari ${b * q} : ${b} adalah …`, q, [q - 1, q + 1, q + 2, q - 2], `${b * q} : ${b} = ${q}, karena ${b} × ${q} = ${b * q}.`);
+    }
+    const den = pick([2, 3, 4, 6, 8]);
+    const num = ri(1, den - 1);
+    const ans = `${num}/${den}`;
+    const wrong = [`${num}/${den + 1}`, `${num + 1}/${den}`, `${den - num}/${den}`, `${num}/${den + 2}`].filter((w) => w !== ans);
+    return mkq(`Sebuah pizza dipotong menjadi ${den} bagian sama besar. ${pick(NAMES)} mengambil ${num} potong. Bagian pizza yang diambil adalah …`, ans, wrong, `Satu potong adalah 1/${den} bagian, jadi ${num} potong = ${num}/${den}.`, "🍕");
+  }
+  /* Kelas 4 — pecahan senilai, desimal uang/panjang, kelipatan bilangan */
+  if (band <= 0.65) {
+    if (kind === 0) {
+      const b = pick([3, 4, 5, 6, 8]);
+      const a = ri(1, b - 1);
+      const k = ri(2, 5);
+      const ans = `${a * k}/${b * k}`;
+      const wrong = [`${a + 1}/${b}`, `${a}/${b + 1}`, `${a * k}/${b * k + k}`, `${a + 1}/${b + 1}`].filter((w) => w !== ans);
+      return mkq(`Pecahan yang SENILAI dengan ${a}/${b} adalah …`, ans, wrong, `Kalikan pembilang dan penyebut dengan bilangan yang sama: ${a}×${k}/${b}×${k} = ${ans}.`);
+    }
+    if (kind === 1) {
+      const a = ri(11, 95) / 10;
+      const b = ri(11, 95) / 10;
+      const sum = Math.round((a + b) * 10) / 10;
+      const wrong = [sum + 0.1, sum - 0.1, sum + 1, sum - 1].filter((v) => v > 0).map(dec1);
+      return mkq(`Hasil dari ${dec1(a)} + ${dec1(b)} adalah …`, dec1(sum), wrong, `Jumlahkan bagian desimalnya sejajar koma: ${dec1(a)} + ${dec1(b)} = ${dec1(sum)}.`);
+    }
+    const base = pick([3, 4, 6, 7, 8, 9]);
+    const n = ri(4, 9);
+    return mkNum(`Kelipatan ${base} yang ke-${n} adalah …`, base * n, [base * (n - 1), base * (n + 1), base * n + base + 1], `Kelipatan ${base}: ${base}, ${base * 2}, ${base * 3}, … yang ke-${n} adalah ${base} × ${n} = ${base * n}.`);
+  }
+  /* Kelas 5 — pecahan beda penyebut, persen dari jumlah, volume kubus */
+  if (band <= 0.85) {
+    if (kind === 0) {
+      const d1 = pick([2, 3, 4, 6]);
+      const d2 = pick([2, 3, 4, 6, 8].filter((x) => x !== d1 && lcm(x, d1) <= 24));
+      const a = ri(1, d1 - 1);
+      const b = ri(1, d2 - 1);
+      const L = lcm(d1, d2);
+      const num = a * (L / d1) + b * (L / d2);
+      if (num >= 2 * L) return sdGradeMath(level);
+      const ans = fracStr(num, L);
+      const wrong = [fracStr(a + b, d1 + d2), fracStr(num + 1, L), fracStr(num - 1, L), fracStr(a + b, L)].filter((w) => w !== ans);
+      return mkq(`Hasil dari ${a}/${d1} + ${b}/${d2} adalah …`, ans, wrong, `Samakan penyebutnya menjadi ${L}: ${a}/${d1} = ${a * (L / d1)}/${L} dan ${b}/${d2} = ${b * (L / d2)}/${L}, jumlahnya ${num}/${L}${ans !== `${num}/${L}` ? ` = ${ans}` : ""}.`);
+    }
+    if (kind === 1) {
+      const pct = pick([10, 20, 25, 50, 75]);
+      const base = pick([100, 200, 300, 400, 500, 600, 800, 1000]);
+      const ans = (base * pct) / 100;
+      return mkNum(`${pct}% dari ${fmt(base)} adalah …`, ans, [ans + base / 10, Math.max(1, ans - base / 10), base - ans, ans + 10].filter((v) => v !== ans), `${pct}% × ${fmt(base)} = ${fmt(ans)}.`);
+    }
+    const s = ri(2, 9);
+    return mkNum(`Volume kubus dengan rusuk ${s} cm adalah … cm³`, s * s * s, [s * s, 3 * s, s * s * s + s * s, 6 * s * s].filter((v) => v !== s * s * s), `Volume kubus = rusuk × rusuk × rusuk = ${s} × ${s} × ${s} = ${s * s * s} cm³.`);
+  }
+  /* Kelas 6 — persen belanja/diskon, skala peta, median & modus data */
+  if (kind === 0) {
+    const price = pick([40000, 50000, 60000, 80000, 100000, 120000, 150000, 200000]);
+    const pct = pick([10, 15, 20, 25, 30, 50]);
+    const disc = (price * pct) / 100;
+    const pay = price - disc;
+    return mkNum(`Sebuah tas berharga Rp${fmt(price)} didiskon ${pct}%. Harga yang harus dibayar adalah …`, pay, [disc, pay + disc / 2, price - pct * 100, pay + 10000].filter((v) => v > 0 && v !== pay), `Diskon = ${pct}% × Rp${fmt(price)} = Rp${fmt(disc)}. Bayar = Rp${fmt(price)} − Rp${fmt(disc)} = Rp${fmt(pay)}.`);
+  }
+  if (kind === 1) {
+    const cm = ri(2, 12);
+    return mkNum(`Pada peta berskala 1 : 100.000, jarak dua kota adalah ${cm} cm. Jarak sebenarnya adalah … km`, cm, [cm - 1, cm + 1, cm * 10, cm + 10].filter((v) => v > 0 && v !== cm), `Jarak sebenarnya = ${cm} × 100.000 cm = ${fmt(cm * 100000)} cm = ${cm} km.`);
+  }
+  const vals = Array.from({ length: 5 }, () => ri(3, 15));
+  const sorted = [...vals].sort((p, q) => p - q);
+  const med = sorted[2] as number;
+  const mean = Math.round((vals.reduce((s, v) => s + v, 0) / vals.length) * 10) / 10;
+  const wrong = [sorted[0] as number, sorted[4] as number, Math.round(mean), med + 1].filter((v) => v !== med);
+  return mkNum(`Data nilai ulangan: ${vals.join(", ")}. Nilai tengah (median) data itu adalah …`, med, wrong, `Urutkan dulu: ${sorted.join(", ")}. Nilai tengahnya adalah data ke-3, yaitu ${med}.`);
+};
+
 export const ROMAN_PAIRS: readonly (readonly [string, string])[] = [
   ["1", "I"], ["2", "II"], ["3", "III"], ["4", "IV"], ["5", "V"], ["6", "VI"], ["7", "VII"], ["8", "VIII"],
   ["9", "IX"], ["10", "X"], ["11", "XI"], ["12", "XII"], ["14", "XIV"], ["15", "XV"], ["19", "XIX"],
@@ -2832,8 +3050,12 @@ export const GENERATORS: Partial<Record<JenjangId, Record<string, LGen[]>>> = {
     sejarah: sejarahGens("TK"),
   },
   SD: {
-    matematika: [sdAddSub, sdMulDiv, sdMixed, sdFraction, sdFpbKpk, sdGeometry, sdAverage, sdSequence, sdWordProblem, sdRound, sdPercent, sdClock, sdUnit, sdFracCompare, mathStoryGen("SD"), emojiPictureGen("SD"),
-      pairGenL({ pairs: ROMAN_PAIRS, askA: (a) => `Bilangan Romawi dari ${a} adalah …`, askB: (b) => `Angka Romawi “${b}” bernilai …`, exA: (a, b) => `${a} dalam angka Romawi adalah ${b}.`, exB: (a, b) => `${b} bernilai ${a}.` })],
+    // Gerbang pita kelas (bandGate): topik khas kelas menengah/atas
+    // tidak muncul di kelas rendah — perkalian/pembagian mulai Kelas 2,
+    // operasi campuran & pecahan & bangun mulai Kelas 3, pembulatan &
+    // FPB/KPK & Romawi mulai Kelas 4, rata-rata & persen mulai Kelas 5.
+    matematika: [sdAddSub, bandGate(0.15, sdMulDiv), bandGate(0.35, sdMixed), bandGate(0.35, sdFraction), bandGate(0.5, sdFpbKpk), bandGate(0.35, sdGeometry), bandGate(0.75, sdAverage), sdSequence, bandGate(0.15, sdWordProblem), bandGate(0.5, sdRound), bandGate(0.75, sdPercent), bandGate(0.15, sdClock), bandGate(0.15, sdUnit), bandGate(0.35, sdFracCompare), sdGradeMath, sdGradeMath, bandGate(0.15, mathStoryGen("SD")), emojiPictureGen("SD"),
+      bandGate(0.5, pairGenL({ pairs: ROMAN_PAIRS, askA: (a) => `Bilangan Romawi dari ${a} adalah …`, askB: (b) => `Angka Romawi “${b}” bernilai …`, exA: (a, b) => `${a} dalam angka Romawi adalah ${b}.`, exB: (a, b) => `${b} bernilai ${a}.` }))],
     nalaria: nalariaGens("SD"),
     "kanguru-matematika": kanguruMathGens("SD"),
     "kanguru-bahasa": kanguruBahasaGens("SD"),
@@ -3115,9 +3337,25 @@ export const GENERATORS: Partial<Record<JenjangId, Record<string, LGen[]>>> = {
  * Keunikan lapis pertama: teks soal; lapis kedua (pengisi): teks soal sama
  * tetapi set pilihan berbeda tetap dihitung variasi baru.
  */
-export function generateQuestions(jenjang: JenjangId, subjectId: string, level: number, want: number): Question[] {
+export function generateQuestions(jenjang: JenjangId, subjectId: string, level: number, want: number, band01?: number): Question[] {
   const gens = GENERATORS[jenjang]?.[subjectId] ?? [];
   if (!gens.length) return [];
+  // Pita kelas aktif: generator dipanggil dengan level hasil pemetaan
+  // koordinat kesulitan gabungan, dan windowOf memakai koordinat itu.
+  let genLevel = level;
+  if (band01 !== undefined) {
+    const coord = bandCoordFor(level, band01);
+    genLevel = genLevelForCoord(coord);
+    beginBand(coord, band01);
+  }
+  try {
+    return generateFromGens(gens, genLevel, want);
+  } finally {
+    if (band01 !== undefined) endBand();
+  }
+}
+
+function generateFromGens(gens: LGen[], level: number, want: number): Question[] {
   const out: Question[] = [];
   const pending: Question[] = [];
   const seenQ = new Set<string>();

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, type ApiResponse } from "./api";
 import {
-BANK, JENJANG, LEVELS, SCHOOL_TYPES, SUBJECTS, SESSION_SIZE, UNLOCK_SCORE, buildSession, medalFor, motivationFor, subjectsFor,
+BANK, JENJANG, KELAS_BY_JENJANG, LEVELS, SCHOOL_TYPES, SUBJECTS, SESSION_SIZE, UNLOCK_SCORE, buildSession, defaultKelas, jenjangKelasLabel, kelasLabel, medalFor, motivationFor, subjectsFor,
 type JenjangId, type Question, type SchoolType,
 } from "./data/questions";
 
@@ -1058,6 +1058,7 @@ export function VoicePickerButton(props: { variant: "header" | "quiz" }) {
 
 /* ---------------- REWARDS & LEVEL (tersimpan di perangkat) ---------------- */
 const REWARD_KEY = "ziqva-rewards-v1";
+const KELAS_KEY = "ziqva-kelas-v1";
 const LEVEL_KEY = "ziqva-levels-v1";
 const SEEN_KEY = "ziqva-seen-v1";
 interface Rewards { points: number; totalCorrect: number; totalSessions: number; streak: number; lastDay: string; badges: string[] }
@@ -2104,7 +2105,7 @@ function MonitorView(props: { token: string; user: SessionUser; onLogout: () => 
                       <span className="text-[9px] font-bold">SKOR</span>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="truncate font-display font-bold">{a.student_name} — {a.mapel} • {a.jenjang}{a.class_name ? ` • 🏫 ${a.class_name}` : ""}</div>
+                      <div className="truncate font-display font-bold">{a.student_name} — {a.mapel} • {jenjangKelasLabel(a.jenjang, a.kelas)}{a.class_name ? ` • 🏫 ${a.class_name}` : ""}</div>
                       <div className="text-xs font-semibold" style={{ color: "var(--dim)" }}>
                         {a.correct}/{a.total} benar • {a.mode === "ujian" ? "🏆 Ujian" : "✏️ Latihan"} • {fmtDur(a.duration_sec)} • {new Date(a.created_at).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                       </div>
@@ -2964,6 +2965,7 @@ function AdminChallengeCard(props: { token: string }) {
 /* ---------------- PERPUSTAKAAN BELAJAR ---------------- */
 function BelajarView(props: {
   jenjang: JenjangId;
+  kelasByJenjang: Record<string, string>;
   initialSubject: string;
   english?: boolean;
   onPractice: (subjectId: string) => void;
@@ -2974,7 +2976,11 @@ function BelajarView(props: {
   const [sel, setSel] = useState(props.initialSubject);
   const active = libSubjects.find((s) => s.id === sel) ?? libSubjects[0];
   const material = active ? materialFor(active.id) : null;
-  const modules = active ? modulesFor(libJenjang, active.id, props.english) : [];
+  // Modul difilter mengikuti kelas terpilih peserta untuk jenjang yang
+  // sedang dilihat: modul khas kelas lain disembunyikan, modul umum
+  // jenjang tetap tampil untuk semua kelas.
+  const libKelas = props.kelasByJenjang[libJenjang] ?? defaultKelas(libJenjang);
+  const modules = active ? modulesFor(libJenjang, active.id, props.english, libKelas) : [];
   useEffect(() => { setSel(props.initialSubject); }, [props.initialSubject]);
   useEffect(() => { setLibJenjang(props.jenjang); }, [props.jenjang]);
   if (!active) return null;
@@ -3027,20 +3033,28 @@ function BelajarView(props: {
               )}
               {modules.length > 0 && (
                 <section className="mt-5" aria-label={`Modul belajar ${active.name} jenjang ${libJenjang}`}>
-                  <h3 className="font-display text-base font-extrabold">🧩 Modul Topik — {active.name} • {JENJANG.find((j) => j.id === libJenjang)?.name}</h3>
-                  <p className="mt-0.5 text-sm" style={{ color: "var(--dim)" }}>Ketuk modul untuk membaca materi lengkapnya. Modul yang sama juga terbuka dari ikon <strong>i</strong> pada soal latihan yang topiknya sesuai.</p>
+                  <h3 className="font-display text-base font-extrabold">🧩 Modul Topik — {active.name} • {jenjangKelasLabel(libJenjang, libKelas)}</h3>
+                  <p className="mt-0.5 text-sm" style={{ color: "var(--dim)" }}>Ketuk modul untuk membaca materi lengkapnya. Modul yang sama juga terbuka dari ikon <strong>i</strong> pada soal latihan yang topiknya sesuai. Modul di bawah sudah <strong>difilter untuk {kelasLabel(libJenjang, libKelas)}</strong> — modul yang khas kelas lain disembunyikan, modul umum jenjang tetap tampil semua.</p>
                   <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                    {modules.map((m) => (
-                      <button key={m.id} type="button" onClick={() => props.onOpenModule(m, libJenjang, active.id)} aria-label={`Buka modul ${m.title}`}
-                        className="flex min-h-[64px] items-center gap-3 rounded-2xl p-3 text-left transition"
-                        style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
-                        <span className="text-3xl" aria-hidden>{m.emoji}</span>
-                        <span className="min-w-0">
-                          <span className="block font-display text-sm leading-tight font-bold">{m.title}</span>
-                          <span className="block text-xs font-semibold" style={{ color: "var(--dim)" }}>Konsep • Contoh dibahas • Kosakata • Fakta seru • Rangkuman →</span>
-                        </span>
-                      </button>
-                    ))}
+                    {modules.map((m) => {
+                      const khasKelas = m.kelas?.[libJenjang];
+                      return (
+                        <button key={m.id} type="button" onClick={() => props.onOpenModule(m, libJenjang, active.id)} aria-label={`Buka modul ${m.title}`}
+                          className="flex min-h-[64px] items-center gap-3 rounded-2xl p-3 text-left transition"
+                          style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
+                          <span className="text-3xl" aria-hidden>{m.emoji}</span>
+                          <span className="min-w-0">
+                            <span className="block font-display text-sm leading-tight font-bold">{m.title}</span>
+                            {khasKelas && (
+                              <span className="font-display mt-0.5 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-extrabold" style={{ background: "var(--gold)", color: "#2B2440" }}>
+                                📌 Khas {khasKelas.map((kid) => kelasLabel(libJenjang, kid)).filter(Boolean).join(", ")}
+                              </span>
+                            )}
+                            <span className="block text-xs font-semibold" style={{ color: "var(--dim)" }}>Konsep • Contoh dibahas • Kosakata • Fakta seru • Rangkuman →</span>
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </section>
               )}
@@ -3645,6 +3659,23 @@ export function App() {
   const [nameError, setNameError] = useState("");
   const [school, setSchool] = useState<SchoolType>("umum");
   const [jenjang, setJenjang] = useState<JenjangId>("TK");
+  // Kelas terpilih per jenjang (tersimpan di perangkat): jenjang tidak
+  // dipukul rata — soal, modul perpustakaan, dan label hasil mengikuti
+  // kelas ini. Bawaan = kelas tengah jenjangnya (defaultKelas).
+  const [kelasByJenjang, setKelasByJenjang] = useState<Record<string, string>>(() => {
+    try {
+      const raw = localStorage.getItem(KELAS_KEY);
+      return raw ? (JSON.parse(raw) as Record<string, string>) : {};
+    } catch { return {}; }
+  });
+  const kelas = kelasByJenjang[jenjang] ?? defaultKelas(jenjang);
+  const setKelas = (id: string) => {
+    setKelasByJenjang((prev) => {
+      const next = { ...prev, [jenjang]: id };
+      try { localStorage.setItem(KELAS_KEY, JSON.stringify(next)); } catch { /* abaikan */ }
+      return next;
+    });
+  };
   const [subjectId, setSubjectId] = useState<string>("inggris");
   const [mode, setMode] = useState<Mode>("ujian");
   const [level, setLevel] = useState(1);
@@ -3760,6 +3791,7 @@ export function App() {
     // Bersihkan SEMUA data coba-coba yang tersimpan di perangkat ini.
     try {
       localStorage.removeItem(REWARD_KEY);
+      localStorage.removeItem(KELAS_KEY);
       localStorage.removeItem(LEVEL_KEY);
       localStorage.removeItem(SEEN_KEY);
       localStorage.removeItem(SOUND_KEY);
@@ -3782,6 +3814,7 @@ export function App() {
     setLastAttemptId(null);
     setCertModal(null);
     setRewards({ ...EMPTY_REWARDS });
+    setKelasByJenjang({});
     setLevelStore({});
     setLevel(1);
     setName("");
@@ -3824,7 +3857,7 @@ export function App() {
 
   const openModuleForQuestion = (q: Question, backLabel: string) => {
     if (!activeSubject) return;
-    const m = moduleForQuestion(jenjang, activeSubject.id, q, school === "cambridge");
+    const m = moduleForQuestion(jenjang, activeSubject.id, q, school === "cambridge", kelas);
     if (!m) return;
     setModuleCtx({ module: m, jenjang, subjectId: activeSubject.id, subjectName: activeSubject.name, question: q, backLabel, fromLibrary: false });
   };
@@ -3992,7 +4025,7 @@ export function App() {
     const nameProblem = validateDisplayName(name);
     if (nameProblem) { setNameError(nameProblem); focusField("student-name"); return; }
     if (!activeSubject) return;
-    const qs = buildSession(jenjang, activeSubject.id, level, SESSION_SIZE, school === "cambridge");
+    const qs = buildSession(jenjang, activeSubject.id, level, SESSION_SIZE, school === "cambridge", kelas);
     if (qs.length === 0) return;
     setSessionQ(qs);
     setSessionLevel(level);
@@ -4025,9 +4058,9 @@ export function App() {
         if (!seen.has(k)) { seen.add(k); pool.push(q); }
       }
     };
-    push(buildSession(jenjang, activeSubject.id, 5, 8, english));
-    push(buildSession(jenjang, activeSubject.id, 4, 8, english));
-    push(buildSession(jenjang, activeSubject.id, 3, 8, english));
+    push(buildSession(jenjang, activeSubject.id, 5, 8, english, kelas));
+    push(buildSession(jenjang, activeSubject.id, 4, 8, english, kelas));
+    push(buildSession(jenjang, activeSubject.id, 3, 8, english, kelas));
     const qs = shuffle(pool).slice(0, SESSION_SIZE);
     if (qs.length === 0) return;
     setSessionQ(qs);
@@ -4057,7 +4090,7 @@ export function App() {
       const wasTrial = sessionUser?.role === "admin";
       setLastWasTrial(wasTrial);
       saveAttempt.mutate({
-        student_name: name.trim(), jenjang, mapel: activeSubject.name, mode,
+        student_name: name.trim(), jenjang, kelas, mapel: activeSubject.name, mode,
         score, correct, total: questions.length, duration_sec: usedSec, device_id: deviceId,
         class_name: certSession ? CERT_EXAM_LABEL : "",
         is_trial: wasTrial,
@@ -4299,7 +4332,7 @@ export function App() {
 
       {view === "quiz" && !classSession && activeSubject && (
         <QuizView jenjang={jenjang} subjectName={activeSubject.name} subjectId={activeSubject.id} mode={mode}
-          levelLabel={certSession ? "🏆 Ujian Sertifikat · Campuran Level 3–5" : `Level ${sessionLevel} · ${LEVELS[sessionLevel - 1]?.name ?? ""}`}
+          levelLabel={certSession ? `🏆 Ujian Sertifikat · ${kelasLabel(jenjang, kelas)} · Campuran Level 3–5` : `${kelasLabel(jenjang, kelas)} · Level ${sessionLevel} · ${LEVELS[sessionLevel - 1]?.name ?? ""}`}
           soundOn={soundOn} onToggleSound={toggleSound}
           questions={questions} onFinish={handleFinish} onQuit={() => setView("home")} quitSignal={quitSignal}
           english={school === "cambridge"}
@@ -4379,7 +4412,7 @@ export function App() {
       )}
 
       {view === "belajar" && (
-        <BelajarView jenjang={jenjang} english={school === "cambridge"} initialSubject={activeSubject?.id ?? subjects[0]?.id ?? "matematika"}
+        <BelajarView jenjang={jenjang} kelasByJenjang={kelasByJenjang} english={school === "cambridge"} initialSubject={activeSubject?.id ?? subjects[0]?.id ?? "matematika"}
           onPractice={(sid) => { setSubjectId(sid); setView("home"); window.scrollTo({ top: 0 }); }}
           onOpenModule={openModuleFromLibrary} />
       )}
@@ -4606,9 +4639,32 @@ export function App() {
             </div>
           </section>
 
+          {/* Kelas di dalam jenjang */}
+          <section className="mt-5">
+            <h2 className="font-display text-lg font-bold">🧒 3 · Pilih Kelasmu</h2>
+            <p className="text-sm leading-relaxed" style={{ color: "var(--dim)" }}>
+              Setiap jenjang punya kelasnya sendiri — soal-soalnya <strong>disesuaikan dengan kelasmu</strong>, tidak dipukul rata.
+              Kamu sekarang di <strong>{jenjangKelasLabel(jenjang, kelas)}</strong>. Ketuk kelas lain bila kelasmu berbeda ya!
+            </p>
+            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6" role="group" aria-label={`Pilih kelas jenjang ${jenjang}`}>
+              {KELAS_BY_JENJANG[jenjang].map((k) => {
+                const isSel = kelas === k.id;
+                const jColor = JENJANG.find((j) => j.id === jenjang)?.color ?? "var(--accent)";
+                return (
+                  <button key={k.id} type="button" onClick={() => setKelas(k.id)} aria-pressed={isSel} aria-label={`${k.label} jenjang ${jenjang}${isSel ? " (terpilih)" : ""}`}
+                    className="rounded-2xl p-3.5 text-left transition"
+                    style={{ background: isSel ? jColor : "var(--surface)", color: isSel ? "#fff" : "var(--text)", border: "2px solid var(--border)" }}>
+                    <div className="font-display text-base font-extrabold">{isSel ? "✅ " : ""}{k.label}</div>
+                    <div className="mt-0.5 text-xs leading-snug" style={{ color: isSel ? "rgba(255,255,255,.85)" : "var(--dim)" }}>{k.hint}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
           {/* Mapel */}
           <section className="mt-5">
-            <h2 className="font-display text-lg font-bold">📚 3 · Pilih Mata Pelajaran Olimpiade</h2>
+            <h2 className="font-display text-lg font-bold">📚 4 · Pilih Mata Pelajaran Olimpiade</h2>
             <p className="text-sm" style={{ color: "var(--dim)" }}>{subjects.length} mapel tersedia untuk {JENJANG.find((j) => j.id === jenjang)?.name} • {SCHOOL_TYPES.find((t) => t.id === school)?.name}. Ketuk mapel untuk memilih paket soalnya.</p>
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
               {subjects.map((s) => {
@@ -4635,9 +4691,9 @@ export function App() {
 
           {/* Level kesulitan */}
           <section className="mt-5">
-            <h2 className="font-display text-lg font-bold">🎚️ 4 · Pilih Level Kesulitan</h2>
+            <h2 className="font-display text-lg font-bold">🎚️ 5 · Pilih Level Kesulitan</h2>
             <p className="text-sm leading-relaxed" style={{ color: "var(--dim)" }}>
-              Setiap mapel punya 5 level. Raih skor <strong>{UNLOCK_SCORE}+</strong> untuk membuka level berikutnya — untuk {activeSubject?.name ?? "mapel ini"} kamu sudah membuka sampai <strong>Level {unlockedLevel}</strong>.
+              Setiap mapel punya 5 level <strong>di dalam pita kelasmu ({jenjangKelasLabel(jenjang, kelas)})</strong> — level menaikkan kesulitan soal kelasmu sendiri, bukan melompat ke materi kelas di atasnya. Raih skor <strong>{UNLOCK_SCORE}+</strong> untuk membuka level berikutnya — untuk {activeSubject?.name ?? "mapel ini"} kamu sudah membuka sampai <strong>Level {unlockedLevel}</strong>.
               {mode === "ujian" ? " Di Mode Ujian, level terkunci belum bisa dipilih; di Mode Latihan semua level bebas dicoba." : " Kamu sedang di Mode Latihan: semua level bebas dicoba."}
             </p>
             <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
@@ -4685,15 +4741,18 @@ export function App() {
                 );
               })}
             </div>
+            <p className="mt-2 text-xs leading-relaxed font-semibold" style={{ color: "var(--dim)" }}>
+              Progres level dihitung per mapel pada jenjang {jenjang} — berganti kelas tidak mengulang progresmu. Kelasmu saat ini ({kelasLabel(jenjang, kelas)}) hanya menyesuaikan pita soal di dalam Ujian Sertifikat.
+            </p>
             {certUnlocked ? (
               <>
                 <p className="mt-3 text-sm leading-relaxed font-semibold">
                   🎉 Luar biasa! Kamu sudah menuntaskan <strong>seluruh 5 level {activeSubject?.name}</strong> (skor terbaik Level 5: {certBest["5"]}). Ujian penentunya sudah terbuka:
                   {SESSION_SIZE} soal campuran tersulit (Level 3–5), murni Mode Ujian tanpa bantuan. Raih skor <strong>{CERT_PASS_SCORE}+</strong> dan <strong>Sertifikat Prestasi resmi ZIQVA OLIM</strong> jadi milikmu — bisa diunduh &amp; dicetak!
                 </p>
-                <button type="button" onClick={startCertExam} aria-label={`Mulai ujian sertifikat ${activeSubject?.name ?? ""} jenjang ${jenjang}`}
+                <button type="button" onClick={startCertExam} aria-label={`Mulai ujian sertifikat ${activeSubject?.name ?? ""} ${jenjangKelasLabel(jenjang, kelas)}`}
                   className="font-display mt-3 min-h-[56px] w-full rounded-2xl text-lg font-extrabold shadow sm:w-auto sm:px-8" style={{ background: "var(--gold)", color: "#2B2440" }}>
-                  🏆 Ujian Sertifikat — {activeSubject?.name} • {jenjang}
+                  🏆 Ujian Sertifikat — {activeSubject?.name} • {jenjangKelasLabel(jenjang, kelas)}
                 </button>
               </>
             ) : (
@@ -4706,7 +4765,7 @@ export function App() {
 
           {/* Mode + start */}
           <section className="mt-5 rounded-3xl p-5 shadow-sm" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-            <h2 className="font-display text-lg font-bold">🚀 5 · Pilih Mode &amp; Mulai</h2>
+            <h2 className="font-display text-lg font-bold">🚀 6 · Pilih Mode &amp; Mulai</h2>
             <div className="mt-3 grid grid-cols-2 gap-2">
               <button type="button" onClick={() => setMode("ujian")} aria-pressed={mode === "ujian"} aria-label="Mode ujian seperti olimpiade asli"
                 className="rounded-2xl p-4 text-left" style={{ background: mode === "ujian" ? "#1E2A78" : "var(--surface2)", color: mode === "ujian" ? "#fff" : "var(--text)", border: "2px solid var(--border)" }}>
@@ -4719,9 +4778,9 @@ export function App() {
                 <div className="mt-0.5 text-xs leading-snug" style={{ color: mode === "latihan" ? "rgba(255,255,255,.8)" : "var(--dim)" }}>Setiap jawaban langsung dicek + ada pembahasan. Cocok untuk belajar.</div>
               </button>
             </div>
-            <button type="button" onClick={startQuiz} disabled={!activeSubject} aria-label={`Mulai latihan ${activeSubject?.name ?? ""} jenjang ${jenjang} level ${level}`}
+            <button type="button" onClick={startQuiz} disabled={!activeSubject} aria-label={`Mulai latihan ${activeSubject?.name ?? ""} ${jenjangKelasLabel(jenjang, kelas)} level ${level}`}
               className="font-display mt-4 min-h-[60px] w-full rounded-2xl text-xl font-extrabold text-white shadow disabled:opacity-40" style={{ background: "var(--gold)", color: "#2B2440" }}>
-              🚀 Mulai — {activeSubject?.name} • {jenjang} • Level {level} ({SESSION_SIZE} soal acak)
+              🚀 Mulai — {activeSubject?.name} • {jenjangKelasLabel(jenjang, kelas)} • Level {level} ({SESSION_SIZE} soal acak)
             </button>
             <p className="mt-2 text-center text-xs" style={{ color: "var(--dim)" }}>⏱ Waktu: 1 menit per soal ({SESSION_SIZE} soal = {SESSION_SIZE} menit) • 🔊 Gunakan tombol “Dengarkan Soal” untuk mendengar soal dibacakan • 📚 Belum paham materinya? Buka menu <strong>Perpustakaan</strong> di atas, atau ketuk ikon <strong>i</strong> pada soal saat Mode Latihan</p>
           </section>
@@ -4758,7 +4817,7 @@ export function App() {
       {view === "result" && lastResult && activeSubject && (
         <main className="mx-auto w-full max-w-3xl px-4 pb-10">
           <section className="pop-in mt-4 rounded-3xl p-6 text-center shadow-sm" style={{ background: "linear-gradient(160deg,#FFF7E0,#FFEFC4)", border: "2px solid var(--gold)", color: "#2B2440" }}>
-            <p className="text-sm font-bold tracking-wide" style={{ color: "#92600A" }}>{certSession ? `HASIL UJIAN SERTIFIKAT • ${activeSubject.name.toUpperCase()} • ${jenjang}` : `HASIL ${mode === "ujian" ? "UJIAN" : "LATIHAN"} • ${activeSubject.name.toUpperCase()} • ${jenjang} • LEVEL ${sessionLevel} ${LEVELS[sessionLevel - 1]?.name.toUpperCase()}`}</p>
+            <p className="text-sm font-bold tracking-wide" style={{ color: "#92600A" }}>{certSession ? `HASIL UJIAN SERTIFIKAT • ${activeSubject.name.toUpperCase()} • ${jenjangKelasLabel(jenjang, kelas).toUpperCase()}` : `HASIL ${mode === "ujian" ? "UJIAN" : "LATIHAN"} • ${activeSubject.name.toUpperCase()} • ${jenjangKelasLabel(jenjang, kelas).toUpperCase()} • LEVEL ${sessionLevel} ${LEVELS[sessionLevel - 1]?.name.toUpperCase()}`}</p>
             <p className="mt-1 text-sm font-semibold" style={{ color: "#92600A" }}>Peserta: {name}</p>
             <div className="font-display my-2 text-[84px] leading-none font-extrabold" style={{ color: "#D97706" }}>{lastResult.score}</div>
             <p className="font-display text-lg font-bold">({lastResult.correct}/{questions.length} benar) • ⏱ {fmtDur(lastResult.usedSec)}</p>
@@ -4958,7 +5017,7 @@ export function App() {
                       <span className="text-[9px] font-bold">SKOR</span>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="truncate font-display font-bold">{a.mapel} • {a.jenjang}{a.class_name === CERT_EXAM_LABEL ? " • 🏆 Ujian Sertifikat" : a.class_name ? ` • 🏫 Kelas: ${a.class_name}` : ""}{a.is_trial && <span className="font-display ml-1.5 inline-flex items-center rounded-full px-2 py-0.5 align-middle text-[11px] font-extrabold whitespace-nowrap" style={{ background: "#E8EEF7", color: "#1E2A78", border: "1px solid #B9C6E8" }}>🧪 Uji Coba</span>}</div>
+                      <div className="truncate font-display font-bold">{a.mapel} • {jenjangKelasLabel(a.jenjang, a.kelas)}{a.class_name === CERT_EXAM_LABEL ? " • 🏆 Ujian Sertifikat" : a.class_name ? ` • 🏫 Kelas: ${a.class_name}` : ""}{a.is_trial && <span className="font-display ml-1.5 inline-flex items-center rounded-full px-2 py-0.5 align-middle text-[11px] font-extrabold whitespace-nowrap" style={{ background: "#E8EEF7", color: "#1E2A78", border: "1px solid #B9C6E8" }}>🧪 Uji Coba</span>}</div>
                       <div className="text-xs font-semibold" style={{ color: "var(--dim)" }}>
                         {a.student_name} • {a.correct}/{a.total} benar • {a.mode === "ujian" ? "🏆 Ujian" : "✏️ Latihan"} • {fmtDur(a.duration_sec)} • {new Date(a.created_at).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                       </div>

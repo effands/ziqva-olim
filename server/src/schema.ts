@@ -4,6 +4,11 @@ export const attempts = sqliteTable("attempts", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   studentName: text("student_name").notNull().default("Peserta"),
   jenjang: text("jenjang").notNull(),
+  // Kelas peserta di dalam jenjangnya saat sesi dikerjakan (id kelas:
+  // TK "A"/"B", SD "1".."6", SMP "7".."9", SMA "10".."12"). Kosong untuk
+  // attempt lama sebelum fitur kelas ada. Papan Peringkat & Challenge
+  // tetap per jenjang — kelas tidak memecah divisi.
+  kelas: text("kelas").notNull().default(""),
   mapel: text("mapel").notNull(),
   mode: text("mode").notNull().default("ujian"),
   score: integer("score").notNull(),

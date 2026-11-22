@@ -8,7 +8,7 @@
 // pilihan jawaban, membuang duplikat, dan memprioritaskan soal yang
 // belum pernah keluar di perangkat ini.
 
-import { generateQuestions, shuffle, shuffleOptions } from "./generators";
+import { bandCoordFor, generateQuestions, shuffle, shuffleOptions } from "./generators";
 import { BANK_EN, generateQuestionsEn } from "./cambridge";
 
 export type JenjangId = "TK" | "SD" | "SMP" | "SMA";
@@ -21,6 +21,12 @@ export interface Question {
   options: string[];
   answer: number;
   explain: string;
+  /**
+   * Level kesulitan eksplisit (1–5) untuk pemetaan pita kelas di
+   * buildSession. Tanpa nilai ini, level soal tertulis diturunkan dari
+   * urutannya di dalam bank mapelnya.
+   */
+  lv?: number;
 }
 
 export interface SubjectDef {
@@ -48,6 +54,82 @@ export const JENJANG: { id: JenjangId; name: string; sub: string; ages: string; 
   { id: "SMP", name: "SMP / MTs", sub: "Kelas 7–9 • SMP • MTs • SMP Kristen", ages: "13–15 tahun", color: "#2E7CD6" },
   { id: "SMA", name: "SMA / SMK / MA", sub: "Kelas 10–12 • SMA • SMK • MA • SMA Kristen", ages: "16–18 tahun", color: "#7C4DBE" },
 ];
+
+/* ---------------- KELAS di dalam jenjang ----------------
+   Jenjang TIDAK dipukul rata: setiap jenjang punya kelas-kelasnya, dan
+   kelas yang dipilih peserta menggeser pita topik & kesulitan soal
+   (lihat banding di generators.ts), menyaring modul Perpustakaan yang
+   khas kelas tertentu, dan tercatat di setiap attempt. */
+export interface KelasDef {
+  /** Id kelas yang disimpan: TK "A"/"B", SD "1".."6", SMP "7".."9", SMA "10".."12". */
+  id: string;
+  /** Label tampil, mis. "Kelas 3" / "Kelompok A". */
+  label: string;
+  /** Petunjuk topik khas kelas ini (tampil kecil di kartu pilihan kelas). */
+  hint: string;
+}
+
+export const KELAS_BY_JENJANG: Record<JenjangId, KelasDef[]> = {
+  TK: [
+    { id: "A", label: "Kelompok A", hint: "Berhitung & bermain paling dasar" },
+    { id: "B", label: "Kelompok B", hint: "Siap masuk SD: huruf, angka & pola" },
+  ],
+  SD: [
+    { id: "1", label: "Kelas 1", hint: "Bilangan s.d. 99, tambah–kurang sederhana" },
+    { id: "2", label: "Kelas 2", hint: "Tambah–kurang ratusan, perkalian dasar" },
+    { id: "3", label: "Kelas 3", hint: "Perkalian & pembagian, pecahan sederhana" },
+    { id: "4", label: "Kelas 4", hint: "Pecahan & desimal, FPB–KPK, bangun datar" },
+    { id: "5", label: "Kelas 5", hint: "Pecahan lanjut, persen, bangun ruang" },
+    { id: "6", label: "Kelas 6", hint: "Persen & data, bangun ruang, siap SMP" },
+  ],
+  SMP: [
+    { id: "7", label: "Kelas 7", hint: "Bilangan bulat, aljabar dasar, himpunan" },
+    { id: "8", label: "Kelas 8", hint: "Pola & relasi, Pythagoras, bangun ruang" },
+    { id: "9", label: "Kelas 9", hint: "Pangkat & akar, peluang, siap SMA" },
+  ],
+  SMA: [
+    { id: "10", label: "Kelas 10", hint: "Eksponen, fungsi, trigonometri dasar" },
+    { id: "11", label: "Kelas 11", hint: "Barisan & deret, matriks, lingkaran" },
+    { id: "12", label: "Kelas 12", hint: "Limit, turunan, integral, siap kuliah" },
+  ],
+};
+
+export function kelasList(jenjang: JenjangId): KelasDef[] {
+  return KELAS_BY_JENJANG[jenjang];
+}
+
+/** Kelas bawaan bila peserta belum memilih: kelas tengah jenjangnya. */
+export function defaultKelas(jenjang: JenjangId): string {
+  const list = KELAS_BY_JENJANG[jenjang];
+  const mid = list[Math.floor((list.length - 1) / 2)] ?? list[0];
+  return mid ? mid.id : "";
+}
+
+export function kelasDef(jenjang: JenjangId, kelas: string): KelasDef | undefined {
+  return KELAS_BY_JENJANG[jenjang].find((k) => k.id === kelas);
+}
+
+/** Label kelas untuk id tersimpan; string kosong bila kelas tidak dikenal. */
+export function kelasLabel(jenjang: JenjangId, kelas: string): string {
+  return kelasDef(jenjang, kelas)?.label ?? "";
+}
+
+/** Label lengkap "SD • Kelas 3" (tanpa kelas bila id kosong/tidak dikenal). */
+export function jenjangKelasLabel(jenjang: string, kelas: string): string {
+  const lbl = (KELAS_BY_JENJANG[jenjang as JenjangId] ?? []).find((k) => k.id === kelas)?.label ?? "";
+  return lbl ? `${jenjang} • ${lbl}` : jenjang;
+}
+
+/**
+ * Posisi kelas di dalam jenjangnya, 0 (kelas terendah) .. 1 (kelas
+ * tertinggi). Inilah "pita kelas" yang menggeser kesulitan & topik soal.
+ */
+export function kelasBand(jenjang: JenjangId, kelas: string): number {
+  const list = KELAS_BY_JENJANG[jenjang];
+  const idx = list.findIndex((k) => k.id === kelas);
+  if (idx < 0 || list.length <= 1) return 0.5;
+  return idx / (list.length - 1);
+}
 
 export const SUBJECTS: SubjectDef[] = [
   { id: "inggris", name: "Bahasa Inggris", short: "ENG", color: "#E84393", bg: "#FDE7F3", school: "all", jenjang: ["TK", "SD", "SMP", "SMA"] },
@@ -164,14 +246,14 @@ export const BANK: Bank = {
   },
   SD: {
     matematika: [
-      { q: "Pola bilangan: 3, 6, 11, 18, 27, … Bilangan berikutnya adalah …", options: ["36", "38", "40", "42"], answer: 1, explain: "Selisihnya +3, +5, +7, +9 (bilangan ganjil). Berikutnya +11 → 27 + 11 = 38." },
-      { q: "Hasil dari 24 × 15 + 60 : 12 adalah …", options: ["355", "365", "370", "375"], answer: 1, explain: "24×15=360; 60:12=5; 360+5=365. Perkalian & pembagian dikerjakan lebih dulu." },
-      { q: "Sebuah tali 3/4 meter dipotong menjadi 3 bagian sama panjang. Setiap bagian … meter.", options: ["1/4", "1/3", "1/2", "3/4"], answer: 0, explain: "3/4 : 3 = 3/4 × 1/3 = 1/4 meter." },
-      { q: "FPB dari 36 dan 48 adalah …", options: ["6", "8", "12", "18"], answer: 2, explain: "36=2²×3², 48=2⁴×3. FPB=2²×3=12." },
-      { q: "Jumlah dua bilangan prima terkecil yang lebih dari 20 adalah …", options: ["46", "48", "50", "52"], answer: 3, explain: "Bilangan prima setelah 20 yang terkecil adalah 23 dan 29. 23 + 29 = 52." },
-      { q: "Keliling persegi panjang 12 cm × 7 cm adalah … cm", options: ["38", "42", "76", "84"], answer: 0, explain: "K = 2×(12+7) = 2×19 = 38 cm." },
-      { q: "Hasil dari 5² + 3³ adalah …", options: ["34", "43", "52", "61"], answer: 2, explain: "5²=25, 3³=27, 25+27=52." },
-      { q: "Rata-rata nilai 6, 8, 7, 9, 10 adalah …", options: ["7", "8", "8,5", "9"], answer: 1, explain: "Jumlah=40, 40:5=8." },
+      { q: "Pola bilangan: 3, 6, 11, 18, 27, … Bilangan berikutnya adalah …", options: ["36", "38", "40", "42"], answer: 1, lv: 4, explain: "Selisihnya +3, +5, +7, +9 (bilangan ganjil). Berikutnya +11 → 27 + 11 = 38." },
+      { q: "Hasil dari 24 × 15 + 60 : 12 adalah …", options: ["355", "365", "370", "375"], answer: 1, lv: 4, explain: "24×15=360; 60:12=5; 360+5=365. Perkalian & pembagian dikerjakan lebih dulu." },
+      { q: "Sebuah tali 3/4 meter dipotong menjadi 3 bagian sama panjang. Setiap bagian … meter.", options: ["1/4", "1/3", "1/2", "3/4"], answer: 0, lv: 5, explain: "3/4 : 3 = 3/4 × 1/3 = 1/4 meter." },
+      { q: "FPB dari 36 dan 48 adalah …", options: ["6", "8", "12", "18"], answer: 2, lv: 4, explain: "36=2²×3², 48=2⁴×3. FPB=2²×3=12." },
+      { q: "Jumlah dua bilangan prima terkecil yang lebih dari 20 adalah …", options: ["46", "48", "50", "52"], answer: 3, lv: 5, explain: "Bilangan prima setelah 20 yang terkecil adalah 23 dan 29. 23 + 29 = 52." },
+      { q: "Keliling persegi panjang 12 cm × 7 cm adalah … cm", options: ["38", "42", "76", "84"], answer: 0, lv: 4, explain: "K = 2×(12+7) = 2×19 = 38 cm." },
+      { q: "Hasil dari 5² + 3³ adalah …", options: ["34", "43", "52", "61"], answer: 2, lv: 5, explain: "5²=25, 3³=27, 25+27=52." },
+      { q: "Rata-rata nilai 6, 8, 7, 9, 10 adalah …", options: ["7", "8", "8,5", "9"], answer: 1, lv: 4, explain: "Jumlah=40, 40:5=8." },
     ],
     inggris: [
       { q: "Read: “Sinta goes to school by bicycle every morning.” How does Sinta go to school?", options: ["By bus", "By bicycle", "On foot", "By car"], answer: 1, explain: "Kalimatnya jelas: by bicycle = dengan sepeda." },
@@ -747,15 +829,29 @@ export function getPackage(jenjang: JenjangId, subjectId: string, english = fals
  * tanpa pengulangan di dalam sesi, dan memprioritaskan soal yang
  * belum pernah keluar di perangkat ini.
  */
-export function buildSession(jenjang: JenjangId, subjectId: string, level: number, count: number = SESSION_SIZE, english = false): Question[] {
-  const combo = `${jenjang}|${subjectId}|${level}${english ? "|en" : ""}`;
-  const authored = getPackage(jenjang, subjectId, english);
-  const total = authored.length;
-  const withLevel = authored.map((q, i) => ({
+export function buildSession(jenjang: JenjangId, subjectId: string, level: number, count: number = SESSION_SIZE, english = false, kelas?: string): Question[] {
+  const band01 = kelas ? kelasBand(jenjang, kelas) : undefined;
+  const combo = `${jenjang}|${subjectId}|${level}${english ? "|en" : ""}${kelas ? `|k${kelas}` : ""}`;
+  const authoredAll = getPackage(jenjang, subjectId, english);
+  const total = authoredAll.length;
+  const withLevel = authoredAll.map((q, i) => ({
     q,
-    lv: Math.min(5, 1 + Math.floor((i * 5) / Math.max(1, total))),
+    lv: q.lv !== undefined ? Math.min(5, Math.max(1, q.lv)) : Math.min(5, 1 + Math.floor((i * 5) / Math.max(1, total))),
   }));
-  const ordered = [...withLevel].sort((a, b) => Math.abs(a.lv - level) - Math.abs(b.lv - level));
+  // Soal inti tertulis dipetakan ke kelas yang sesuai: posisi kesulitan
+  // soal (menurut urutannya di bank) harus berada di dalam / dekat pita
+  // kelas terpilih — soal khas kelas rendah tidak muncul di kelas tinggi
+  // dan sebaliknya. Bila saringan membuat bank kosong, pakai bank penuh.
+  let authoredPool = withLevel;
+  let authoredExcluded: typeof withLevel = [];
+  if (band01 !== undefined) {
+    const classCenter = band01 * 0.65 + 0.175;
+    const inBand = withLevel.filter((a) => Math.abs((a.lv - 1) / 4 - classCenter) <= 0.42);
+    authoredPool = inBand;
+    authoredExcluded = withLevel.filter((a) => !inBand.includes(a));
+  }
+  const targetPos = band01 !== undefined ? bandCoordFor(level, band01) : (level - 1) / 4;
+  const ordered = [...authoredPool].sort((a, b) => Math.abs((a.lv - 1) / 4 - targetPos) - Math.abs((b.lv - 1) / 4 - targetPos));
 
   const pool: Question[] = [];
   const inPool = new Set<string>();
@@ -774,9 +870,25 @@ export function buildSession(jenjang: JenjangId, subjectId: string, level: numbe
   for (const a of ordered) push(shuffleOptions(a.q));
   for (let round = 0; round < 4 && pool.length < count * 2; round++) {
     const gen = english
-      ? generateQuestionsEn(jenjang, subjectId, level, count * 2)
-      : generateQuestions(jenjang, subjectId, level, count * 2);
+      ? generateQuestionsEn(jenjang, subjectId, level, count * 2, band01)
+      : generateQuestions(jenjang, subjectId, level, count * 2, band01);
     for (const q of gen) push(q);
+  }
+  // Jaring pengaman kelengkapan sesi: bila bank di dalam pita kelas
+  // untuk kombinasi ini benar-benar tipis (pool unik tidak mencapai
+  // jumlah soal sesi), lengkapi dari bank jenjang penuh supaya sesi
+  // selalu utuh. Pada mapel berbank besar (mis. Matematika) jaring ini
+  // tidak pernah terpicu.
+  if (band01 !== undefined && pool.length < count) {
+    // Utamakan soal tertulis yang tersisih saringan kelas sebelum
+    // membuka bank generator jenjang penuh.
+    for (const a of authoredExcluded) push(shuffleOptions(a.q));
+    for (let round = 0; round < 4 && pool.length < count; round++) {
+      const gen = english
+        ? generateQuestionsEn(jenjang, subjectId, level, count * 2)
+        : generateQuestions(jenjang, subjectId, level, count * 2);
+      for (const q of gen) push(q);
+    }
   }
 
   const store = loadSeen();

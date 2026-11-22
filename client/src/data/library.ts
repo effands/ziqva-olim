@@ -15,6 +15,13 @@ export interface LibraryModule {
   id: string;
   subjects: string[];
   jenjang: JenjangId[];
+  /**
+   * Modul khas kelas tertentu, per jenjang: mis. { SD: ["4","5","6"] }
+   * berarti di jenjang SD modul ini hanya tampil untuk Kelas 4–6.
+   * Tanpa entri untuk jenjang itu = modul umum, tampil untuk semua
+   * kelas di jenjang tersebut.
+   */
+  kelas?: Partial<Record<JenjangId, string[]>>;
   emoji: string;
   title: string;
   keywords: string[];
@@ -52,7 +59,7 @@ const SAINS_MODULES: LibraryModule[] = [
     summary: "Indera: mata–lihat, telinga–dengar, hidung–cium, lidah–rasa, kulit–raba. Jantung memompa darah; paru-paru menukar gas; ginjal menyaring darah.",
   },
   {
-    id: "sains-tumbuhan", subjects: ["sains"], jenjang: ["SD", "SMP"], emoji: "🌱",
+    id: "sains-tumbuhan", subjects: ["sains"], jenjang: ["SD", "SMP"], kelas: { SD: ["4", "5", "6"] }, emoji: "🌱",
     title: "Bagian Tumbuhan & Fotosintesis",
     keywords: ["akar", "daun", "batang", "bunga", "fotosintesis", "klorofil", "tumbuhan"],
     concept: "Tumbuhan punya bagian dengan tugas jelas: akar menyerap air dan zat hara dari tanah, batang menopang dan menyalurkan air serta makanan, daun adalah dapur tempat fotosintesis, bunga adalah alat perkembangbiakan. Fotosintesis adalah proses memasak makanan dengan bantuan cahaya matahari: 6CO₂ + 6H₂O → C₆H₁₂O₆ + 6O₂. Zat hijau daun (klorofil) menangkap cahaya. Hasilnya glukosa (makanan tumbuhan) dan oksigen yang kita hirup.",
@@ -60,7 +67,7 @@ const SAINS_MODULES: LibraryModule[] = [
     summary: "Akar menyerap, batang menyalurkan, daun memasak (fotosintesis), bunga berkembang biak. Fotosintesis: CO₂ + air + cahaya → glukosa + O₂.",
   },
   {
-    id: "sains-energi-wujud", subjects: ["sains"], jenjang: ["SD", "SMP"], emoji: "🔥",
+    id: "sains-energi-wujud", subjects: ["sains"], jenjang: ["SD", "SMP"], kelas: { SD: ["3", "4", "5", "6"] }, emoji: "🔥",
     title: "Energi & Perubahan Wujud Benda",
     keywords: ["mencair", "menguap", "membeku", "mengembun", "wujud", "energi", "panas", "konduksi", "konveksi", "radiasi", "suhu", "termometer"],
     concept: "Benda bisa berubah wujud karena panas: padat → cair disebut mencair, cair → gas menguap, gas → cair mengembun, cair → padat membeku, padat → gas menyublim. Sumber energi utama di Bumi adalah Matahari. Panas berpindah dengan tiga cara: konduksi (lewat zat padat, misalnya sendok logam yang ikut panas), konveksi (lewat aliran zat cair/gas, misalnya air mendidih), dan radiasi (tanpa perantara, misalnya panas matahari sampai ke Bumi). Suhu diukur dengan termometer.",
@@ -68,7 +75,7 @@ const SAINS_MODULES: LibraryModule[] = [
     summary: "Mencair, menguap, mengembun, membeku, menyublim. Panas berpindah: konduksi (padat), konveksi (aliran), radiasi (tanpa perantara).",
   },
   {
-    id: "sains-bumi-antariksa", subjects: ["sains"], jenjang: ["SD", "SMP"], emoji: "🪐",
+    id: "sains-bumi-antariksa", subjects: ["sains"], jenjang: ["SD", "SMP"], kelas: { SD: ["5", "6"] }, emoji: "🪐",
     title: "Bumi & Alam Semesta",
     keywords: ["planet", "merkurius", "venus", "mars", "jupiter", "saturnus", "uranus", "neptunus", "matahari", "bulan", "bintang", "tata surya", "langit", "siang", "malam"],
     concept: "Tata surya kita berpusat pada Matahari, bintang terdekat dari Bumi. Delapan planet mengorbitnya: Merkurius, Venus, Bumi, Mars, Jupiter, Saturnus, Uranus, Neptunus. Merkurius paling dekat Matahari; Jupiter paling besar. Bintang memancarkan cahaya sendiri, sedangkan planet dan Bulan hanya memantulkan cahaya. Siang terjadi saat sisi Bumi menghadap Matahari; malam saat membelakanginya. Bulan adalah satelit alami Bumi.",
@@ -76,7 +83,7 @@ const SAINS_MODULES: LibraryModule[] = [
     summary: "Urutan planet: Merkurius–Venus–Bumi–Mars–Jupiter–Saturnus–Uranus–Neptunus. Bintang bercahaya sendiri; planet & bulan memantulkan cahaya.",
   },
   {
-    id: "sains-gaya-gerak", subjects: ["sains"], jenjang: ["SD", "SMP"], emoji: "🧲",
+    id: "sains-gaya-gerak", subjects: ["sains"], jenjang: ["SD", "SMP"], kelas: { SD: ["4", "5", "6"] }, emoji: "🧲",
     title: "Gaya & Gerak",
     keywords: ["gaya", "gravitasi", "gesek", "magnet", "otot", "newton", "massa jenis", "kecepatan", "percepatan", "jatuh"],
     concept: "Gaya adalah tarikan atau dorongan. Gravitasi Bumi menarik semua benda ke bawah — itu sebabnya buah jatuh ke tanah. Gaya gesek menahan gerak (membuat sepeda berhenti), gaya magnet menarik benda logam, gaya otot berasal dari tubuh kita. Di SMP kita menghitungnya: Hukum II Newton F = m × a (gaya = massa × percepatan, satuan Newton). Kecepatan rata-rata v = jarak : waktu. Massa jenis ρ = massa : volume.",
@@ -224,7 +231,7 @@ const MATH_MODULES: LibraryModule[] = [
     summary: "Kurung → pangkat → kali/bagi → tambah/kurang. Baca soal cerita dua kali sebelum menghitung.",
   },
   {
-    id: "mat-pecahan", subjects: ["matematika", "cambridge-math"], jenjang: ["SD", "SMP"], emoji: "🍕",
+    id: "mat-pecahan", subjects: ["matematika", "cambridge-math"], jenjang: ["SD", "SMP"], kelas: { SD: ["3", "4", "5", "6"] }, emoji: "🍕",
     title: "Pecahan, Desimal & Persen",
     keywords: ["pecahan", "penyebut", "pembilang", "desimal", "persen", "%", "lebih besar", "senilai", "dibulatkan", "pembulatan"],
     concept: "Pecahan a/b artinya a bagian dari b bagian sama besar. Menjumlahkan pecahan: samakan penyebutnya dulu (1/2 + 1/4 = 2/4 + 1/4 = 3/4). Membandingkan pecahan: samakan penyebut atau ubah ke desimal. Persen adalah pecahan berpenyebut 100: 25% = 25/100 = 1/4 = 0,25. Pembulatan: lihat angka di belakang tempat yang diminta — 5 ke atas naik, di bawah 5 turun.",
@@ -232,7 +239,7 @@ const MATH_MODULES: LibraryModule[] = [
     summary: "Samakan penyebut sebelum menjumlah pecahan. 25% = 1/4; 50% = 1/2; 75% = 3/4.",
   },
   {
-    id: "mat-fpb-kpk-pola", subjects: ["matematika"], jenjang: ["SD", "SMP"], emoji: "🔢",
+    id: "mat-fpb-kpk-pola", subjects: ["matematika"], jenjang: ["SD", "SMP"], kelas: { SD: ["4", "5", "6"] }, emoji: "🔢",
     title: "FPB, KPK & Pola Bilangan",
     keywords: ["fpb", "kpk", "suku berikutnya", "pola", "barisan", "bilangan romawi", "faktor"],
     concept: "FPB (Faktor Persekutuan Terbesar) dipakai saat membagi benda ke kelompok sama banyak tanpa sisa. KPK (Kelipatan Persekutuan Terkecil) dipakai saat dua jadwal bertemu lagi (dua bus berangkat bersama). Pola bilangan: tulis selisih antar suku di bawahnya — selisih tetap berarti barisan aritmetika; selisih yang bertambah teratur berarti polanya dua tingkat. Bilangan Romawi: I=1, V=5, X=10, L=50, C=100, D=500, M=1000; huruf kecil di kiri mengurangi, di kanan menambah.",
@@ -248,7 +255,7 @@ const MATH_MODULES: LibraryModule[] = [
     summary: "Hafalkan pasangan: segitiga ½·a·t, lingkaran πr² & 2πr, balok p·l·t. Pythagoras: c² = a² + b².",
   },
   {
-    id: "mat-uang-satuan", subjects: ["matematika"], jenjang: ["SD", "SMP"], emoji: "💰",
+    id: "mat-uang-satuan", subjects: ["matematika"], jenjang: ["SD", "SMP"], kelas: { SD: ["2", "3", "4", "5", "6"] }, emoji: "💰",
     title: "Uang, Diskon, Keuntungan & Satuan",
     keywords: ["diskon", "keuntungan", "harga", "rupiah", "jam", "menit", "kg", "gram", "km", "meter", "liter"],
     concept: "Diskon = potongan harga: harga bayar = harga awal × (100% − diskon%). Untung = harga jual − harga beli; persen untung dihitung dari harga beli. Satuan: 1 km = 1.000 m, 1 kg = 1.000 g, 1 jam = 60 menit, 1 liter = 1.000 mL. Jam: selisih waktu dihitung dengan meminjam 60 menit bila menitnya kurang.",
@@ -485,7 +492,7 @@ const LANG_MODULES: LibraryModule[] = [
 /* ================= IPS, PPKn, INFORMATIKA ================= */
 const SOSIAL_MODULES: LibraryModule[] = [
   {
-    id: "ips-geografi", subjects: ["ips"], jenjang: ALL, emoji: "🗺️",
+    id: "ips-geografi", subjects: ["ips"], jenjang: ALL, kelas: { SD: ["4", "5", "6"] }, emoji: "🗺️",
     title: "Provinsi, Ibu Kota & Geografi Indonesia",
     keywords: ["ibu kota", "provinsi", "ibukota", "terletak di provinsi"],
     concept: "Indonesia punya 38 provinsi. Ibu kota yang sering ditanyakan: Jawa Barat–Bandung, Jawa Tengah–Semarang, Jawa Timur–Surabaya, Sumatera Utara–Medan, Sumatera Barat–Padang, Sumatera Selatan–Palembang, Kalimantan Timur–Samarinda, Sulawesi Selatan–Makassar, Bali–Denpasar, Papua–Jayapura, Aceh–Banda Aceh, Riau–Pekanbaru, Jambi–Jambi, Lampung–Bandar Lampung, Banten–Serang, Yogyakarta–Yogyakarta, Maluku–Ambon, NTT–Kupang, NTB–Mataram, Gorontalo–Gorontalo, Sulawesi Utara–Manado. Ibu kota negara kini Nusantara (IKN) di Kalimantan Timur, menggantikan Jakarta secara bertahap.",
@@ -561,7 +568,7 @@ const SEJARAH_MODULES: LibraryModule[] = [
     summary: "Bendera Merah Putih, lagu Indonesia Raya, merdeka 17 Agustus 1945, presiden pertama Soekarno.",
   },
   {
-    id: "sej-kerajaan", subjects: ["sejarah"], jenjang: ["SD", "SMP"], emoji: "👑",
+    id: "sej-kerajaan", subjects: ["sejarah"], jenjang: ["SD", "SMP"], kelas: { SD: ["4", "5", "6"] }, emoji: "👑",
     title: "Kerajaan-Kerajaan Nusantara (Garis Waktu)",
     keywords: ["kerajaan", "sriwijaya", "majapahit", "kutai", "tarumanagara", "mataram kuno", "demak", "singasari", "kediri", "pajajaran", "gajah mada", "yupa", "borobudur"],
     concept: "Ikuti garis waktunya: Kutai (abad ke-4, Kalimantan Timur, prasasti Yupa — kerajaan Hindu tertua) → Tarumanagara (Jawa Barat, prasasti Ciaruteun) → Sriwijaya (abad ke-7, Palembang, kerajaan maritim terbesar penguasa Selat Malaka) → Mataram Kuno (Jawa Tengah, membangun Borobudur) → Kediri & Singasari (Jawa Timur) → Majapahit (1293, Trowulan, dipersatukan Mahapatih Gajah Mada lewat Sumpah Palapa) → Demak (kerajaan Islam pertama di Jawa) → Aceh, Banten, dan Gowa di masa Islam. Cara mengingatnya: pusat + tokoh + peninggalan khasnya.",
@@ -800,7 +807,7 @@ const EXTRA_MODULES: LibraryModule[] = [
     fact: "Tahukah kamu? Es mengapung di air — tidak seperti kebanyakan benda yang membeku lalu tenggelam. Karena es mengapung, ikan di danau yang membeku tetap bisa hidup di bawahnya! 🧊",
   },
   {
-    id: "sains-siklus-air", subjects: ["sains"], jenjang: ["SD", "SMP"], emoji: "🌧️",
+    id: "sains-siklus-air", subjects: ["sains"], jenjang: ["SD", "SMP"], kelas: { SD: ["5", "6"] }, emoji: "🌧️",
     title: "Siklus Air & Cuaca",
     keywords: ["siklus air", "evaporasi", "kondensasi", "presipitasi", "awan", "hujan", "cuaca", "musim", "angin", "pelangi"],
     concept: "Air di Bumi berputar terus dalam SIKLUS AIR: (1) EVAPORASI — air laut, danau, dan sungai menguap karena panas Matahari; (2) KONDENSASI — uap air naik, mendingin, dan berubah menjadi titik-titik air kecil pembentuk awan; (3) PRESIPITASI — titik air berkumpul, membesar, lalu jatuh sebagai hujan (atau salju di tempat sangat dingin); (4) air hujan berkumpul lagi di sungai dan laut — siklus berulang. Cuaca adalah keadaan udara dalam waktu singkat (cerah, berawan, hujan, berangin), sedangkan musim adalah pola cuaca panjang. Pelangi muncul saat cahaya Matahari menembus sisa titik hujan. 🌈",
@@ -811,7 +818,7 @@ const EXTRA_MODULES: LibraryModule[] = [
     fact: "Tahukah kamu? Air yang kamu minum hari ini bisa jadi adalah air yang sama yang diminum dinosaurus jutaan tahun lalu — karena air Bumi selalu berputar dan tidak pernah bertambah atau berkurang! 🦕",
   },
   {
-    id: "sains-cahaya-bunyi", subjects: ["sains"], jenjang: ["SD", "SMP"], emoji: "🔦",
+    id: "sains-cahaya-bunyi", subjects: ["sains"], jenjang: ["SD", "SMP"], kelas: { SD: ["4", "5", "6"] }, emoji: "🔦",
     title: "Cahaya & Bunyi di Sekitar Kita",
     keywords: ["cahaya", "bayangan", "cermin", "pantul", "bunyi", "getaran", "gema", "pelangi", "lensa", "suara"],
     concept: "Cahaya merambat LURUS — itu sebabnya benda yang menghalangi cahaya membentuk BAYANGAN. Benda bening (kaca) meneruskan cahaya, benda gelap (kayu, karton) menghalanginya. Cermin memantulkan cahaya dengan teratur sehingga kita bisa bercermin; cahaya juga bisa dibiaskan, misalnya sendok tampak patah di dalam gelas air. Bunyi lahir dari GETARAN: senar gitar bergetar, gendang bergetar, pita suara kita pun bergetar. Bunyi merambat lewat udara, air, dan benda padat — tetapi TIDAK bisa merambat di ruang hampa seperti luar angkasa. Bunyi yang memantul pada dinding jauh menghasilkan GEMA.",
@@ -822,7 +829,7 @@ const EXTRA_MODULES: LibraryModule[] = [
     fact: "Tahukah kamu? Cahaya adalah yang tercepat di alam semesta: 300.000 kilometer per detik! Cahaya Matahari hanya butuh sekitar 8 menit untuk sampai ke Bumi. ☀️",
   },
   {
-    id: "sains-makanan-sehat", subjects: ["sains"], jenjang: ["SD", "SMP"], emoji: "🥦",
+    id: "sains-makanan-sehat", subjects: ["sains"], jenjang: ["SD", "SMP"], kelas: { SD: ["5", "6"] }, emoji: "🥦",
     title: "Makanan Sehat & Sistem Pencernaan",
     keywords: ["pencernaan", "makanan", "gizi", "protein", "karbohidrat", "vitamin", "usus", "enzim pencernaan", "sehat", "mineral"],
     concept: "Tubuh kita seperti mesin yang butuh bahan bakar dan bahan bangunan. KARBOHIDRAT (nasi, roti, kentang) memberi energi; PROTEIN (telur, ikan, daging, tahu-tempe) membangun dan memperbaiki tubuh; LEMAK menyimpan cadangan energi; VITAMIN & MINERAL (sayur dan buah) menjaga daya tahan; AIR membantu semua proses. Makanan dicerna bertahap: mulut (gigi mengunyah + air liur), kerongkongan, lambung (diaduk dan diberi enzim), usus halus (sari makanan diserap ke darah — di sinilah makanan benar-benar 'masuk' ke tubuh), usus besar (air diserap), dan sisa dibuang. Pedoman praktis: isi piringku — setengah sayur-buah, sisanya makanan pokok dan lauk protein. 🍽️",
@@ -833,7 +840,7 @@ const EXTRA_MODULES: LibraryModule[] = [
     fact: "Tahukah kamu? Kalau usus halusmu dibentangkan, luas permukaannya bisa sebesar lapangan tenis! Lipatan dan tonjolan kecilnya (vili) membuat penyerapan makanan super efisien. 🎾",
   },
   {
-    id: "mat-statistika", subjects: ["matematika", "cambridge-math"], jenjang: ["SD", "SMP"], emoji: "📊",
+    id: "mat-statistika", subjects: ["matematika", "cambridge-math"], jenjang: ["SD", "SMP"], kelas: { SD: ["3", "4", "5", "6"] }, emoji: "📊",
     title: "Statistika: Diagram, Rata-rata, Median & Modus",
     keywords: ["rata-rata", "diagram", "median", "modus", "data", "piktogram", "grafik", "mean"],
     concept: "Statistika adalah cara membaca kumpulan data. Tiga ukuran penting: (1) RATA-RATA (mean) = jumlah semua data ÷ banyaknya data; (2) MEDIAN = nilai tengah setelah data diurutkan; (3) MODUS = data yang paling sering muncul. Data disajikan dalam diagram batang (membandingkan jumlah), diagram garis (perubahan dari waktu ke waktu), diagram lingkaran (bagian dari keseluruhan), dan piktogram (gambar mewakili jumlah tertentu — perhatikan kunci gambarnya!). Jebakan klasik: rata-rata gabungan dua kelompok TIDAK bisa dirata-rata begitu saja — kembalikan ke jumlah total dulu.",
@@ -935,7 +942,7 @@ const EXTRA_MODULES: LibraryModule[] = [
     fact: "Tahukah kamu? Konferensi Asia-Afrika 1955 di Bandung dihadiri 29 negara dan mengguncang dunia — banyak negara Asia-Afrika merdeka terinspirasi peristiwa ini. Gedung Merdeka tempatnya masih berdiri sampai sekarang! 🏛️",
   },
   {
-    id: "ppkn-hak-kewajiban", subjects: ["ppkn"], jenjang: ["SD", "SMP"], emoji: "⚖️",
+    id: "ppkn-hak-kewajiban", subjects: ["ppkn"], jenjang: ["SD", "SMP"], kelas: { SD: ["3", "4", "5", "6"] }, emoji: "⚖️",
     title: "Hak, Kewajiban & Musyawarah",
     keywords: ["hak", "kewajiban", "musyawarah", "mufakat", "voting", "warga negara", "aturan", "norma", "gotong royong"],
     concept: "Setiap warga negara punya HAK (sesuatu yang layak diterima: hak belajar, hak bermain, hak mendapat perlindungan) dan KEWAJIBAN (sesuatu yang harus dilakukan: kewajiban belajar, mematuhi aturan, menjaga kebersihan). Hak dan kewajiban harus SEIMBANG: menuntut hak tanpa menjalankan kewajiban membuat kehidupan bersama kacau. Keputusan bersama diambil lewat MUSYAWARAH untuk mencapai MUFAKAT (kesepakatan semua pihak) — sesuai sila ke-4 Pancasila. Bila mufakat tidak tercapai, barulah dilakukan pemungutan suara (voting) dan semua pihak menghormati hasilnya. Norma yang mengatur hidup bersama: agama, kesusilaan, kesopanan, dan hukum.",
@@ -974,9 +981,22 @@ function subjectPool(subjectId: string): string[] {
     Mode Cambridge (english): modul diterjemahkan lewat MODULE_EN /
     MATERIALS_EN dari cambridge.ts, termasuk kata kuncinya, supaya
     pemetaan soal -> modul tetap akurat untuk soal Bahasa Inggris. */
-export function modulesFor(jenjang: JenjangId, subjectId: string, english = false): LibraryModule[] {
+export function modulesFor(jenjang: JenjangId, subjectId: string, english = false, kelas?: string): LibraryModule[] {
   const pool = subjectPool(subjectId);
-  const direct = LIBRARY_MODULES.filter((m) => m.jenjang.includes(jenjang) && m.subjects.some((s) => pool.includes(s)));
+  const directAll = LIBRARY_MODULES.filter((m) => m.jenjang.includes(jenjang) && m.subjects.some((s) => pool.includes(s)));
+  // Saringan kelas: modul yang khas kelas tertentu (m.kelas untuk jenjang
+  // ini) hanya tampil bila kelas peserta termasuk di dalamnya; modul
+  // umum tampil untuk semua kelas. Bila saringan mengosongkan daftar
+  // (semua modul mapel ini khas kelas lain), tampilkan semua modul
+  // jenjang itu agar peserta tidak kehilangan bahan belajar.
+  let direct = directAll;
+  if (kelas) {
+    const inClass = directAll.filter((m) => {
+      const tag = m.kelas?.[jenjang];
+      return !tag || tag.includes(kelas);
+    });
+    if (inClass.length > 0) direct = inClass;
+  }
   if (direct.length > 0) return english ? direct.map(englishModule) : direct;
   // Fallback: turunkan modul dari sections Bahan Belajar mapel itu.
   const rawMaterial = MATERIALS[subjectId];
@@ -1000,8 +1020,8 @@ export function modulesFor(jenjang: JenjangId, subjectId: string, english = fals
  * pembahasannya, di antara modul jenjang + mapel yang sama.
  * Selalu mengembalikan modul paling relevan (fallback modul pertama).
  */
-export function moduleForQuestion(jenjang: JenjangId, subjectId: string, q: Question, english = false): LibraryModule | null {
-  const mods = modulesFor(jenjang, subjectId, english);
+export function moduleForQuestion(jenjang: JenjangId, subjectId: string, q: Question, english = false, kelas?: string): LibraryModule | null {
+  const mods = modulesFor(jenjang, subjectId, english, kelas);
   if (mods.length === 0) return null;
   const hayQ = q.q.toLowerCase();
   const hayRest = `${q.explain} ${q.options.join(" ")}`.toLowerCase();

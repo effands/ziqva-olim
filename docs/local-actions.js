@@ -114,7 +114,7 @@
       var row = await insertRow("attempts", {
         student_name: args.student_name, jenjang: args.jenjang, mapel: args.mapel, mode: args.mode,
         score: args.score, correct: args.correct, total: args.total, duration_sec: args.duration_sec || 0,
-        device_id: args.device_id || "", class_name: args.class_name || null, is_trial: !!args.is_trial,
+        device_id: args.device_id || "", class_name: args.class_name || null, is_trial: !!args.is_trial, kelas: args.kelas || null,
       });
       var code = await ensureCode(args.student_name);
       return { id: row ? row.id : null, monitor_code: code };

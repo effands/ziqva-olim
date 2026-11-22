@@ -16,7 +16,7 @@
 
 import type { JenjangId, Question } from "./questions";
 import {
-  classifyGenL, factGenL, mkq, pairGenL, pick, ri, sample, shuffle,
+  bandCoordFor, bandGate, band01Now, beginBand, classifyGenL, endBand, factGenL, genLevelForCoord, mkq, pairGenL, pick, ri, sample, shuffle,
   type Fact, type LGen,
 } from "./generators";
 import type { LibraryModule } from "./library";
@@ -592,7 +592,10 @@ const tkEngPairsEn: LGen = (level) => pairGenL({
 
 /* ---------- SD ---------- */
 const sdAddSubEn: LGen = (level) => {
-  const max = [60, 300, 1500, 12000, 150000][level - 1] ?? 60;
+  // Pita kelas membatasi besar bilangan (Kelas 1 s.d. 99, Kelas 2 ratusan).
+  const band = band01Now();
+  const bandCap = band < 0 ? Number.POSITIVE_INFINITY : band <= 0.01 ? 99 : band <= 0.25 ? 500 : Number.POSITIVE_INFINITY;
+  const max = Math.min([60, 300, 1500, 12000, 150000][level - 1] ?? 60, bandCap);
   const a = ri(5, max);
   const b = ri(4, max);
   if (Math.random() < 0.5) return mkNumEn(`What is ${enFmt(a)} + ${enFmt(b)}?`, a + b, [a + b - 10, a + b + 10, a + b - 100], `${enFmt(a)} + ${enFmt(b)} = ${enFmt(a + b)}.`);
@@ -600,6 +603,18 @@ const sdAddSubEn: LGen = (level) => {
   return mkNumEn(`What is ${enFmt(x)} − ${enFmt(y)}?`, x - y, [x - y + 10, x - y - 10, x - y + 100].filter((v) => v >= 0), `${enFmt(x)} − ${enFmt(y)} = ${enFmt(x - y)}.`);
 };
 const sdMulDivEn: LGen = (level) => {
+  // Grade 2 band: basic times tables and sharing only.
+  const band = band01Now();
+  if (band >= 0 && band <= 0.25) {
+    if (Math.random() < 0.5) {
+      const a = pick([2, 3, 4, 5, 6, 7, 8, 9, 10]);
+      const b = ri(2, 10);
+      return mkNumEn(`What is ${a} × ${b}?`, a * b, [a * b - a, a * b + a, a * b + 2], `${a} × ${b} = ${a * b}.`);
+    }
+    const b = pick([2, 3, 4, 5, 10]);
+    const q = ri(2, 10);
+    return mkNumEn(`What is ${b * q} ÷ ${b}?`, q, [q - 1, q + 1, q + 2], `${b * q} ÷ ${b} = ${q}, because ${b} × ${q} = ${b * q}.`);
+  }
   if (Math.random() < 0.5) {
     const a = level >= 4 ? ri(12, 48) : ri(3, 6 + level * 3);
     const b = level >= 5 ? ri(12, 36) : ri(3, 9);
@@ -1421,8 +1436,8 @@ export const GENERATORS_EN: Partial<Record<JenjangId, Record<string, LGen[]>>> =
     mandarin: langVocabGensEn(MANDARIN_VOCAB_EN, "Mandarin", "TK"),
   },
   SD: {
-    matematika: [sdAddSubEn, sdMulDivEn, sdMixedEn, sdFractionEn, sdFpbKpkEn, sdGeometryEn, sdAverageEn, sdSequenceEn, sdWordProblemEn, sdRoundEn, sdPercentEn, sdClockEn, sdUnitEn, sdFracCompareEn,
-      pairGenL({ pairs: ROMAN_PAIRS_EN, askA: (a) => `The Roman numeral for ${a} is …`, askB: (b) => `The Roman numeral “${b}” has the value …`, exA: (a, b) => `${a} in Roman numerals is ${b}.`, exB: (a, b) => `${b} has the value ${a}.` })],
+    matematika: [sdAddSubEn, bandGate(0.15, sdMulDivEn), bandGate(0.35, sdMixedEn), bandGate(0.35, sdFractionEn), bandGate(0.5, sdFpbKpkEn), bandGate(0.35, sdGeometryEn), bandGate(0.75, sdAverageEn), sdSequenceEn, bandGate(0.15, sdWordProblemEn), bandGate(0.5, sdRoundEn), bandGate(0.75, sdPercentEn), bandGate(0.15, sdClockEn), bandGate(0.15, sdUnitEn), bandGate(0.35, sdFracCompareEn),
+      bandGate(0.5, pairGenL({ pairs: ROMAN_PAIRS_EN, askA: (a) => `The Roman numeral for ${a} is …`, askB: (b) => `The Roman numeral “${b}” has the value …`, exA: (a, b) => `${a} in Roman numerals is ${b}.`, exB: (a, b) => `${b} has the value ${a}.` }))],
     inggris: [...engVocabGensEn("SD"), sdEngPastEn],
     sains: [
       pairGenL({ pairs: SD_SAINS_PAIRS_EN, askA: (a) => `The function of the ${a.toLowerCase()} is to …`, askB: (b) => `The part/organ that functions to “${b.charAt(0).toLowerCase() + b.slice(1)}” is the …`, exA: (a, b) => `${a}: ${b.charAt(0).toLowerCase() + b.slice(1)}.`, exB: (a, b) => `The one that functions to ${b.charAt(0).toLowerCase() + b.slice(1)} is the ${a.toLowerCase()}.` }),
@@ -1899,9 +1914,25 @@ export const MATERIALS_EN: Record<string, { title: string; sections: { h: string
 /** Padanan generateQuestions() untuk mode Cambridge: mengambil dari
     GENERATORS_EN dengan aturan keunikan yang sama (teks soal dulu,
     lalu variasi set pilihan). */
-export function generateQuestionsEn(jenjang: JenjangId, subjectId: string, level: number, want: number): Question[] {
+export function generateQuestionsEn(jenjang: JenjangId, subjectId: string, level: number, want: number, band01?: number): Question[] {
   const gens = GENERATORS_EN[jenjang]?.[subjectId] ?? [];
   if (!gens.length) return [];
+  // Pita kelas: sama seperti generator Bahasa Indonesia — level efektif
+  // dipetakan dari koordinat kesulitan gabungan kelas + level.
+  let genLevel = level;
+  if (band01 !== undefined) {
+    const coord = bandCoordFor(level, band01);
+    genLevel = genLevelForCoord(coord);
+    beginBand(coord, band01);
+  }
+  try {
+    return generateFromGensEn(gens, genLevel, want);
+  } finally {
+    if (band01 !== undefined) endBand();
+  }
+}
+
+function generateFromGensEn(gens: LGen[], level: number, want: number): Question[] {
   const out: Question[] = [];
   const pending: Question[] = [];
   const seenQ = new Set<string>();
