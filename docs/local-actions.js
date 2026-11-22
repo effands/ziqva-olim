@@ -109,7 +109,7 @@
       var row = await insertRow("attempts", {
         student_name: args.student_name, jenjang: args.jenjang, mapel: args.mapel, mode: args.mode,
         score: args.score, correct: args.correct, total: args.total, duration_sec: args.duration_sec || 0,
-        device_id: args.device_id || "", class_name: args.class_name || null,
+        device_id: args.device_id || "", class_name: args.class_name || null, is_trial: !!args.is_trial,
       });
       var code = await ensureCode(args.student_name);
       return { id: row ? row.id : null, monitor_code: code };
@@ -255,7 +255,7 @@
     async getLeaderboard(args) {
       var jenjang = args.jenjang || "";
       var limit = args.limit || 50;
-      var rows = (await getRows("attempts", "jenjang=eq." + enc(jenjang) + "&select=*&order=id.desc&limit=2000")) || [];
+      var rows = (await getRows("attempts", "jenjang=eq." + enc(jenjang) + "&is_trial=eq.false&select=*&order=id.desc&limit=2000")) || [];
       var byName = {};
       rows.forEach(function (a) {
         var k = nameKey(a.student_name);
@@ -447,7 +447,7 @@
       var startISO = new Date(Date.UTC(y, mo, 1) - 7 * 3600 * 1000).toISOString();
       var endISO = new Date(Date.UTC(y, mo + 1, 1) - 7 * 3600 * 1000).toISOString();
       var lastDay = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
-      var rows = await getRows("attempts", "select=student_name,jenjang,correct,total,created_at&created_at=gte." + enc(startISO) + "&created_at=lt." + enc(endISO) + "&order=id.asc&limit=20000");
+      var rows = await getRows("attempts", "select=student_name,jenjang,correct,total,created_at&is_trial=eq.false&created_at=gte." + enc(startISO) + "&created_at=lt." + enc(endISO) + "&order=id.asc&limit=20000");
       var jenjangFilter = args && args.jenjang ? String(args.jenjang) : "";
       var byKey = {};
       rows.forEach(function (r) {
@@ -499,7 +499,7 @@
         else if (r.indexOf("guru") !== -1 || r.indexOf("teacher") !== -1) guru += 1;
         else orangtua += 1;
       });
-      var attempts = (await getRows("attempts", "select=*&order=id.desc&limit=5000")) || [];
+      var attempts = (await getRows("attempts", "select=*&is_trial=eq.false&order=id.desc&limit=5000")) || [];
       var uniq = {};
       attempts.forEach(function (a) { uniq[nameKey(a.student_name)] = true; });
       var classesRaw = (await getRows("exam_classes", "select=*&order=id.desc")) || [];

@@ -15,6 +15,11 @@ export const attempts = sqliteTable("attempts", {
   // (null untuk latihan/ujian mandiri biasa).
   classId: integer("class_id"),
   className: text("class_name").notNull().default(""),
+  // Penanda sesi Uji Coba Superadmin: klien mengirim true bila saat sesi
+  // disimpan pengguna sedang login sebagai Superadmin (admin). Attempt
+  // uji coba tetap tampil di Prestasiku pemilik, tetapi TIDAK dihitung di
+  // Papan Peringkat, Challenge Bulanan, maupun statistik Panel Superadmin.
+  isTrial: integer("is_trial", { mode: "boolean" }).notNull().default(false),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .notNull()
     .$defaultFn(() => new Date()),

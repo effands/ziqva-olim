@@ -1871,7 +1871,7 @@ function FinisherBadge() {
 function ChallengePodiumCard(props: { entry: ChallengeEntry; rank: number; isMe: boolean }) {
   const { entry: e, rank, isMe } = props;
   return (
-    <article className="pop-in rounded-3xl p-4 text-center shadow-sm"
+    <article className="pop-in rounded-3xl p-4 text-center shadow-sm sm:p-5"
       style={{ background: isMe ? "#FFF3DC" : "var(--surface)", border: `2px solid ${isMe ? "var(--gold)" : "var(--border)"}` }}
       aria-label={`Peringkat ${rank}: ${e.name}, Skor Juara ${e.champion_score}, ${e.points} poin, ketepatan ${e.accuracy} persen, ${e.sessions} sesi${e.finisher ? ", Finisher" : ""}`}>
       <div className="text-4xl" aria-hidden>{RANK_MEDALS[rank - 1]}</div>
@@ -1920,13 +1920,13 @@ function ChallengeView(props: { myName: string; onPractice: () => void }) {
   const divisionLabel = division === "" ? "Semua Divisi" : `Divisi ${division}`;
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 pb-10">
-      <section className="mt-5 rounded-3xl p-5 shadow-sm" style={{ background: "linear-gradient(150deg,#1E2A78,#2B3A9E)", border: "2px solid var(--gold)", color: "#fff" }}>
+    <main className="mx-auto w-full max-w-7xl px-4 pb-10">
+      <section className="mt-5 rounded-3xl p-5 shadow-sm sm:p-6 lg:p-8" style={{ background: "linear-gradient(150deg,#1E2A78,#2B3A9E)", border: "2px solid var(--gold)", color: "#fff" }}>
         <span className="font-display inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-extrabold" style={{ background: "var(--gold)", color: "#2B2440" }}>
           🟢 SEDANG BERJALAN{period ? ` • SISA ${period.days_left} HARI` : ""}
         </span>
         <h1 className="font-display mt-3 text-2xl leading-tight font-extrabold sm:text-3xl">🏆 {title}</h1>
-        <p className="mt-1 text-sm leading-relaxed" style={{ color: "rgba(255,255,255,.85)" }}>
+        <p className="mt-1 max-w-3xl text-sm leading-relaxed" style={{ color: "rgba(255,255,255,.85)" }}>
           Kumpulkan poin dari jawaban benar sepanjang {period?.label ?? "bulan ini"}, jaga ketepatanmu, dan jadilah juara divisimu.
           Hanya <strong>Finisher</strong> — peserta yang menuntaskan minimal <strong>{target} sesi</strong> bulan ini — yang berhak menyandang gelar juara &amp; menerima hadiah! 🎁
         </p>
@@ -1944,7 +1944,7 @@ function ChallengeView(props: { myName: string; onPractice: () => void }) {
         </div>
       </section>
 
-      <section className="mt-4 rounded-3xl p-5 shadow-sm" style={{ background: "#FFF7E0", border: "2px solid var(--gold)" }} aria-label="Hadiah challenge bulan ini">
+      <section className="mt-4 rounded-3xl p-5 shadow-sm sm:p-6" style={{ background: "#FFF7E0", border: "2px solid var(--gold)" }} aria-label="Hadiah challenge bulan ini">
         <h2 className="font-display text-lg font-extrabold" style={{ color: "#92600A" }}>🎁 Hadiah Bulan Ini</h2>
         {settings?.prize_text?.trim() ? (
           <p className="mt-1 text-[15px] leading-relaxed font-semibold whitespace-pre-line" style={{ color: "#5C430A" }}>{settings.prize_text}</p>
@@ -1955,12 +1955,12 @@ function ChallengeView(props: { myName: string; onPractice: () => void }) {
         )}
       </section>
 
-      <section className="mt-4 rounded-3xl p-5 shadow-sm" style={{ background: "var(--surface)", border: "1px solid var(--border)" }} aria-label="Cara bermain challenge">
+      <section className="mt-4 rounded-3xl p-5 shadow-sm sm:p-6" style={{ background: "var(--surface)", border: "1px solid var(--border)" }} aria-label="Cara bermain challenge">
         <h2 className="font-display text-lg font-extrabold">🎮 Cara Mainnya</h2>
-        <ul className="mt-2 grid gap-2 text-sm leading-relaxed font-semibold sm:grid-cols-3" style={{ color: "var(--dim)" }}>
-          <li className="rounded-2xl p-3" style={{ background: "var(--surface2)" }}>🪙 <strong style={{ color: "var(--text)" }}>Kumpulkan Poin</strong><br />Setiap jawaban benar = <strong style={{ color: "var(--text)" }}>10 poin</strong>, dari semua sesi yang kamu selesaikan bulan ini.</li>
-          <li className="rounded-2xl p-3" style={{ background: "var(--surface2)" }}>👑 <strong style={{ color: "var(--text)" }}>Skor Juara = Poin × Ketepatan</strong><br />Rajin saja tidak cukup — jawabanmu juga harus tepat. Asal cepat tanpa benar tidak akan menang!</li>
-          <li className="rounded-2xl p-3" style={{ background: "var(--surface2)" }}>🏁 <strong style={{ color: "var(--text)" }}>Jadi Finisher</strong><br />Tuntaskan minimal <strong style={{ color: "var(--text)" }}>{target} sesi</strong> bulan ini untuk berhak menjadi juara divisimu.</li>
+        <ul className="mt-2 grid gap-2 text-sm leading-relaxed font-semibold sm:grid-cols-3 lg:gap-3" style={{ color: "var(--dim)" }}>
+          <li className="rounded-2xl p-3 lg:p-4" style={{ background: "var(--surface2)" }}>🪙 <strong style={{ color: "var(--text)" }}>Kumpulkan Poin</strong><br />Setiap jawaban benar = <strong style={{ color: "var(--text)" }}>10 poin</strong>, dari semua sesi yang kamu selesaikan bulan ini.</li>
+          <li className="rounded-2xl p-3 lg:p-4" style={{ background: "var(--surface2)" }}>👑 <strong style={{ color: "var(--text)" }}>Skor Juara = Poin × Ketepatan</strong><br />Rajin saja tidak cukup — jawabanmu juga harus tepat. Asal cepat tanpa benar tidak akan menang!</li>
+          <li className="rounded-2xl p-3 lg:p-4" style={{ background: "var(--surface2)" }}>🏁 <strong style={{ color: "var(--text)" }}>Jadi Finisher</strong><br />Tuntaskan minimal <strong style={{ color: "var(--text)" }}>{target} sesi</strong> bulan ini untuk berhak menjadi juara divisimu.</li>
         </ul>
       </section>
 
@@ -1997,7 +1997,7 @@ function ChallengeView(props: { myName: string; onPractice: () => void }) {
       {podium.length > 0 && (
         <>
           <h2 className="font-display mt-6 text-lg font-bold">👑 Podium — {divisionLabel}</h2>
-          <div className="mt-2 grid gap-2 sm:grid-cols-3">
+          <div className="mt-2 grid gap-2 sm:grid-cols-3 lg:gap-3">
             {podium.map((e, i) => (
               <ChallengePodiumCard key={`${e.name}-${i}`} entry={e} rank={i + 1} isMe={isMe(e)} />
             ))}
@@ -2008,7 +2008,7 @@ function ChallengeView(props: { myName: string; onPractice: () => void }) {
       {rest.length > 0 && (
         <>
           <h2 className="font-display mt-6 text-lg font-bold">📋 Peringkat Berikutnya — {divisionLabel}</h2>
-          <div className="mt-2 grid gap-2">
+          <div className="mt-2 grid gap-2 xl:grid-cols-2">
             {rest.map((e, i) => {
               const rank = i + 4;
               const me = isMe(e);
@@ -2840,6 +2840,10 @@ export function App() {
   const [welcomeMsg, setWelcomeMsg] = useState("");
   const [welcomeSpeaking, setWelcomeSpeaking] = useState(false);
   const [lastResult, setLastResult] = useState<{ answers: (number | null)[]; usedSec: number; correct: number; score: number } | null>(null);
+  // true bila sesi terakhir disimpan sebagai Uji Coba Superadmin (login
+  // sebagai admin saat sesi selesai) — ditampilkan sebagai catatan di
+  // layar hasil; sesi seperti ini tidak dihitung ke peringkat/Challenge.
+  const [lastWasTrial, setLastWasTrial] = useState(false);
   // Ujian Sertifikat: sesi khusus campuran Level 3–5 yang terbuka setelah
   // kelima level satu mapel tuntas; attempt-nya ditandai class_name khusus.
   const [certSession, setCertSession] = useState(false);
@@ -3160,6 +3164,7 @@ export function App() {
     setCertSession(false);
     setLastAttemptId(null);
     setLastResult(null);
+    setLastWasTrial(false);
     setNewBadges([]);
     setEarnedPoints(0);
     setUnlockedNow(null);
@@ -3195,6 +3200,7 @@ export function App() {
     setCertSession(true);
     setLastAttemptId(null);
     setLastResult(null);
+    setLastWasTrial(false);
     setNewBadges([]);
     setEarnedPoints(0);
     setUnlockedNow(null);
@@ -3210,10 +3216,15 @@ export function App() {
     setView("result");
     window.scrollTo({ top: 0 });
     if (activeSubject) {
+      // Sesi yang disimpan selagi login sebagai Superadmin adalah sesi uji
+      // coba pemilik: ditandai is_trial agar tidak ikut peringkat/Challenge.
+      const wasTrial = sessionUser?.role === "admin";
+      setLastWasTrial(wasTrial);
       saveAttempt.mutate({
         student_name: name.trim(), jenjang, mapel: activeSubject.name, mode,
         score, correct, total: questions.length, duration_sec: usedSec, device_id: deviceId,
         class_name: certSession ? CERT_EXAM_LABEL : "",
+        is_trial: wasTrial,
       });
     }
 
@@ -3914,6 +3925,11 @@ export function App() {
             <p className="mt-1 font-display text-xl font-extrabold" style={{ color: medalFor(lastResult.score).color }}>🏅 {medalFor(lastResult.score).label}</p>
             <p className="mx-auto mt-2 max-w-md text-[15px] font-semibold">{motivationFor(lastResult.score)}</p>
             {saveAttempt.isPending && <p className="mt-2 text-xs">Menyimpan hasil ke Prestasiku…</p>}
+            {lastWasTrial && (
+              <p className="mx-auto mt-3 max-w-md rounded-2xl px-4 py-2.5 text-xs leading-relaxed font-bold" style={{ background: "#fff", border: "2px dashed #6E6785", color: "#57506E" }} role="status">
+                🧪 Sesi Uji Coba Superadmin — sesi ini <strong>tidak dihitung</strong> ke peringkat, poin Challenge, maupun statistik. Hasilnya tetap tersimpan di Prestasiku untuk kamu periksa sendiri.
+              </p>
+            )}
             {monitorCode && (
               <div className="mx-auto mt-4 max-w-md rounded-2xl px-4 py-3" style={{ background: "#fff", border: "2px dashed #D97706" }}>
                 <p className="text-xs font-bold tracking-wide" style={{ color: "#92600A" }}>🔑 KODE PANTAU {name.toUpperCase()}</p>
@@ -4102,7 +4118,7 @@ export function App() {
                       <span className="text-[9px] font-bold">SKOR</span>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="truncate font-display font-bold">{a.mapel} • {a.jenjang}{a.class_name === CERT_EXAM_LABEL ? " • 🏆 Ujian Sertifikat" : a.class_name ? ` • 🏫 Kelas: ${a.class_name}` : ""}</div>
+                      <div className="truncate font-display font-bold">{a.mapel} • {a.jenjang}{a.class_name === CERT_EXAM_LABEL ? " • 🏆 Ujian Sertifikat" : a.class_name ? ` • 🏫 Kelas: ${a.class_name}` : ""}{a.is_trial && <span className="font-display ml-1.5 inline-flex items-center rounded-full px-2 py-0.5 align-middle text-[11px] font-extrabold whitespace-nowrap" style={{ background: "#E8EEF7", color: "#1E2A78", border: "1px solid #B9C6E8" }}>🧪 Uji Coba</span>}</div>
                       <div className="text-xs font-semibold" style={{ color: "var(--dim)" }}>
                         {a.student_name} • {a.correct}/{a.total} benar • {a.mode === "ujian" ? "🏆 Ujian" : "✏️ Latihan"} • {fmtDur(a.duration_sec)} • {new Date(a.created_at).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                       </div>

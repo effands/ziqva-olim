@@ -160,6 +160,7 @@ const attemptShape = z.object({
   monitor_code: z.string(),
   class_id: z.number().nullable(),
   class_name: z.string(),
+  is_trial: z.boolean(),
 });
 
 /* ---------------- Mode Kelas Ujian ---------------- */
@@ -295,7 +296,7 @@ function toClassInfo(c: ClassRow, participants: ParticipantRow[]) {
 
 export const Actions = {
   saveAttempt: defineAction({
-    description: "Saves one finished olympiad practice attempt with its score and returns the student's monitoring code.",
+    description: "Saves one finished olympiad practice attempt with its score and returns the student's monitoring code. Attempts flagged is_trial (saved while logged in as Superadmin) stay visible in the owner's history but are excluded from leaderboards, the monthly challenge, and Superadmin statistics.",
     request: z.object({
       student_name: z.string().trim().min(1).max(40),
       jenjang: z.string().min(1).max(20),
@@ -309,6 +310,10 @@ export const Actions = {
       // Penanda sesi khusus, mis. "Ujian Sertifikat" — tampil di Prestasiku
       // & Panel Superadmin. Kosong untuk latihan/ujian biasa.
       class_name: z.string().trim().max(60).default(""),
+      // true bila sesi ini disimpan saat pengguna login sebagai Superadmin
+      // (sesi uji coba pemilik): tetap tercatat di Prestasiku, tetapi tidak
+      // dihitung di peringkat, Challenge, maupun statistik Superadmin.
+      is_trial: z.boolean().default(false),
     }),
     response: z.object({ id: z.number(), monitor_code: z.string() }),
     async handler(ctx, args) {
@@ -326,6 +331,7 @@ export const Actions = {
           durationSec: args.duration_sec,
           deviceId: args.device_id,
           className: args.class_name,
+          isTrial: args.is_trial,
         })
         .returning({ id: schema.attempts.id });
       const inserted = result[0];
@@ -383,6 +389,7 @@ export const Actions = {
           monitor_code: codeByKey.get(nameKey(r.studentName)) ?? "",
           class_id: r.classId ?? null,
           class_name: r.className ?? "",
+          is_trial: r.isTrial,
         })),
         stats: {
           total_attempts: totalAttempts,
@@ -420,9 +427,11 @@ export const Actions = {
     }),
     async handler(ctx, args) {
       const db = ctx.db<typeof schema>();
-      const rows = await db.select().from(schema.attempts)
+      const allRows = await db.select().from(schema.attempts)
         .where(eq(schema.attempts.jenjang, args.jenjang))
         .orderBy(desc(schema.attempts.id)).limit(5000);
+      // Sesi Uji Coba Superadmin tidak ikut peringkat.
+      const rows = allRows.filter((r) => !r.isTrial);
 
       // Satu baris per peserta (berdasarkan nama): ambil percobaan dengan
       // skor TERBAIK peserta itu di jenjang ini; bila skor terbaiknya sama
@@ -718,6 +727,7 @@ export const Actions = {
           score: r.score, correct: r.correct, total: r.total, duration_sec: r.durationSec,
           created_at: r.createdAt.toISOString(), monitor_code: "",
           class_id: r.classId ?? null, class_name: r.className ?? "",
+          is_trial: r.isTrial,
         })),
         students,
       };
@@ -1221,7 +1231,10 @@ export const Actions = {
       const db = ctx.db<typeof schema>();
 
       const userRows = await db.select().from(schema.users).orderBy(desc(schema.users.id)).limit(1000);
-      const attemptRows = await db.select().from(schema.attempts).orderBy(desc(schema.attempts.id)).limit(5000);
+      // Sesi Uji Coba Superadmin tidak dihitung di statistik panel ini:
+      // peserta unik, total sesi, dan aktivitas terakhir hanya dari sesi asli.
+      const attemptRows = (await db.select().from(schema.attempts).orderBy(desc(schema.attempts.id)).limit(5000))
+        .filter((a) => !a.isTrial);
       const uniqueStudents = new Set(attemptRows.map((a) => nameKey(a.studentName))).size;
 
       const classRows = await db.select().from(schema.examClasses).orderBy(desc(schema.examClasses.id)).limit(500);
@@ -1407,7 +1420,7 @@ export const Actions = {
       const settings = await readSettings(ctx);
       const period = currentJakartaMonth();
       const jenjangFilter = args.jenjang?.trim() ?? "";
-      const rows = await db.select().from(schema.attempts)
+      const allMonthRows = await db.select().from(schema.attempts)
         .where(and(
           gte(schema.attempts.createdAt, period.start),
           lt(schema.attempts.createdAt, period.end),
@@ -1415,6 +1428,8 @@ export const Actions = {
         ))
         .orderBy(desc(schema.attempts.id))
         .limit(20000);
+      // Sesi Uji Coba Superadmin tidak menghasilkan poin Challenge.
+      const rows = allMonthRows.filter((r) => !r.isTrial);
 
       type Agg = {
         name: string;
