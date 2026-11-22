@@ -68,6 +68,44 @@ async function requireAdmin(ctx: Ctx, token: string): Promise<UserRow> {
 function nameKey(name: string) {
   return name.trim().toLowerCase();
 }
+
+/* ---------------- ATURAN NAMA PESERTA / AKUN ----------------
+   Nama wajib minimal 3 huruf (sesudah spasi pinggir dibuang) dan tidak
+   boleh mengandung kata jorok. Pengecekan kata jorok tahan akal-akalan:
+   nama dinormalisasi dulu (huruf kecil, leet 0=o 1=i 3=e 4=a 5=s 7=t
+   @=a $=s disamakan, lalu semua karakter selain a-z dibuang — spasi &
+   tanda baca di antara huruf ikut hilang), kemudian dicocokkan sebagai
+   substring. Pesan penolakan di bawah ini PERSIS seperti yang tampil di
+   klien, supaya server dan antarmuka selalu bicara sama. */
+const NAME_MIN_MESSAGE = "Nama minimal 3 huruf ya.";
+const NAME_PROFANE_MESSAGE = "Nama mengandung kata yang tidak sopan. Ganti nama lain ya.";
+const BANNED_NAME_WORDS = [
+  "tai", "taik", "jancok", "jancuk", "memek", "pelacur", "tolol", "bodoh",
+  "kontol", "ngentot", "entot", "bangsat", "bajingan", "goblok", "lonte",
+  "sundal", "brengsek", "keparat", "asu", "kimak", "peler",
+  "fuck", "shit", "bitch",
+];
+const LEET_MAP: Record<string, string> = {
+  "0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "@": "a", "$": "s",
+};
+function normalizeNameForCheck(name: string): string {
+  return name
+    .toLowerCase()
+    .split("")
+    .map((ch) => LEET_MAP[ch] ?? ch)
+    .join("")
+    .replace(/[^a-z]/g, "");
+}
+function validateDisplayName(name: string): string | null {
+  if (name.trim().length < 3) return NAME_MIN_MESSAGE;
+  const normalized = normalizeNameForCheck(name);
+  if (BANNED_NAME_WORDS.some((w) => normalized.includes(w))) return NAME_PROFANE_MESSAGE;
+  return null;
+}
+function assertValidDisplayName(name: string) {
+  const problem = validateDisplayName(name);
+  if (problem) throw new Error(problem);
+}
 const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 function makeMonitorCode() {
   const bytes = crypto.getRandomValues(new Uint8Array(6));
@@ -317,6 +355,7 @@ export const Actions = {
     }),
     response: z.object({ id: z.number(), monitor_code: z.string() }),
     async handler(ctx, args) {
+      assertValidDisplayName(args.student_name);
       const db = ctx.db<typeof schema>();
       const result = await db
         .insert(schema.attempts)
@@ -493,6 +532,7 @@ export const Actions = {
     }),
     response: z.object({ token: z.string(), user: userShape }),
     async handler(ctx, args) {
+      assertValidDisplayName(args.name);
       const db = ctx.db<typeof schema>();
       // Minimal salah satu kontak wajib diisi, supaya pemilik bisa mengirim
       // info olimpiade terbaru ke pendaftar.
@@ -590,6 +630,7 @@ export const Actions = {
     response: z.object({ user: userShape }),
     async handler(ctx, args) {
       const user = await userForToken(ctx, args.token);
+      assertValidDisplayName(args.name);
       // Aturan yang sama seperti pendaftaran: minimal salah satu kontak
       // (WhatsApp atau Email) harus terisi untuk info olimpiade.
       if (!args.whatsapp && !args.email) {
@@ -959,6 +1000,7 @@ export const Actions = {
       ranking: z.array(rankingEntryShape),
     }),
     async handler(ctx, args) {
+      assertValidDisplayName(args.student_name);
       const db = ctx.db<typeof schema>();
       const code = normalizeClassCode(args.code);
       const rows = await db.select().from(schema.examClasses).where(eq(schema.examClasses.code, code)).limit(1);

@@ -104,8 +104,13 @@
     return rankingFromParts(parts || []);
   }
 
+  var BAD_WORDS = ["tai","taik","jancok","jancuk","memek","pelacur","tolol","bodoh","kontol","ngentot","entot","bangsat","bajingan","goblok","lonte","sundal","brengsek","keparat","asu","kimak","peler","fuck","shit","bitch"];
+  function normalizeName(x) { return String(x || "").toLowerCase().replace(/0/g, "o").replace(/1/g, "i").replace(/3/g, "e").replace(/4/g, "a").replace(/5/g, "s").replace(/7/g, "t").replace(/@/g, "a").replace(/\$/g, "s").replace(/[^a-z]/g, ""); }
+  function nameError(nm) { var t = String(nm || "").trim(); if (t.length < 3) return "Nama minimal 3 huruf ya."; var n = normalizeName(t); for (var i = 0; i < BAD_WORDS.length; i++) { if (n.indexOf(BAD_WORDS[i]) >= 0) return "Nama mengandung kata yang tidak sopan. Ganti nama lain ya."; } return null; }
+
   var actions = {
     async saveAttempt(args) {
+      var neS = nameError(args.student_name); if (neS) throw new Error(neS);
       var row = await insertRow("attempts", {
         student_name: args.student_name, jenjang: args.jenjang, mapel: args.mapel, mode: args.mode,
         score: args.score, correct: args.correct, total: args.total, duration_sec: args.duration_sec || 0,
@@ -145,6 +150,7 @@
       return { ok: true };
     },
     async register(args) {
+      var neR = nameError(args.name); if (neR) throw new Error(neR);
       var username = String(args.username).trim().toLowerCase();
       if (String(args.role || "").toLowerCase() === "admin") {
         var adminRow = await getOne("app_users", "role=eq.admin&select=id");
@@ -193,6 +199,7 @@
       var me = await userForToken(args.token);
       var name = String(args.name || "").trim();
       if (!name) throw new Error("Isi nama lengkap dulu ya.");
+      var neP = nameError(name); if (neP) throw new Error(neP);
       var whatsapp = String(args.whatsapp || "").trim();
       var email = String(args.email || "").trim().toLowerCase();
       if (!whatsapp && !email) throw new Error("Isi minimal salah satu: Nomor WhatsApp atau Email, supaya kami bisa mengirim info olimpiade terbaru.");
@@ -335,6 +342,7 @@
       return Object.assign({ ok: true, class: pub }, pub);
     },
     async joinClass(args) {
+      var neJ = nameError(args.student_name); if (neJ) throw new Error(neJ);
       var code = String(args.code || "").trim().toUpperCase();
       var cls = await getOne("exam_classes", "code=eq." + enc(code) + "&select=*");
       if (!cls) throw new Error("Kode Kelas tidak ditemukan. Periksa lagi kode dari gurumu ya.");

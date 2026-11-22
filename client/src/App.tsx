@@ -942,6 +942,40 @@ function focusField(id: string) {
   document.getElementById(id)?.focus();
 }
 
+/* ---------------- ATURAN NAMA PESERTA / AKUN ----------------
+   Cerminan aturan yang sama di server (register, updateProfile,
+   joinClass, saveAttempt): nama wajib minimal 3 huruf sesudah spasi
+   pinggir dibuang, dan tidak boleh mengandung kata jorok. Pengecekan
+   kata jorok menormalisasi nama dulu — huruf kecil, leet umum disamakan
+   (0=o, 1=i, 3=e, 4=a, 5=s, 7=t, @=a, $=s), lalu semua karakter selain
+   a-z dibuang (spasi & tanda baca di antara huruf ikut hilang) — baru
+   dicocokkan sebagai substring, jadi akal-akalan seperti "t0l0l" atau
+   "t a i" tetap ketahuan. Mengembalikan pesan penolakan PERSIS seperti
+   di server, atau null bila nama lolos. */
+const NAME_MIN_MESSAGE = "Nama minimal 3 huruf ya.";
+const NAME_PROFANE_MESSAGE = "Nama mengandung kata yang tidak sopan. Ganti nama lain ya.";
+const BANNED_NAME_WORDS = [
+  "tai", "taik", "jancok", "jancuk", "memek", "pelacur", "tolol", "bodoh",
+  "kontol", "ngentot", "entot", "bangsat", "bajingan", "goblok", "lonte",
+  "sundal", "brengsek", "keparat", "asu", "kimak", "peler",
+  "fuck", "shit", "bitch",
+];
+const NAME_LEET_MAP: Record<string, string> = {
+  "0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "@": "a", "$": "s",
+};
+function validateDisplayName(name: string): string | null {
+  const trimmed = name.trim();
+  if (trimmed.length < 3) return NAME_MIN_MESSAGE;
+  const normalized = trimmed
+    .toLowerCase()
+    .split("")
+    .map((ch) => NAME_LEET_MAP[ch] ?? ch)
+    .join("")
+    .replace(/[^a-z]/g, "");
+  if (BANNED_NAME_WORDS.some((w) => normalized.includes(w))) return NAME_PROFANE_MESSAGE;
+  return null;
+}
+
 /* ---------------- LOGIN GURU / ORANG TUA ---------------- */
 function AuthView(props: { onSuccess: (token: string, user: SessionUser) => void; initialTab?: "login" | "register" }) {
   const [tab, setTab] = useState<"login" | "register">(props.initialTab ?? "login");
@@ -983,7 +1017,8 @@ function AuthView(props: { onSuccess: (token: string, user: SessionUser) => void
       if (!password) { setError("Isi kata sandi dulu ya."); focusField("auth-password"); return; }
       login.mutate({ identifier: username.trim(), password });
     } else {
-      if (!name.trim()) { setError("Isi nama lengkap dulu ya."); focusField("reg-name"); return; }
+      const nameProblem = validateDisplayName(name);
+      if (nameProblem) { setError(nameProblem); focusField("reg-name"); return; }
       if (username.trim().length < 3) { setError("Username minimal 3 karakter (huruf kecil, angka, titik, garis bawah)."); focusField("auth-username"); return; }
       if (password.length < 6) { setError("Kata sandi minimal 6 karakter."); focusField("auth-password"); return; }
       if (!whatsapp.trim() && !email.trim()) { setError("Isi minimal salah satu: Nomor WhatsApp atau Email, supaya kami bisa mengirim info olimpiade terbaru."); focusField("reg-whatsapp"); return; }
@@ -1418,7 +1453,8 @@ function JoinClassView(props: { initialName: string; deviceId: string; onStart: 
 
   const submitJoin = () => {
     setJoinError("");
-    if (!joinName.trim()) { setJoinError("Isi nama peserta dulu ya."); focusField("join-name"); return; }
+    const nameProblem = validateDisplayName(joinName);
+    if (nameProblem) { setJoinError(nameProblem); focusField("join-name"); return; }
     if (!joinCode.trim()) { setJoinError("Isi Kode Kelas dulu ya — kodenya dari gurumu, contoh: KLS-XXXXXX."); focusField("join-code"); return; }
     join.mutate({ student_name: joinName.trim(), code: joinCode.trim(), device_id: props.deviceId });
   };
@@ -2753,11 +2789,17 @@ function ProfileView(props: { token: string; user: SessionUser; onBack: () => vo
       setSavedMsg("✅ Profil berhasil disimpan! Data terbarumu sudah tercatat.");
       queryClient.invalidateQueries({ queryKey: ["me"] });
     },
-    onError: (e) => { setSavedMsg(""); setError(e instanceof Error ? e.message : "Gagal menyimpan profil. Coba lagi ya."); },
+    onError: (e) => {
+      const msg = e instanceof Error ? e.message : "Gagal menyimpan profil. Coba lagi ya.";
+      setSavedMsg("");
+      setError(msg);
+      if (msg.toLowerCase().includes("nama")) focusField("profile-name");
+    },
   });
 
   const submit = () => {
-    if (!pName.trim()) { setError("Nama lengkap wajib diisi."); setSavedMsg(""); focusField("profile-name"); return; }
+    const nameProblem = validateDisplayName(pName);
+    if (nameProblem) { setError(nameProblem); setSavedMsg(""); focusField("profile-name"); return; }
     if (!pWa.trim() && !pEmail.trim()) {
       setError("Isi minimal salah satu: Nomor WhatsApp atau Email, supaya kami bisa mengirim info olimpiade terbaru.");
       setSavedMsg("");
@@ -3394,7 +3436,8 @@ export function App() {
   };
 
   const startQuiz = () => {
-    if (!name.trim()) { setNameError("Isi nama peserta dulu ya, supaya hasil latihannya tercatat."); focusField("student-name"); return; }
+    const nameProblem = validateDisplayName(name);
+    if (nameProblem) { setNameError(nameProblem); focusField("student-name"); return; }
     if (!activeSubject) return;
     const qs = buildSession(jenjang, activeSubject.id, level, SESSION_SIZE, school === "cambridge");
     if (qs.length === 0) return;
@@ -3417,7 +3460,8 @@ export function App() {
      kelima level mapel ini sudah tuntas (tombolnya pun baru tampil saat
      itu) — hasilnya disimpan dengan penanda class_name "Ujian Sertifikat". */
   const startCertExam = () => {
-    if (!name.trim()) { setNameError("Isi nama peserta dulu ya, supaya hasil Ujian Sertifikatmu tercatat."); focusField("student-name"); return; }
+    const nameProblem = validateDisplayName(name);
+    if (nameProblem) { setNameError(nameProblem); focusField("student-name"); return; }
     if (!activeSubject) return;
     const english = school === "cambridge";
     const seen = new Set<string>();
