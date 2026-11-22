@@ -94,7 +94,140 @@ const attemptShape = z.object({
   duration_sec: z.number(),
   created_at: z.string(),
   monitor_code: z.string(),
+  class_id: z.number().nullable(),
+  class_name: z.string(),
 });
+
+/* ---------------- Mode Kelas Ujian ---------------- */
+const questionShape = z.object({
+  q: z.string().min(1).max(2000),
+  stimulus: z.string().max(2000).optional(),
+  emoji: z.string().max(16).optional(),
+  options: z.array(z.string().min(1).max(500)).min(3).max(5),
+  answer: z.number().int().min(0).max(4),
+  explain: z.string().max(2000),
+});
+type QuestionData = z.infer<typeof questionShape>;
+
+/* Soal versi SISWA untuk Kelas Ujian: TANPA kunci jawaban (answer) dan
+   TANPA pembahasan (explain). Kunci hanya tinggal di server untuk
+   penilaian submitClassResult — siswa tidak bisa membaca jawaban dari
+   data yang diterima perangkatnya selama ujian berlangsung. */
+const studentQuestionShape = z.object({
+  q: z.string(),
+  stimulus: z.string().optional(),
+  emoji: z.string().optional(),
+  options: z.array(z.string()),
+});
+function toStudentQuestion(q: QuestionData) {
+  const sq: { q: string; options: string[]; stimulus?: string; emoji?: string } = { q: q.q, options: q.options };
+  if (q.stimulus) sq.stimulus = q.stimulus;
+  if (q.emoji) sq.emoji = q.emoji;
+  return sq;
+}
+
+const classInfoShape = z.object({
+  id: z.number(),
+  class_name: z.string(),
+  jenjang: z.string(),
+  subject_id: z.string(),
+  subject_name: z.string(),
+  level: z.number(),
+  question_count: z.number(),
+  duration_minutes: z.number(),
+  code: z.string(),
+  status: z.string(),
+  created_at: z.string(),
+  participant_count: z.number(),
+  finished_count: z.number(),
+});
+const participantShape = z.object({
+  id: z.number(),
+  student_name: z.string(),
+  status: z.string(),
+  score: z.number().nullable(),
+  correct: z.number().nullable(),
+  total: z.number().nullable(),
+  duration_sec: z.number().nullable(),
+  joined_at: z.string(),
+  finished_at: z.string().nullable(),
+});
+const rankingEntryShape = z.object({
+  rank: z.number(),
+  participant_id: z.number(),
+  student_name: z.string(),
+  score: z.number(),
+  correct: z.number(),
+  total: z.number(),
+  duration_sec: z.number(),
+  finished_at: z.string(),
+});
+type ClassRow = typeof schema.examClasses.$inferSelect;
+type ParticipantRow = typeof schema.classParticipants.$inferSelect;
+
+function makeClassCode(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(6));
+  return `KLS-${[...bytes].map((b) => CODE_ALPHABET[b % CODE_ALPHABET.length]).join("")}`;
+}
+function normalizeClassCode(raw: string): string {
+  const c = raw.trim().toUpperCase().replace(/\s+/g, "");
+  return c.startsWith("KLS-") || c.startsWith("KLS") ? (c.startsWith("KLS-") ? c : `KLS-${c.slice(3)}`) : c;
+}
+function parsePackage(json: string): QuestionData[] {
+  try {
+    const parsed: unknown = JSON.parse(json);
+    if (!Array.isArray(parsed)) return [];
+    return parsed as QuestionData[];
+  } catch { return []; }
+}
+function rankFinished(participants: ParticipantRow[]) {
+  const finished = participants.filter((p) => p.status === "finished" && p.score !== null);
+  finished.sort((a, b) =>
+    (b.score ?? 0) - (a.score ?? 0) ||
+    (a.durationSec ?? 0) - (b.durationSec ?? 0) ||
+    (a.finishedAt?.getTime() ?? 0) - (b.finishedAt?.getTime() ?? 0),
+  );
+  return finished.map((p, i) => ({
+    rank: i + 1,
+    participant_id: p.id,
+    student_name: p.studentName,
+    score: p.score ?? 0,
+    correct: p.correct ?? 0,
+    total: p.total ?? 0,
+    duration_sec: p.durationSec ?? 0,
+    finished_at: p.finishedAt ? p.finishedAt.toISOString() : p.joinedAt.toISOString(),
+  }));
+}
+function toParticipant(p: ParticipantRow) {
+  return {
+    id: p.id,
+    student_name: p.studentName,
+    status: p.status,
+    score: p.score,
+    correct: p.correct,
+    total: p.total,
+    duration_sec: p.durationSec,
+    joined_at: p.joinedAt.toISOString(),
+    finished_at: p.finishedAt ? p.finishedAt.toISOString() : null,
+  };
+}
+function toClassInfo(c: ClassRow, participants: ParticipantRow[]) {
+  return {
+    id: c.id,
+    class_name: c.className,
+    jenjang: c.jenjang,
+    subject_id: c.subjectId,
+    subject_name: c.subjectName,
+    level: c.level,
+    question_count: c.questionCount,
+    duration_minutes: c.durationMinutes,
+    code: c.code,
+    status: c.status,
+    created_at: c.createdAt.toISOString(),
+    participant_count: participants.length,
+    finished_count: participants.filter((p) => p.status === "finished").length,
+  };
+}
 
 export const Actions = {
   saveAttempt: defineAction({
@@ -180,6 +313,8 @@ export const Actions = {
           duration_sec: r.durationSec,
           created_at: r.createdAt.toISOString(),
           monitor_code: codeByKey.get(nameKey(r.studentName)) ?? "",
+          class_id: r.classId ?? null,
+          class_name: r.className ?? "",
         })),
         stats: {
           total_attempts: totalAttempts,
@@ -442,6 +577,7 @@ export const Actions = {
           id: r.id, student_name: r.studentName, jenjang: r.jenjang, mapel: r.mapel, mode: r.mode,
           score: r.score, correct: r.correct, total: r.total, duration_sec: r.durationSec,
           created_at: r.createdAt.toISOString(), monitor_code: "",
+          class_id: r.classId ?? null, class_name: r.className ?? "",
         })),
         students,
       };
@@ -540,6 +676,335 @@ export const Actions = {
 
       ctx.invalidateQueries();
       return { ok: true as const, deleted_attempts: deletedAttempts, cleared_watched: clearedWatched };
+    },
+  }),
+
+  createExamClass: defineAction({
+    description: "Creates an exam class (Mode Kelas Ujian) for a logged-in teacher: stores one shared question package and returns the class with its shareable class code.",
+    request: z.object({
+      token: z.string().min(1).max(200),
+      class_name: z.string().trim().min(1, "Nama kelas wajib diisi").max(60),
+      jenjang: z.string().min(1).max(20),
+      subject_id: z.string().max(60).default(""),
+      subject_name: z.string().trim().min(1).max(60),
+      level: z.number().int().min(1).max(5),
+      question_count: z.number().int().min(5).max(30),
+      duration_minutes: z.number().int().min(5).max(120),
+      questions: z.array(questionShape).min(5).max(30),
+    }),
+    response: z.object({ class: classInfoShape }),
+    async handler(ctx, args) {
+      const user = await userForToken(ctx, args.token);
+      if (user.role !== "guru") throw new Error("Hanya akun Guru yang bisa membuat Kelas Ujian. Masuk dengan akun Guru dulu ya.");
+      if (args.questions.length !== args.question_count) {
+        throw new Error(`Paket soal tidak lengkap: butuh ${args.question_count} soal, terkirim ${args.questions.length}. Coba buat lagi ya.`);
+      }
+      for (const q of args.questions) {
+        if (q.answer < 0 || q.answer >= q.options.length) throw new Error("Ada soal dengan kunci jawaban tidak valid. Coba buat paket lagi ya.");
+      }
+      const db = ctx.db<typeof schema>();
+      let code = makeClassCode();
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const clash = await db.select({ id: schema.examClasses.id }).from(schema.examClasses).where(eq(schema.examClasses.code, code)).limit(1);
+        if (!clash[0]) break;
+        code = makeClassCode();
+      }
+      const inserted = await db.insert(schema.examClasses).values({
+        teacherId: user.id,
+        className: args.class_name,
+        jenjang: args.jenjang,
+        subjectId: args.subject_id,
+        subjectName: args.subject_name,
+        level: args.level,
+        questionCount: args.question_count,
+        durationMinutes: args.duration_minutes,
+        code,
+        status: "open",
+        packageJson: JSON.stringify(args.questions),
+      }).returning();
+      const row = inserted[0];
+      if (!row) throw new Error("Gagal membuat kelas. Coba lagi ya.");
+      ctx.invalidateQueries();
+      return { class: toClassInfo(row, []) };
+    },
+  }),
+
+  listMyClasses: defineAction({
+    description: "Lists exam classes created by the logged-in teacher, newest first, with participant and finished counts.",
+    request: z.object({ token: z.string().min(1).max(200) }),
+    response: z.object({ classes: z.array(classInfoShape) }),
+    async handler(ctx, args) {
+      const user = await userForToken(ctx, args.token);
+      const db = ctx.db<typeof schema>();
+      const rows = await db.select().from(schema.examClasses)
+        .where(eq(schema.examClasses.teacherId, user.id)).orderBy(desc(schema.examClasses.id)).limit(100);
+      const classes = [];
+      for (const c of rows) {
+        const parts = await db.select().from(schema.classParticipants).where(eq(schema.classParticipants.classId, c.id));
+        classes.push(toClassInfo(c, parts));
+      }
+      return { classes };
+    },
+  }),
+
+  getClassDashboard: defineAction({
+    description: "Returns the live dashboard for one of the teacher's exam classes: all participants with status, plus the class ranking (score desc, fastest time wins ties).",
+    request: z.object({ token: z.string().min(1).max(200), class_id: z.number().int().positive() }),
+    response: z.object({
+      class: classInfoShape,
+      participants: z.array(participantShape),
+      ranking: z.array(rankingEntryShape),
+    }),
+    async handler(ctx, args) {
+      const user = await userForToken(ctx, args.token);
+      const db = ctx.db<typeof schema>();
+      const rows = await db.select().from(schema.examClasses).where(eq(schema.examClasses.id, args.class_id)).limit(1);
+      const cls = rows[0];
+      if (!cls || cls.teacherId !== user.id) throw new Error("Kelas tidak ditemukan atau bukan kelas kamu.");
+      const parts = await db.select().from(schema.classParticipants)
+        .where(eq(schema.classParticipants.classId, cls.id)).orderBy(desc(schema.classParticipants.id));
+      return {
+        class: toClassInfo(cls, parts),
+        participants: parts.map(toParticipant),
+        ranking: rankFinished(parts),
+      };
+    },
+  }),
+
+  closeExamClass: defineAction({
+    description: "Closes one of the teacher's exam classes so its class code no longer accepts new students.",
+    request: z.object({ token: z.string().min(1).max(200), class_id: z.number().int().positive() }),
+    response: z.object({ ok: z.literal(true), class: classInfoShape }),
+    async handler(ctx, args): Promise<{ ok: true; class: z.infer<typeof classInfoShape> }> {
+      const user = await userForToken(ctx, args.token);
+      const db = ctx.db<typeof schema>();
+      const rows = await db.select().from(schema.examClasses).where(eq(schema.examClasses.id, args.class_id)).limit(1);
+      const cls = rows[0];
+      if (!cls || cls.teacherId !== user.id) throw new Error("Kelas tidak ditemukan atau bukan kelas kamu.");
+      await db.update(schema.examClasses).set({ status: "closed", closedAt: new Date() }).where(eq(schema.examClasses.id, cls.id));
+      const updatedRows = await db.select().from(schema.examClasses).where(eq(schema.examClasses.id, cls.id)).limit(1);
+      const updated = updatedRows[0] ?? { ...cls, status: "closed" as const, closedAt: new Date() };
+      const parts = await db.select().from(schema.classParticipants).where(eq(schema.classParticipants.classId, cls.id));
+      ctx.invalidateQueries();
+      return { ok: true as const, class: toClassInfo(updated, parts) };
+    },
+  }),
+
+  joinClass: defineAction({
+    description: "Joins an open exam class by class code without an account: creates or resumes the participant with this name and returns the shared question package, or reports the student already finished with their result and the class ranking.",
+    request: z.object({
+      student_name: z.string().trim().min(1, "Nama peserta wajib diisi").max(40),
+      code: z.string().trim().min(1, "Kode Kelas wajib diisi").max(16),
+      device_id: z.string().max(100).default(""),
+    }),
+    response: z.object({
+      status: z.enum(["joined", "resumed", "already_finished"]),
+      class: classInfoShape,
+      participant_id: z.number(),
+      student_name: z.string(),
+      questions: z.array(studentQuestionShape).nullable(),
+      result: z.object({
+        score: z.number(), correct: z.number(), total: z.number(), duration_sec: z.number(), rank: z.number(),
+      }).nullable(),
+      ranking: z.array(rankingEntryShape),
+    }),
+    async handler(ctx, args) {
+      const db = ctx.db<typeof schema>();
+      const code = normalizeClassCode(args.code);
+      const rows = await db.select().from(schema.examClasses).where(eq(schema.examClasses.code, code)).limit(1);
+      const cls = rows[0];
+      if (!cls) throw new Error("Kode Kelas tidak ditemukan. Periksa lagi kode dari gurumu ya — contohnya KLS-XXXXXX.");
+      if (cls.status !== "open") throw new Error(`Kelas "${cls.className}" sudah ditutup oleh guru, jadi kode ini tidak bisa dipakai lagi.`);
+      const key = nameKey(args.student_name);
+      const parts = await db.select().from(schema.classParticipants).where(eq(schema.classParticipants.classId, cls.id));
+      const existing = parts.find((p) => p.nameKey === key);
+      const ranking = rankFinished(parts);
+      if (existing && existing.status === "finished") {
+        const mine = ranking.find((r) => r.participant_id === existing.id);
+        return {
+          status: "already_finished" as const,
+          class: toClassInfo(cls, parts),
+          participant_id: existing.id,
+          student_name: existing.studentName,
+          questions: null,
+          result: {
+            score: existing.score ?? 0,
+            correct: existing.correct ?? 0,
+            total: existing.total ?? cls.questionCount,
+            duration_sec: existing.durationSec ?? 0,
+            rank: mine?.rank ?? ranking.length,
+          },
+          ranking,
+        };
+      }
+      const questions = parsePackage(cls.packageJson);
+      if (questions.length === 0) throw new Error("Paket soal kelas ini tidak bisa dimuat. Minta guru membuat kelas baru ya.");
+      // Yang dikirim ke perangkat siswa HANYA teks soal + pilihan jawaban;
+      // kunci (answer) dan pembahasan (explain) tetap di server.
+      const studentQuestions = questions.map(toStudentQuestion);
+      if (existing) {
+        return {
+          status: "resumed" as const,
+          class: toClassInfo(cls, parts),
+          participant_id: existing.id,
+          student_name: existing.studentName,
+          questions: studentQuestions,
+          result: null,
+          ranking,
+        };
+      }
+      const inserted = await db.insert(schema.classParticipants).values({
+        classId: cls.id,
+        studentName: args.student_name.trim(),
+        nameKey: key,
+        deviceId: args.device_id,
+        status: "in_progress",
+      }).returning({ id: schema.classParticipants.id });
+      const row = inserted[0];
+      if (!row) throw new Error("Gagal bergabung ke kelas. Coba lagi ya.");
+      const partsAfter = await db.select().from(schema.classParticipants).where(eq(schema.classParticipants.classId, cls.id));
+      ctx.invalidateQueries();
+      return {
+        status: "joined" as const,
+        class: toClassInfo(cls, partsAfter),
+        participant_id: row.id,
+        student_name: args.student_name.trim(),
+        questions: studentQuestions,
+        result: null,
+        ranking: rankFinished(partsAfter),
+      };
+    },
+  }),
+
+  submitClassResult: defineAction({
+    description: "Submits a student's exam-class answers: the server scores them against the stored class package, saves a linked attempt (also visible on the jenjang leaderboard), marks the participant finished, and returns the score plus current class ranking.",
+    request: z.object({
+      class_id: z.number().int().positive(),
+      participant_id: z.number().int().positive(),
+      student_name: z.string().trim().min(1).max(40),
+      // Jawaban dikirim sebagai teks soal + teks pilihan yang dipilih siswa.
+      // Urutan soal & pilihan diacak per siswa, jadi server mencocokkan
+      // berdasarkan teks soal dan membandingkan teks pilihan dengan kunci
+      // pada paket asli — skor tetap benar walau urutannya berbeda-beda.
+      submissions: z.array(z.object({
+        q: z.string().min(1).max(2000),
+        chosen: z.string().max(500).nullable(),
+      })).max(30),
+      duration_sec: z.number().int().min(0).max(86400),
+      device_id: z.string().max(100).default(""),
+    }),
+    response: z.object({
+      score: z.number(),
+      correct: z.number(),
+      total: z.number(),
+      duration_sec: z.number(),
+      rank: z.number(),
+      finished_count: z.number(),
+      participant_count: z.number(),
+      monitor_code: z.string(),
+      attempt_id: z.number(),
+      ranking: z.array(rankingEntryShape),
+    }),
+    async handler(ctx, args) {
+      const db = ctx.db<typeof schema>();
+      const classRows = await db.select().from(schema.examClasses).where(eq(schema.examClasses.id, args.class_id)).limit(1);
+      const cls = classRows[0];
+      if (!cls) throw new Error("Kelas tidak ditemukan.");
+      const partRows = await db.select().from(schema.classParticipants).where(eq(schema.classParticipants.id, args.participant_id)).limit(1);
+      const part = partRows[0];
+      if (!part || part.classId !== cls.id || part.nameKey !== nameKey(args.student_name)) {
+        throw new Error("Data peserta kelas tidak cocok. Bergabunglah lagi dengan nama dan Kode Kelas yang sama ya.");
+      }
+      if (part.status === "finished" && part.attemptId) {
+        const parts = await db.select().from(schema.classParticipants).where(eq(schema.classParticipants.classId, cls.id));
+        const ranking = rankFinished(parts);
+        const mine = ranking.find((r) => r.participant_id === part.id);
+        return {
+          score: part.score ?? 0,
+          correct: part.correct ?? 0,
+          total: part.total ?? cls.questionCount,
+          duration_sec: part.durationSec ?? 0,
+          rank: mine?.rank ?? ranking.length,
+          finished_count: ranking.length,
+          participant_count: parts.length,
+          monitor_code: await ensureStudentCode(ctx, part.studentName),
+          attempt_id: part.attemptId,
+          ranking,
+        };
+      }
+      const questions = parsePackage(cls.packageJson);
+      if (questions.length === 0) throw new Error("Paket soal kelas ini tidak bisa dimuat.");
+      let correct = 0;
+      for (const sub of args.submissions) {
+        const orig = questions.find((q) => q.q === sub.q);
+        if (orig && sub.chosen !== null && sub.chosen === (orig.options[orig.answer] ?? "")) correct += 1;
+      }
+      const total = questions.length;
+      const score = Math.round((correct / total) * 100);
+      const inserted = await db.insert(schema.attempts).values({
+        studentName: part.studentName,
+        jenjang: cls.jenjang,
+        mapel: cls.subjectName,
+        mode: "ujian",
+        score,
+        correct,
+        total,
+        durationSec: args.duration_sec,
+        deviceId: args.device_id || part.deviceId,
+        classId: cls.id,
+        className: cls.className,
+      }).returning({ id: schema.attempts.id });
+      const attempt = inserted[0];
+      if (!attempt) throw new Error("Gagal menyimpan hasil ujian kelas.");
+      await db.update(schema.classParticipants).set({
+        status: "finished",
+        score,
+        correct,
+        total,
+        durationSec: args.duration_sec,
+        attemptId: attempt.id,
+        finishedAt: new Date(),
+      }).where(eq(schema.classParticipants.id, part.id));
+      const monitorCode = await ensureStudentCode(ctx, part.studentName);
+      const parts = await db.select().from(schema.classParticipants).where(eq(schema.classParticipants.classId, cls.id));
+      const ranking = rankFinished(parts);
+      const mine = ranking.find((r) => r.participant_id === part.id);
+      ctx.invalidateQueries();
+      return {
+        score,
+        correct,
+        total,
+        duration_sec: args.duration_sec,
+        rank: mine?.rank ?? ranking.length,
+        finished_count: ranking.length,
+        participant_count: parts.length,
+        monitor_code: monitorCode,
+        attempt_id: attempt.id,
+        ranking,
+      };
+    },
+  }),
+
+  getClassRankingByCode: defineAction({
+    description: "Returns an exam class's public standing by its class code: class info, finished ranking (score desc, fastest wins ties), and how many students are still working.",
+    request: z.object({ code: z.string().trim().min(1).max(16) }),
+    response: z.object({
+      class: classInfoShape,
+      ranking: z.array(rankingEntryShape),
+      in_progress: z.array(z.string()),
+    }),
+    async handler(ctx, args) {
+      const db = ctx.db<typeof schema>();
+      const code = normalizeClassCode(args.code);
+      const rows = await db.select().from(schema.examClasses).where(eq(schema.examClasses.code, code)).limit(1);
+      const cls = rows[0];
+      if (!cls) throw new Error("Kode Kelas tidak ditemukan.");
+      const parts = await db.select().from(schema.classParticipants).where(eq(schema.classParticipants.classId, cls.id));
+      return {
+        class: toClassInfo(cls, parts),
+        ranking: rankFinished(parts),
+        in_progress: parts.filter((p) => p.status === "in_progress").map((p) => p.studentName),
+      };
     },
   }),
 } satisfies ActionsModule;

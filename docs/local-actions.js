@@ -31,6 +31,25 @@
     var sessions = read(K.sessions, {}); sessions[token] = userId; write(K.sessions, sessions); return token;
   }
   function strip(a) { var copy = Object.assign({}, a); delete copy.device_id; return copy; }
+  function classPub(c) {
+    return {
+      id: c.id, code: c.code, class_code: c.code, class_name: c.class_name, name: c.class_name,
+      jenjang: c.jenjang, subject_id: c.subject_id || "", subject_name: c.subject_name,
+      level: c.level, question_count: c.question_count, duration_minutes: c.duration_minutes,
+      status: c.status, is_open: c.status === "open", created_at: c.created_at,
+    };
+  }
+  function classRanking(classId) {
+    var parts = read("ziqva_class_parts", []).filter(function (p) { return p.class_id === classId && p.status === "finished"; });
+    var sorted = parts.slice().sort(function (a, b) { return (b.score || 0) - (a.score || 0) || (a.duration_sec || 999999) - (b.duration_sec || 999999); });
+    return sorted.map(function (p, i) {
+      return {
+        rank: i + 1, participant_id: p.id, student_name: p.student_name, name: p.student_name,
+        score: p.score, correct: p.correct, total: p.total,
+        duration_sec: p.duration_sec, finished_at: p.finished_at,
+      };
+    });
+  }
 
   var actions = {
     async saveAttempt(args) {
@@ -160,6 +179,131 @@
       Object.keys(presence).forEach(function (k) { if (now - presence[k] > 90000) delete presence[k]; });
       write("ziqva_presence", presence);
       return { online: Object.keys(presence).length };
+    },
+    async createExamClass(args) {
+      var user = userForToken(args.token);
+      var role = String(user.role || "").toLowerCase();
+      if (role && role.indexOf("guru") === -1 && role.indexOf("teacher") === -1) throw new Error("Hanya akun Guru yang bisa membuat kelas ujian.");
+      var classes = read("ziqva_classes", []);
+      var code = "KLS-" + makeCode().slice(0, 6);
+      var cls = {
+        id: nextId("class"), code: code, class_code: code, teacher_id: user.id,
+        class_name: args.class_name, name: args.class_name,
+        jenjang: args.jenjang, subject_id: args.subject_id || "", subject_name: args.subject_name,
+        level: args.level, question_count: args.question_count, duration_minutes: args.duration_minutes,
+        questions: args.questions || [], status: "open", is_open: true,
+        created_at: new Date().toISOString(),
+      };
+      classes.push(cls); write("ziqva_classes", classes);
+      var pub = classPub(cls);
+      return Object.assign({ ok: true, class: pub }, pub);
+    },
+    async listMyClasses(args) {
+      var user = userForToken(args.token);
+      var parts = read("ziqva_class_parts", []);
+      var classes = read("ziqva_classes", []).filter(function (c) { return c.teacher_id === user.id; }).sort(function (a, b) { return b.id - a.id; }).map(function (c) {
+        var pub = classPub(c);
+        var ps = parts.filter(function (p) { return p.class_id === c.id; });
+        pub.participant_count = ps.length; pub.participants_count = ps.length;
+        pub.finished_count = ps.filter(function (p) { return p.status === "finished"; }).length;
+        return pub;
+      });
+      return { classes: classes };
+    },
+    async closeExamClass(args) {
+      var user = userForToken(args.token);
+      var classes = read("ziqva_classes", []);
+      var cls = classes.find(function (c) { return c.id === args.class_id && c.teacher_id === user.id; });
+      if (!cls) throw new Error("Kelas tidak ditemukan.");
+      cls.status = "closed"; cls.is_open = false; write("ziqva_classes", classes);
+      var pub = classPub(cls);
+      return Object.assign({ ok: true, class: pub }, pub);
+    },
+    async joinClass(args) {
+      var classes = read("ziqva_classes", []);
+      var code = String(args.code || "").trim().toUpperCase();
+      var cls = classes.find(function (c) { return c.code.toUpperCase() === code; });
+      if (!cls) throw new Error("Kode Kelas tidak ditemukan. Periksa lagi kode dari gurumu ya.");
+      if (cls.status !== "open") throw new Error("Kelas ini sudah ditutup oleh guru.");
+      var parts = read("ziqva_class_parts", []);
+      var key = nameKey(args.student_name);
+      var part = parts.find(function (p) { return p.class_id === cls.id && nameKey(p.student_name) === key; });
+      if (!part) {
+        part = { id: nextId("participant"), class_id: cls.id, student_name: String(args.student_name).trim(), device_id: args.device_id || "", status: "working", score: null, correct: null, total: null, duration_sec: null, joined_at: new Date().toISOString(), finished_at: null };
+        parts.push(part); write("ziqva_class_parts", parts);
+      }
+      var pub = classPub(cls);
+      if (part.status === "finished") {
+        return {
+          status: "already_finished", already_finished: true,
+          class: pub, participant: part, participant_id: part.id,
+          result: { score: part.score, correct: part.correct, total: part.total, duration_sec: part.duration_sec },
+          score: part.score, correct: part.correct, total: part.total, duration_sec: part.duration_sec,
+          ranking: classRanking(cls.id),
+        };
+      }
+      return {
+        status: "joined", already_finished: false,
+        class: pub, participant: part, participant_id: part.id,
+        questions: (cls.questions || []).map(function (q) { return { q: q.q, options: q.options, emoji: q.emoji || "", stimulus: q.stimulus || "" }; }),
+      };
+    },
+    async submitClassResult(args) {
+      var classes = read("ziqva_classes", []);
+      var cls = classes.find(function (c) { return c.id === args.class_id; });
+      if (!cls) throw new Error("Kelas tidak ditemukan.");
+      var parts = read("ziqva_class_parts", []);
+      var part = parts.find(function (p) { return p.id === args.participant_id && p.class_id === cls.id; });
+      if (!part) throw new Error("Peserta kelas tidak ditemukan.");
+      var pkg = cls.questions || [];
+      var correct = 0;
+      (args.submissions || []).forEach(function (s) {
+        var q = pkg.find(function (x) { return x.q === s.q; });
+        if (q && s.chosen != null && q.options[q.answer] === s.chosen) correct += 1;
+      });
+      var total = pkg.length || (args.submissions || []).length;
+      var score = total ? Math.round((correct / total) * 100) : 0;
+      part.status = "finished"; part.score = score; part.correct = correct; part.total = total;
+      part.duration_sec = args.duration_sec || 0; part.finished_at = new Date().toISOString();
+      write("ziqva_class_parts", parts);
+      var attempts = read(K.attempts, []); var aid = nextId("attempt");
+      attempts.push({ id: aid, student_name: part.student_name, jenjang: cls.jenjang, mapel: cls.subject_name, mode: "ujian", score: score, correct: correct, total: total, duration_sec: part.duration_sec, created_at: new Date().toISOString(), monitor_code: "", device_id: args.device_id || part.device_id || "", class_name: cls.class_name, exam_class_name: cls.class_name });
+      write(K.attempts, attempts);
+      ensureCode(part.student_name);
+      return {
+        ok: true, score: score, correct: correct, total: total, duration_sec: part.duration_sec,
+        participant: part, participant_id: part.id, class: classPub(cls),
+        ranking: classRanking(cls.id), monitor_code: codeFor(part.student_name),
+      };
+    },
+    async getClassDashboard(args) {
+      var user = userForToken(args.token);
+      var classes = read("ziqva_classes", []);
+      var cls = classes.find(function (c) { return c.id === args.class_id && c.teacher_id === user.id; });
+      if (!cls) throw new Error("Kelas tidak ditemukan.");
+      var parts = read("ziqva_class_parts", []).filter(function (p) { return p.class_id === cls.id; }).sort(function (a, b) { return a.id - b.id; });
+      return {
+        class: classPub(cls),
+        participants: parts, students: parts,
+        ranking: classRanking(cls.id),
+        total_participants: parts.length, participants_count: parts.length,
+        finished_count: parts.filter(function (p) { return p.status === "finished"; }).length,
+        working_count: parts.filter(function (p) { return p.status !== "finished"; }).length,
+      };
+    },
+    async getClassRankingByCode(args) {
+      var classes = read("ziqva_classes", []);
+      var code = String(args.code || "").trim().toUpperCase();
+      var cls = classes.find(function (c) { return c.code.toUpperCase() === code; });
+      if (!cls) throw new Error("Kode Kelas tidak ditemukan. Periksa lagi kode dari gurumu ya.");
+      var parts = read("ziqva_class_parts", []).filter(function (p) { return p.class_id === cls.id; });
+      var working = parts.filter(function (p) { return p.status !== "finished"; }).length;
+      return {
+        class: classPub(cls), ranking: classRanking(cls.id),
+        working_count: working, still_working: working,
+        finished_count: parts.filter(function (p) { return p.status === "finished"; }).length,
+        total_participants: parts.length,
+      };
     },
     async resetAllData(args) {
       var attempts = read(K.attempts, []);

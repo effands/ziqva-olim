@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "./api";
+import { api, type ApiResponse } from "./api";
 import {
 BANK, JENJANG, LEVELS, SCHOOL_TYPES, SUBJECTS, SESSION_SIZE, UNLOCK_SCORE, buildSession, medalFor, motivationFor, subjectsFor,
 type JenjangId, type Question, type SchoolType,
@@ -11,6 +11,7 @@ const TOTAL_AUTHORED = Object.values(BANK).reduce(
   (sum, bySubject) => sum + Object.values(bySubject ?? {}).reduce((a, qs) => a + (qs?.length ?? 0), 0),
   0,
 );
+import { shuffle, shuffleOptions } from "./data/generators";
 import { materialFor } from "./data/materials";
 import { modulesFor, moduleForQuestion, type LibraryModule } from "./data/library";
 import heroImg from "./assets/media-generation-hero-kids-olympiad-0-8efd557a-635d-47a5-88c3-3e408d6372e3.webp";
@@ -19,7 +20,7 @@ import type { Actions } from "../../server/src/actions";
 
 const FIELDS = actionFields<typeof Actions>();
 
-type View = "home" | "quiz" | "result" | "history" | "login" | "dashboard" | "belajar" | "ranking";
+type View = "home" | "quiz" | "result" | "history" | "login" | "dashboard" | "belajar" | "ranking" | "joinClass" | "classResult";
 type Mode = "ujian" | "latihan";
 type Role = "guru" | "orangtua";
 type SessionUser = { id: number; name: string; username: string; role: string; organization: string };
@@ -417,9 +418,13 @@ function QuizView(props: {
   questions: Question[]; onFinish: (answers: (number | null)[], usedSec: number) => void; onQuit: () => void;
   onInfo?: (q: Question) => void;
   quitSignal?: number;
+  /** Total waktu sesi dalam detik (Kelas Ujian memakai waktu dari guru, bukan 1 menit per soal). */
+  totalTimeSec?: number;
+  /** Label konteks sesi, mis. nama Kelas Ujian — tampil di atas daftar soal. */
+  contextLabel?: string;
 }) {
   const { questions, mode } = props;
-  const totalTime = questions.length * 60;
+  const totalTime = props.totalTimeSec ?? questions.length * 60;
   const [idx, setIdx] = useState(0);
   const [answers, setAnswers] = useState<(number | null)[]>(() => questions.map(() => null));
   const [revealed, setRevealed] = useState<boolean[]>(() => questions.map(() => false));
@@ -540,6 +545,7 @@ function QuizView(props: {
         </div>
       </div>
 
+      {props.contextLabel && <p className="font-display mt-2 rounded-xl px-3 py-2 text-sm font-extrabold" style={{ background: "#FFF3DC", border: "1px solid var(--gold)", color: "#92600A" }}>{props.contextLabel}</p>}
       <p className="mt-2 text-sm font-bold" style={{ color: "var(--dim)" }}>{props.jenjang} • {props.subjectName} • {props.levelLabel} • Soal {idx + 1} dari {questions.length}</p>
 
       <div className="pop-in relative mt-2 rounded-3xl p-5 shadow-sm" key={idx} style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
@@ -791,6 +797,398 @@ function AuthView(props: { onSuccess: (token: string, user: SessionUser) => void
   );
 }
 
+/* ---------------- MODE KELAS UJIAN ----------------
+   Guru (akun Guru) membuat kelas: satu paket soal yang sama disimpan di
+   server beserta Kode Kelas. Siswa bergabung tanpa akun (nama + kode);
+   urutan soal & pilihan diacak per siswa di perangkatnya. Penilaian
+   dilakukan server dari teks soal + teks pilihan, jadi tetap akurat
+   walau urutan tiap siswa berbeda. */
+type ExamClassInfo = ApiResponse<typeof api, "listMyClasses">["classes"][number];
+type ExamParticipant = ApiResponse<typeof api, "getClassDashboard">["participants"][number];
+type ExamRankingEntry = ApiResponse<typeof api, "getClassDashboard">["ranking"][number];
+
+/** Soal kelas versi siswa: server TIDAK mengirim kunci jawaban maupun
+    pembahasan selama ujian — hanya teks soal & pilihan. Penilaian
+    dilakukan server dari teks soal + teks pilihan yang dikirim balik. */
+type ExamStudentQuestion = NonNullable<ApiResponse<typeof api, "joinClass">["questions"]>[number];
+interface JoinStartPayload {
+  classInfo: ExamClassInfo;
+  participantId: number;
+  studentName: string;
+  questions: ExamStudentQuestion[];
+  resumed: boolean;
+}
+interface ActiveClassSession {
+  classId: number; participantId: number; className: string; code: string;
+  jenjang: JenjangId; subjectId: string; subjectName: string; level: number; durationMinutes: number;
+}
+type ClassResultData = ApiResponse<typeof api, "submitClassResult">;
+interface PendingClassSubmission {
+  class_id: number; participant_id: number; student_name: string;
+  submissions: { q: string; chosen: string | null }[]; duration_sec: number; device_id: string;
+}
+
+/** Bangun paket soal kelas: gabungkan beberapa sesi buildSession sampai
+    jumlah uniknya mencapai target (bank + generator selalu cukup). */
+function buildClassPackage(jenjang: JenjangId, subjectId: string, level: number, count: number): Question[] {
+  const byText = new Map<string, Question>();
+  for (let round = 0; round < 6 && byText.size < count; round++) {
+    for (const q of buildSession(jenjang, subjectId, level, count)) {
+      if (!byText.has(q.q)) byText.set(q.q, q);
+    }
+  }
+  return [...byText.values()].slice(0, count);
+}
+
+function ClassRankingList(props: { ranking: ExamRankingEntry[]; myName?: string }) {
+  if (props.ranking.length === 0) {
+    return <p className="text-sm font-semibold" style={{ color: "var(--dim)" }}>Belum ada peserta yang selesai — peringkat kelas muncul begitu ada yang mengumpulkan.</p>;
+  }
+  const myKey = (props.myName ?? "").trim().toLowerCase();
+  return (
+    <div className="grid gap-2">
+      {props.ranking.map((r) => {
+        const isMe = myKey !== "" && r.student_name.trim().toLowerCase() === myKey;
+        return (
+          <div key={r.participant_id} className="flex items-center gap-3 rounded-2xl p-3.5"
+            style={{ background: isMe ? "#FFF3DC" : "var(--surface)", border: `2px solid ${isMe ? "var(--gold)" : "var(--border)"}` }}
+            aria-label={`Peringkat ${r.rank}: ${r.student_name}, nilai ${r.score}, waktu ${fmtDur(r.duration_sec)}`}>
+            <span className="text-2xl" aria-hidden>{RANK_MEDALS[r.rank - 1] ?? ""}</span>
+            <span className="font-display flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-extrabold text-white" style={{ background: r.rank === 1 ? "#D97706" : "var(--accent)" }}>{r.rank}</span>
+            <div className="min-w-0 flex-1">
+              <div className="truncate font-display font-bold">{r.student_name} {isMe && <span className="rounded-full px-2 py-0.5 text-[11px] font-extrabold text-white" style={{ background: "var(--accent)" }}>KAMU</span>}</div>
+              <div className="text-xs font-semibold" style={{ color: "var(--dim)" }}>{r.correct}/{r.total} benar • ⏱ {fmtDur(r.duration_sec)} • selesai {new Date(r.finished_at).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</div>
+            </div>
+            <div className="shrink-0 text-right">
+              <div className="font-display text-2xl leading-none font-extrabold" style={{ color: medalFor(r.score).color }}>{r.score}</div>
+              <div className="text-[10px] font-bold" style={{ color: "var(--dim)" }}>NILAI</div>
+            </div>
+          </div>
+        );
+      })}
+      <p className="text-xs leading-relaxed" style={{ color: "var(--dim)" }}>Aturan peringkat kelas: nilai tertinggi dulu — nilai sama, yang mengerjakan paling cepat yang menang.</p>
+    </div>
+  );
+}
+
+function downloadClassCsv(cls: ExamClassInfo, ranking: ExamRankingEntry[], participants: ExamParticipant[]) {
+  const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
+  const rankedIds = new Set(ranking.map((r) => r.participant_id));
+  const lines: string[] = [
+    ["Peringkat", "Nama Peserta", "Status", "Nilai", "Benar", "Total Soal", "Waktu (detik)", "Waktu", "Selesai Pada"].map(esc).join(","),
+  ];
+  for (const r of ranking) {
+    lines.push([r.rank, r.student_name, "Selesai", r.score, r.correct, r.total, r.duration_sec, fmtDur(r.duration_sec), new Date(r.finished_at).toLocaleString("id-ID")].map(esc).join(","));
+  }
+  for (const p of participants.filter((x) => !rankedIds.has(x.id))) {
+    lines.push(["", p.student_name, "Sedang mengerjakan", "", "", "", "", "", ""].map(esc).join(","));
+  }
+  const blob = new Blob([`﻿${lines.join("\r\n")}`], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `rekap-${cls.class_name.replace(/[^\w-]+/g, "-")}-${cls.code}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+/* ---------- Panel Kelas Ujian untuk Guru (di dalam dashboard) ---------- */
+function TeacherClassesSection(props: { token: string }) {
+  const { token } = props;
+  const queryClient = useQueryClient();
+  const classesQ = useQuery({ queryKey: ["myClasses", token], queryFn: () => api.listMyClasses({ token }), refetchInterval: 8000, refetchIntervalInBackground: false });
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const dashQ = useQuery({
+    queryKey: ["classDashboard", token, selectedId],
+    queryFn: () => api.getClassDashboard({ token, class_id: selectedId as number }),
+    enabled: selectedId !== null,
+    refetchInterval: 4000,
+    refetchIntervalInBackground: false,
+  });
+
+  const [cName, setCName] = useState("");
+  const [cJenjang, setCJenjang] = useState<JenjangId>("SD");
+  const cSubjects = useMemo(() => SUBJECTS.filter((s) => s.jenjang.includes(cJenjang)), [cJenjang]);
+  const [cSubjectId, setCSubjectId] = useState<string>("matematika");
+  const cSubject = cSubjects.find((s) => s.id === cSubjectId) ?? cSubjects[0];
+  const [cLevel, setCLevel] = useState(1);
+  const [cCount, setCCount] = useState(20);
+  const [cDuration, setCDuration] = useState(20);
+  const [createError, setCreateError] = useState("");
+  const [createdMsg, setCreatedMsg] = useState("");
+
+  const createClass = useMutation({
+    mutationFn: api.createExamClass,
+    onSuccess: (r) => {
+      setCreatedMsg(`✅ Kelas "${r.class.class_name}" berhasil dibuat! Kode Kelas: ${r.class.code} — tulis kode ini di papan tulis / kirim ke grup kelas. Siswa tinggal pilih "Gabung Kelas" di Beranda, isi nama + kode itu.`);
+      setCName("");
+      setSelectedId(r.class.id);
+      queryClient.invalidateQueries({ queryKey: ["myClasses"] });
+    },
+    onError: (e) => setCreateError(e instanceof Error ? e.message : "Gagal membuat kelas. Coba lagi ya."),
+  });
+  const closeClass = useMutation({
+    mutationFn: api.closeExamClass,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["myClasses"] }); queryClient.invalidateQueries({ queryKey: ["classDashboard"] }); },
+    onError: (e) => setCreateError(e instanceof Error ? e.message : "Gagal menutup kelas. Coba lagi ya."),
+  });
+
+  const submitCreate = () => {
+    setCreateError("");
+    setCreatedMsg("");
+    if (!cName.trim()) { setCreateError("Isi nama kelas dulu ya, contoh: Kelas 5A."); focusField("class-name"); return; }
+    if (!cSubject) { setCreateError("Pilih mata pelajaran dulu ya."); return; }
+    const count = Math.min(30, Math.max(5, Math.round(cCount) || 20));
+    const duration = Math.min(120, Math.max(5, Math.round(cDuration) || count));
+    const questions = buildClassPackage(cJenjang, cSubject.id, cLevel, count);
+    if (questions.length < count) { setCreateError(`Paket soal baru terkumpul ${questions.length} dari ${count} soal. Coba jenjang / mapel / level lain ya.`); return; }
+    createClass.mutate({
+      token,
+      class_name: cName.trim(),
+      jenjang: cJenjang,
+      subject_id: cSubject.id,
+      subject_name: cSubject.name,
+      level: cLevel,
+      question_count: count,
+      duration_minutes: duration,
+      questions: questions.map((q) => {
+        const base: { q: string; options: string[]; answer: number; explain: string; stimulus?: string; emoji?: string } = { q: q.q, options: q.options, answer: q.answer, explain: q.explain };
+        if (q.stimulus) base.stimulus = q.stimulus;
+        if (q.emoji) base.emoji = q.emoji;
+        return base;
+      }),
+    });
+  };
+
+  const inputCls = "mt-1.5 min-h-[52px] w-full rounded-2xl px-4 text-base font-semibold outline-none";
+  const inputStyle = { background: "var(--surface2)", border: "2px solid var(--border)" } as const;
+  const dash = dashQ.data;
+
+  return (
+    <section className="mt-4 rounded-3xl p-5 shadow-sm" style={{ background: "var(--surface)", border: "2px solid var(--accent)" }} aria-label="Mode Kelas Ujian">
+      <h2 className="font-display text-lg font-bold">🏫 Mode Kelas Ujian</h2>
+      <p className="mt-0.5 text-sm leading-relaxed" style={{ color: "var(--dim)" }}>
+        Buat satu kelas ujian untuk seluruh kelasmu: atur jenjang, mapel, level, jumlah soal, dan waktu — sistem memberi <strong>Kode Kelas</strong>.
+        Siswa bergabung dari Beranda dengan nama + kode itu (tanpa akun), mengerjakan paket yang sama dengan urutan soal &amp; pilihan yang <strong>diacak per siswa</strong>, murni Mode Ujian (tanpa ikon i &amp; tanpa pembahasan).
+        Dashboard di bawah ini <strong>live</strong> — siapa sudah bergabung, sedang mengerjakan, sudah selesai, nilainya, dan peringkat kelasnya.
+      </p>
+
+      <form className="mt-4 grid gap-3" onSubmit={(e) => { e.preventDefault(); submitCreate(); }}>
+        <div>
+          <label htmlFor="class-name" className="font-display text-sm font-bold">Nama Kelas</label>
+          <input id="class-name" {...FIELDS.createExamClass.class_name} value={cName} onChange={(e) => setCName(e.target.value)} placeholder="Contoh: Kelas 5A / Kelas 8B — Matematika" className={inputCls} style={inputStyle} />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label htmlFor="class-jenjang" className="font-display text-sm font-bold">Jenjang</label>
+            <select id="class-jenjang" value={cJenjang} onChange={(e) => { const j = e.target.value as JenjangId; setCJenjang(j); const first = SUBJECTS.find((s) => s.jenjang.includes(j)); if (first) setCSubjectId(first.id); }} className={inputCls} style={inputStyle} aria-label="Jenjang kelas ujian">
+              {JENJANG.map((j) => <option key={j.id} value={j.id}>{j.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="class-subject" className="font-display text-sm font-bold">Mata Pelajaran</label>
+            <select id="class-subject" value={cSubject?.id ?? ""} onChange={(e) => setCSubjectId(e.target.value)} className={inputCls} style={inputStyle} aria-label="Mata pelajaran kelas ujian">
+              {cSubjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="class-level" className="font-display text-sm font-bold">Level Kesulitan</label>
+            <select id="class-level" value={cLevel} onChange={(e) => setCLevel(Number(e.target.value))} className={inputCls} style={inputStyle} aria-label="Level kesulitan kelas ujian">
+              {LEVELS.map((lv) => <option key={lv.n} value={lv.n}>Level {lv.n} — {lv.name}</option>)}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label htmlFor="class-count" className="font-display text-sm font-bold">Jumlah Soal</label>
+              <input id="class-count" {...FIELDS.createExamClass.question_count} type="number" value={cCount} onChange={(e) => { const v = Number(e.target.value); setCCount(v); if (v >= 5 && v <= 30) setCDuration(v); }} className={inputCls} style={inputStyle} aria-label="Jumlah soal kelas ujian, 5 sampai 30" />
+            </div>
+            <div>
+              <label htmlFor="class-duration" className="font-display text-sm font-bold">Waktu (menit)</label>
+              <input id="class-duration" {...FIELDS.createExamClass.duration_minutes} type="number" value={cDuration} onChange={(e) => setCDuration(Number(e.target.value))} className={inputCls} style={inputStyle} aria-label="Waktu pengerjaan kelas ujian dalam menit, 5 sampai 120" />
+            </div>
+          </div>
+        </div>
+        {createError && <p className="rounded-xl px-3 py-2 text-sm font-bold text-red-600" style={{ background: "#FAE7E9" }} role="alert">{createError}</p>}
+        {createdMsg && <p className="rounded-xl px-3 py-2 text-sm font-bold" style={{ background: "#E2F4E9", color: "#1E7A46" }} role="status">{createdMsg}</p>}
+        <button type="submit" disabled={createClass.isPending} className="font-display min-h-[56px] rounded-2xl text-lg font-extrabold text-white disabled:opacity-50" style={{ background: "var(--accent)" }}>
+          {createClass.isPending ? "Sedang menyiapkan paket soal…" : "🏫 Buat Kelas & Dapatkan Kode Kelas"}
+        </button>
+      </form>
+
+      <h3 className="font-display mt-6 text-base font-bold">📋 Kelas Ujian Saya</h3>
+      {classesQ.isPending && <p className="mt-1 text-sm" style={{ color: "var(--dim)" }}>Memuat kelas…</p>}
+      {classesQ.data && classesQ.data.classes.length === 0 && (
+        <p className="mt-1 text-sm" style={{ color: "var(--dim)" }}>Belum ada kelas ujian. Buat kelas pertamamu dengan formulir di atas — kodenya langsung bisa dibagikan ke siswa.</p>
+      )}
+      <div className="mt-2 grid gap-2">
+        {(classesQ.data?.classes ?? []).map((c) => (
+          <div key={c.id} className="rounded-2xl p-4" style={{ background: selectedId === c.id ? "#FFF3DC" : "var(--surface2)", border: `2px solid ${selectedId === c.id ? "var(--gold)" : "var(--border)"}` }}>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="font-display truncate font-extrabold">{c.class_name}</div>
+                <div className="text-xs font-semibold" style={{ color: "var(--dim)" }}>
+                  {c.jenjang} • {c.subject_name} • Level {c.level} • {c.question_count} soal • ⏱ {c.duration_minutes} menit • 👥 {c.participant_count} bergabung • ✅ {c.finished_count} selesai
+                </div>
+              </div>
+              <span className="font-display rounded-xl px-3 py-2 text-base font-extrabold tracking-widest" style={{ background: "var(--surface)", border: "2px dashed var(--accent)", color: "var(--accent)" }} aria-label={`Kode kelas ${c.code}`}>{c.code}</span>
+              <span className="rounded-full px-3 py-1.5 text-xs font-extrabold text-white" style={{ background: c.status === "open" ? "#1E7A46" : "#6E6785" }}>{c.status === "open" ? "🟢 DIBUKA" : "🔒 DITUTUP"}</span>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button type="button" onClick={() => setSelectedId(selectedId === c.id ? null : c.id)} aria-label={`Lihat dashboard live kelas ${c.class_name}`} aria-expanded={selectedId === c.id}
+                className="font-display min-h-[44px] rounded-full px-4 text-sm font-bold text-white" style={{ background: "var(--accent)" }}>
+                {selectedId === c.id ? "Tutup Dashboard" : "📊 Dashboard Live"}
+              </button>
+              {c.status === "open" && (
+                <button type="button" onClick={() => closeClass.mutate({ token, class_id: c.id })} disabled={closeClass.isPending} aria-label={`Tutup kelas ${c.class_name} supaya kodenya berhenti berlaku`}
+                  className="font-display min-h-[44px] rounded-full px-4 text-sm font-bold disabled:opacity-50" style={{ background: "var(--surface)", border: "2px solid #B02A37", color: "#B02A37" }}>
+                  🔒 Tutup Kelas
+                </button>
+              )}
+            </div>
+
+            {selectedId === c.id && (
+              <div className="mt-4 rounded-2xl p-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }} aria-label={`Dashboard live kelas ${c.class_name}`}>
+                {dashQ.isPending && <p className="text-sm" style={{ color: "var(--dim)" }}>Memuat dashboard kelas…</p>}
+                {dashQ.isError && <p className="text-sm font-bold text-red-500" role="alert">Dashboard belum bisa dimuat. <button type="button" onClick={() => dashQ.refetch()} className="underline">Coba lagi</button></p>}
+                {dash && (
+                  <>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="flex-1 text-sm font-bold">📡 Live — diperbarui otomatis tiap beberapa detik. 👥 {dash.class.participant_count} bergabung • ✏️ {dash.participants.filter((p) => p.status === "in_progress").length} sedang mengerjakan • ✅ {dash.class.finished_count} selesai</p>
+                      <button type="button" onClick={() => dashQ.refetch()} aria-label="Segarkan dashboard kelas sekarang" className="font-display min-h-[40px] rounded-full px-3 text-sm font-bold" style={{ background: "var(--surface2)" }}>🔄 Segarkan</button>
+                      <button type="button" onClick={() => downloadClassCsv(dash.class, dash.ranking, dash.participants)} aria-label={`Unduh rekap hasil kelas ${dash.class.class_name} sebagai file CSV`}
+                        className="font-display min-h-[40px] rounded-full px-3 text-sm font-bold text-white" style={{ background: "#1E7A46" }}>⬇️ Unduh Rekap (CSV)</button>
+                    </div>
+                    <h4 className="font-display mt-4 text-sm font-extrabold">👥 Daftar Siswa</h4>
+                    {dash.participants.length === 0 ? (
+                      <p className="mt-1 text-sm" style={{ color: "var(--dim)" }}>Belum ada siswa yang bergabung. Bagikan Kode Kelas <strong>{dash.class.code}</strong> — siswa membuka ZIQVA OLIM, memilih <strong>Gabung Kelas</strong>, lalu mengisi nama + kode itu.</p>
+                    ) : (
+                      <div className="mt-2 grid gap-1.5">
+                        {dash.participants.map((p) => (
+                          <div key={p.id} className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: "var(--surface2)" }}>
+                            <span className="text-xl" aria-hidden>{p.status === "finished" ? "✅" : "✏️"}</span>
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate font-display text-sm font-bold">{p.student_name}</div>
+                              <div className="text-[11px] font-semibold" style={{ color: "var(--dim)" }}>
+                                Bergabung {new Date(p.joined_at).toLocaleString("id-ID", { hour: "2-digit", minute: "2-digit", day: "numeric", month: "short" })}
+                                {p.finished_at ? ` • Selesai ${new Date(p.finished_at).toLocaleString("id-ID", { hour: "2-digit", minute: "2-digit" })}` : ""}
+                              </div>
+                            </div>
+                            {p.status === "finished" ? (
+                              <span className="text-right">
+                                <span className="font-display block text-lg leading-none font-extrabold" style={{ color: medalFor(p.score ?? 0).color }}>{p.score}</span>
+                                <span className="block text-[10px] font-bold" style={{ color: "var(--dim)" }}>{p.correct}/{p.total} • ⏱ {fmtDur(p.duration_sec ?? 0)}</span>
+                              </span>
+                            ) : (
+                              <span className="rounded-full px-2.5 py-1 text-[11px] font-extrabold" style={{ background: "#FBF0DA", color: "#92600A" }}>SEDANG MENGERJAKAN</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <h4 className="font-display mt-4 text-sm font-extrabold">🏆 Peringkat Kelas — {dash.class.class_name}</h4>
+                    <div className="mt-2"><ClassRankingList ranking={dash.ranking} /></div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ---------- Gabung Kelas untuk Siswa (tanpa akun) ---------- */
+function JoinClassView(props: { initialName: string; deviceId: string; onStart: (payload: JoinStartPayload) => void; onHome: () => void }) {
+  const [joinName, setJoinName] = useState(props.initialName);
+  const [joinCode, setJoinCode] = useState("");
+  const [joinError, setJoinError] = useState("");
+  const [finished, setFinished] = useState<{ classInfo: ExamClassInfo; result: { score: number; correct: number; total: number; duration_sec: number; rank: number }; ranking: ExamRankingEntry[] } | null>(null);
+
+  const join = useMutation({
+    mutationFn: api.joinClass,
+    onSuccess: (r) => {
+      setJoinError("");
+      if (r.status === "already_finished" && r.result) {
+        setFinished({ classInfo: r.class, result: r.result, ranking: r.ranking });
+        return;
+      }
+      props.onStart({
+        classInfo: r.class,
+        participantId: r.participant_id,
+        studentName: r.student_name,
+        questions: r.questions ?? [],
+        resumed: r.status === "resumed",
+      });
+    },
+    onError: (e) => {
+      const msg = e instanceof Error ? e.message : "Gagal bergabung ke kelas. Coba lagi ya.";
+      setJoinError(msg);
+      if (msg.toLowerCase().includes("nama")) focusField("join-name");
+      else focusField("join-code");
+    },
+  });
+
+  const submitJoin = () => {
+    setJoinError("");
+    if (!joinName.trim()) { setJoinError("Isi nama peserta dulu ya."); focusField("join-name"); return; }
+    if (!joinCode.trim()) { setJoinError("Isi Kode Kelas dulu ya — kodenya dari gurumu, contoh: KLS-XXXXXX."); focusField("join-code"); return; }
+    join.mutate({ student_name: joinName.trim(), code: joinCode.trim(), device_id: props.deviceId });
+  };
+
+  const inputCls = "mt-1.5 min-h-[56px] w-full rounded-2xl px-4 text-base font-semibold outline-none";
+  const inputStyle = { background: "var(--surface2)", border: "2px solid var(--border)" } as const;
+
+  return (
+    <main className="mx-auto w-full max-w-md px-4 pb-10">
+      <section className="mt-5 rounded-3xl p-6 shadow-sm" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+        <div className="text-center text-5xl" aria-hidden>🏫</div>
+        <h1 className="font-display mt-2 text-center text-2xl font-extrabold">Gabung Kelas Ujian</h1>
+        <p className="mt-1 text-center text-sm leading-relaxed" style={{ color: "var(--dim)" }}>
+          Tanpa daftar akun: isi <strong>namamu</strong> dan <strong>Kode Kelas</strong> dari gurumu, lalu langsung mengerjakan ujian kelasnya.
+          Paket soalnya sama untuk satu kelas, tapi urutan soal &amp; pilihan diacak khusus untukmu — jadi tidak bisa menyontek urutan teman. Murni Mode Ujian: ada timer dari guru, tanpa pembahasan.
+        </p>
+
+        {finished ? (
+          <div className="pop-in mt-5" role="status" aria-label="Kamu sudah menyelesaikan kelas ini">
+            <div className="rounded-3xl p-5 text-center" style={{ background: "linear-gradient(160deg,#FFF7E0,#FFEFC4)", border: "2px solid var(--gold)", color: "#2B2440" }}>
+              <p className="text-sm font-bold tracking-wide" style={{ color: "#92600A" }}>KAMU SUDAH SELESAI — {finished.classInfo.class_name.toUpperCase()}</p>
+              <div className="font-display my-1 text-[72px] leading-none font-extrabold" style={{ color: "#D97706" }}>{finished.result.score}</div>
+              <p className="font-display font-bold">({finished.result.correct}/{finished.result.total} benar) • ⏱ {fmtDur(finished.result.duration_sec)}</p>
+              <p className="font-display mt-1 text-lg font-extrabold">🏆 Peringkat #{finished.result.rank} di kelas ini (sementara)</p>
+              <p className="mt-1 text-sm font-semibold" style={{ color: "#92600A" }}>Nama yang sama dianggap peserta yang sama, jadi ujian kelas ini tidak dikerjakan dua kali — peringkat kelas tetap adil.</p>
+            </div>
+            <h2 className="font-display mt-4 text-base font-bold">🏆 Peringkat Kelas Sementara</h2>
+            <div className="mt-2"><ClassRankingList ranking={finished.ranking} myName={joinName} /></div>
+            <button type="button" onClick={props.onHome} className="font-display mt-4 min-h-[54px] w-full rounded-2xl text-lg font-extrabold text-white" style={{ background: "var(--accent)" }}>🏠 Kembali ke Beranda</button>
+          </div>
+        ) : (
+          <form className="mt-5 grid gap-4" onSubmit={(e) => { e.preventDefault(); submitJoin(); }}>
+            <div>
+              <label htmlFor="join-name" className="font-display text-sm font-bold">Nama Peserta</label>
+              <input id="join-name" {...FIELDS.joinClass.student_name} value={joinName} onChange={(e) => setJoinName(e.target.value)} placeholder="Contoh: Aisyah / Budi / Caca" className={inputCls} style={inputStyle} autoComplete="name" />
+            </div>
+            <div>
+              <label htmlFor="join-code" className="font-display text-sm font-bold">Kode Kelas dari Guru</label>
+              <input id="join-code" {...FIELDS.joinClass.code} value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())} placeholder="KLS-XXXXXX" className={`${inputCls} font-display text-center text-xl font-extrabold tracking-[0.2em] uppercase`} style={inputStyle} autoComplete="off" />
+            </div>
+            {joinError && <p className="rounded-xl px-3 py-2 text-sm font-bold text-red-600" style={{ background: "#FAE7E9" }} role="alert">{joinError}</p>}
+            <button type="submit" disabled={join.isPending} className="font-display min-h-[56px] rounded-2xl text-lg font-extrabold text-white disabled:opacity-50" style={{ background: "#1E7A46" }}>
+              {join.isPending ? "Sedang masuk kelas…" : "🚀 Masuk Kelas & Mulai Ujian"}
+            </button>
+            <button type="button" onClick={props.onHome} className="font-display min-h-[48px] rounded-2xl font-bold" style={{ background: "var(--surface2)" }}>← Kembali ke Beranda</button>
+            <p className="text-center text-xs leading-relaxed" style={{ color: "var(--dim)" }}>
+              Untuk uji coba sendiri: buat kelas dulu dari akun Guru (menu Guru &amp; Ortu → Mode Kelas Ujian), salin kodenya, lalu kembali ke sini dan bergabung sebagai siswa dengan nama lain — bisa dari perangkat yang sama.
+            </p>
+          </form>
+        )}
+      </section>
+    </main>
+  );
+}
+
 /* ---------------- DASHBOARD PANTAU ---------------- */
 function MonitorView(props: { token: string; user: SessionUser; onLogout: () => void; onPractice: () => void }) {
   const queryClient = useQueryClient();
@@ -878,6 +1276,8 @@ function MonitorView(props: { token: string; user: SessionUser; onLogout: () => 
             </section>
           )}
 
+          {isGuru && <TeacherClassesSection token={token} />}
+
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {[
               { label: isGuru ? "Murid Dipantau" : "Anak Dipantau", value: `${data.watched.length}`, icon: "🧒" },
@@ -948,7 +1348,7 @@ function MonitorView(props: { token: string; user: SessionUser; onLogout: () => 
                       <span className="text-[9px] font-bold">SKOR</span>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="truncate font-display font-bold">{a.student_name} — {a.mapel} • {a.jenjang}</div>
+                      <div className="truncate font-display font-bold">{a.student_name} — {a.mapel} • {a.jenjang}{a.class_name ? ` • 🏫 ${a.class_name}` : ""}</div>
                       <div className="text-xs font-semibold" style={{ color: "var(--dim)" }}>
                         {a.correct}/{a.total} benar • {a.mode === "ujian" ? "🏆 Ujian" : "✏️ Latihan"} • {fmtDur(a.duration_sec)} • {new Date(a.created_at).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                       </div>
@@ -1409,6 +1809,9 @@ export function App() {
       newDeviceId = nid;
     } catch { /* abaikan */ }
     setDeviceId(newDeviceId);
+    setClassSession(null);
+    setClassResult(null);
+    setPendingClassSubmission(null);
     setRewards({ ...EMPTY_REWARDS });
     setLevelStore({});
     setLevel(1);
@@ -1509,6 +1912,104 @@ export function App() {
   useEffect(() => {
     if (mode === "ujian" && level > unlockedLevel) setLevel(unlockedLevel);
   }, [mode, level, unlockedLevel, comboKey]);
+
+  /* ---------- Mode Kelas Ujian: sesi aktif & hasil ---------- */
+  const [classSession, setClassSession] = useState<ActiveClassSession | null>(null);
+  const [classResult, setClassResult] = useState<ClassResultData | null>(null);
+  const [pendingClassSubmission, setPendingClassSubmission] = useState<PendingClassSubmission | null>(null);
+  const [classSubmitError, setClassSubmitError] = useState("");
+
+  const submitClassResult = useMutation({
+    mutationFn: api.submitClassResult,
+    onSuccess: (r) => {
+      setClassResult(r);
+      setClassSubmitError("");
+      setMonitorCode(r.monitor_code);
+      queryClient.invalidateQueries({ queryKey: ["attempts"] });
+      queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
+      queryClient.invalidateQueries({ queryKey: ["myClasses"] });
+      queryClient.invalidateQueries({ queryKey: ["classDashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["monitor"] });
+    },
+    onError: (e) => setClassSubmitError(e instanceof Error ? e.message : "Hasil ujian kelas gagal tersimpan. Periksa koneksi lalu coba kirim lagi ya."),
+  });
+  const refreshClassRanking = useMutation({
+    mutationFn: api.getClassRankingByCode,
+    onSuccess: (r) => {
+      setClassResult((prev) => {
+        if (!prev || !classSession) return prev;
+        const mine = r.ranking.find((x) => x.participant_id === classSession.participantId);
+        return { ...prev, ranking: r.ranking, finished_count: r.class.finished_count, participant_count: r.class.participant_count, rank: mine?.rank ?? prev.rank };
+      });
+    },
+  });
+
+  const handleClassStart = (payload: JoinStartPayload) => {
+    // Paket soal sama untuk satu kelas, tetapi urutan soal DAN urutan
+    // pilihan jawaban diacak khusus untuk siswa ini. Soal dari server
+    // tidak membawa kunci jawaban (answer diisi -1 = tidak ada kunci di
+    // perangkat ini); penilaian murni dilakukan server saat pengumpulan.
+    const asQuestions: Question[] = payload.questions.map((q) => {
+      const base: Question = { q: q.q, options: q.options, answer: -1, explain: "" };
+      if (q.stimulus) base.stimulus = q.stimulus;
+      if (q.emoji) base.emoji = q.emoji;
+      return base;
+    });
+    const shuffled = shuffle(asQuestions).map((q) => shuffleOptions(q));
+    setName(payload.studentName);
+    setNameError("");
+    setClassSession({
+      classId: payload.classInfo.id,
+      participantId: payload.participantId,
+      className: payload.classInfo.class_name,
+      code: payload.classInfo.code,
+      jenjang: payload.classInfo.jenjang as JenjangId,
+      subjectId: payload.classInfo.subject_id,
+      subjectName: payload.classInfo.subject_name,
+      level: payload.classInfo.level,
+      durationMinutes: payload.classInfo.duration_minutes,
+    });
+    setSessionQ(shuffled);
+    setClassResult(null);
+    setPendingClassSubmission(null);
+    setClassSubmitError("");
+    setMonitorCode("");
+    setMode("ujian");
+    setView("quiz");
+    window.scrollTo({ top: 0 });
+  };
+
+  const handleClassFinish = (answers: (number | null)[], usedSec: number) => {
+    if (!classSession) return;
+    const submissions = sessionQ.map((q, i) => {
+      const chosenIdx = answers[i];
+      return { q: q.q, chosen: chosenIdx !== null && chosenIdx !== undefined ? (q.options[chosenIdx] ?? null) : null };
+    });
+    const payload: PendingClassSubmission = {
+      class_id: classSession.classId,
+      participant_id: classSession.participantId,
+      student_name: name.trim() || "Peserta",
+      submissions,
+      duration_sec: usedSec,
+      device_id: deviceId,
+    };
+    setPendingClassSubmission(payload);
+    setClassResult(null);
+    setClassSubmitError("");
+    setView("classResult");
+    window.scrollTo({ top: 0 });
+    submitClassResult.mutate(payload);
+  };
+
+  const quitClassQuiz = () => {
+    // Keluar di tengah ujian kelas: peserta tetap tercatat "sedang
+    // mengerjakan" di dashboard guru dan bisa bergabung lagi dengan
+    // nama + kode yang sama untuk melanjutkan dari awal sesi.
+    setClassSession(null);
+    setSessionQ([]);
+    setView("home");
+    window.scrollTo({ top: 0 });
+  };
 
   const startQuiz = () => {
     if (!name.trim()) { setNameError("Isi nama peserta dulu ya, supaya hasil latihannya tercatat."); focusField("student-name"); return; }
@@ -1670,12 +2171,84 @@ export function App() {
         </main>
       )}
 
-      {view === "quiz" && activeSubject && (
+      {view === "quiz" && classSession && (
+        <QuizView jenjang={classSession.jenjang} subjectName={classSession.subjectName} subjectId={classSession.subjectId} mode="ujian"
+          levelLabel={`Level ${classSession.level} · ${LEVELS[classSession.level - 1]?.name ?? ""}`}
+          soundOn={soundOn} onToggleSound={toggleSound}
+          questions={questions} onFinish={handleClassFinish} onQuit={quitClassQuiz} quitSignal={quitSignal}
+          totalTimeSec={classSession.durationMinutes * 60}
+          contextLabel={`🏫 Kelas Ujian: ${classSession.className} • Kode ${classSession.code} • Murni Mode Ujian — kerjakan sendiri ya!`} />
+      )}
+
+      {view === "quiz" && !classSession && activeSubject && (
         <QuizView jenjang={jenjang} subjectName={activeSubject.name} subjectId={activeSubject.id} mode={mode}
           levelLabel={`Level ${sessionLevel} · ${LEVELS[sessionLevel - 1]?.name ?? ""}`}
           soundOn={soundOn} onToggleSound={toggleSound}
           questions={questions} onFinish={handleFinish} onQuit={() => setView("home")} quitSignal={quitSignal}
           onInfo={(q) => openModuleForQuestion(q, "Kembali ke Soal")} />
+      )}
+
+      {view === "joinClass" && (
+        <JoinClassView initialName={name} deviceId={deviceId} onHome={() => { setView("home"); window.scrollTo({ top: 0 }); }}
+          onStart={handleClassStart} />
+      )}
+
+      {view === "classResult" && (
+        <main className="mx-auto w-full max-w-3xl px-4 pb-10">
+          {submitClassResult.isPending && !classResult && (
+            <section className="mt-5 rounded-3xl p-6 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }} role="status" aria-label="Sedang menyimpan hasil ujian kelas">
+              <div className="text-5xl" aria-hidden>⏳</div>
+              <p className="font-display mt-2 text-lg font-bold">Sedang menyimpan hasil ujian kelasmu…</p>
+              <p className="mt-1 text-sm" style={{ color: "var(--dim)" }}>Server sedang menilai jawabanmu dari paket soal kelas. Sebentar ya.</p>
+            </section>
+          )}
+          {classSubmitError && !classResult && pendingClassSubmission && (
+            <section className="mt-5 rounded-3xl p-6 text-center" style={{ background: "#FAE7E9", border: "2px solid #D6336C" }} role="alert" aria-label="Hasil ujian kelas gagal tersimpan">
+              <div className="text-5xl" aria-hidden>⚠️</div>
+              <p className="font-display mt-2 text-lg font-bold">Hasil belum tersimpan</p>
+              <p className="mt-1 text-sm font-semibold">{classSubmitError}</p>
+              <button type="button" onClick={() => submitClassResult.mutate(pendingClassSubmission)} disabled={submitClassResult.isPending}
+                className="font-display mt-4 min-h-[52px] rounded-2xl px-6 font-bold text-white disabled:opacity-50" style={{ background: "#B02A37" }}>
+                {submitClassResult.isPending ? "Sedang mengirim…" : "🔁 Kirim Lagi Hasilku"}
+              </button>
+            </section>
+          )}
+          {classResult && classSession && (
+            <>
+              <section className="pop-in mt-4 rounded-3xl p-6 text-center shadow-sm" style={{ background: "linear-gradient(160deg,#FFF7E0,#FFEFC4)", border: "2px solid var(--gold)", color: "#2B2440" }}>
+                <p className="text-sm font-bold tracking-wide" style={{ color: "#92600A" }}>HASIL KELAS UJIAN • {classSession.className.toUpperCase()} • {classSession.code}</p>
+                <p className="mt-1 text-sm font-semibold" style={{ color: "#92600A" }}>{classSession.subjectName} • {classSession.jenjang} • Level {classSession.level} • Peserta: {name}</p>
+                <div className="font-display my-2 text-[84px] leading-none font-extrabold" style={{ color: "#D97706" }}>{classResult.score}</div>
+                <p className="font-display text-lg font-bold">({classResult.correct}/{classResult.total} benar) • ⏱ {fmtDur(classResult.duration_sec)}</p>
+                <p className="font-display mt-1 text-xl font-extrabold" style={{ color: medalFor(classResult.score).color }}>🏅 {medalFor(classResult.score).label}</p>
+                <p className="font-display pop-in mx-auto mt-3 max-w-md rounded-2xl px-4 py-3 text-lg font-extrabold" style={{ background: "#fff", border: "2px dashed #D97706" }}>
+                  🏆 Peringkat sementaramu: #{classResult.rank} dari {classResult.finished_count} peserta yang sudah selesai
+                  <span className="block text-sm font-semibold" style={{ color: "#92600A" }}>{classResult.participant_count} peserta sudah bergabung di kelas ini. Peringkat bisa berubah selama teman-temanmu masih mengerjakan — nilai sama, yang tercepat yang menang.</span>
+                </p>
+                {classResult.monitor_code && (
+                  <p className="mt-3 text-xs font-bold" style={{ color: "#92600A" }}>🔑 Kode Pantau kamu: <span className="tracking-[0.25em]">{classResult.monitor_code}</span> — hasil ini juga tercatat di Prestasiku, Papan Peringkat jenjang {classSession.jenjang}, dan dashboard gurumu (dengan nama kelas {classSession.className}).</p>
+                )}
+              </section>
+
+              <section className="mt-4 rounded-3xl p-5 shadow-sm" style={{ background: "var(--surface)", border: "1px solid var(--border)" }} aria-label="Peringkat kelas sementara">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="font-display flex-1 text-lg font-extrabold">🏆 Peringkat Kelas — {classSession.className}</h2>
+                  <button type="button" onClick={() => refreshClassRanking.mutate({ code: classSession.code })} disabled={refreshClassRanking.isPending}
+                    aria-label="Segarkan peringkat kelas sementara" className="font-display min-h-[44px] rounded-full px-4 text-sm font-bold disabled:opacity-50" style={{ background: "var(--surface2)" }}>
+                    {refreshClassRanking.isPending ? "Memuat…" : "🔄 Segarkan"}
+                  </button>
+                </div>
+                <div className="mt-3"><ClassRankingList ranking={classResult.ranking} myName={name} /></div>
+              </section>
+
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => { setClassSession(null); setView("home"); window.scrollTo({ top: 0 }); }} className="min-h-[54px] rounded-2xl font-display text-base font-bold text-white" style={{ background: "var(--accent)" }} aria-label="Kembali ke beranda">🏠 Beranda</button>
+                <button type="button" onClick={() => { setJenjang(classSession.jenjang); setView("ranking"); window.scrollTo({ top: 0 }); }} className="min-h-[54px] rounded-2xl font-display text-base font-bold text-white" style={{ background: "#D97706" }} aria-label={`Lihat papan peringkat jenjang ${classSession.jenjang}`}>🏆 Peringkat Jenjang {classSession.jenjang}</button>
+              </div>
+              <p className="mt-3 text-center text-xs leading-relaxed" style={{ color: "var(--dim)" }}>Pembahasan soal kelas tidak ditampilkan di sini supaya teman yang masih mengerjakan tidak mendapat bocoran. Setelah kelas ditutup guru, belajar lagi lewat Perpustakaan &amp; Mode Latihan ya! 📚</p>
+            </>
+          )}
+        </main>
       )}
 
       {view === "ranking" && (
@@ -1783,6 +2356,21 @@ export function App() {
             <button type="button" onClick={() => setView("ranking")} aria-label="Buka papan peringkat per jenjang"
               className="font-display min-h-[52px] shrink-0 rounded-2xl px-6 font-bold" style={{ background: "var(--gold)", color: "#2B2440" }}>
               🏆 Lihat Peringkat
+            </button>
+          </section>
+
+          {/* Gabung Kelas Ujian */}
+          <section className="mt-5 flex flex-col gap-3 rounded-3xl p-5 shadow-sm sm:flex-row sm:items-center" style={{ background: "linear-gradient(150deg,#E2F4E9,#DFF6F9)", border: "2px solid #1E7A46" }} aria-label="Gabung kelas ujian dari guru">
+            <div className="text-4xl" aria-hidden>🏫</div>
+            <div className="flex-1">
+              <h2 className="font-display text-lg font-bold">Ada Kode Kelas dari Gurumu? Gabung Kelas Ujian di sini!</h2>
+              <p className="text-sm leading-relaxed" style={{ color: "var(--dim)" }}>
+                Guru membuat kelas ujian dan membagikan <strong>Kode Kelas</strong> (contoh: KLS-XXXXXX). Kamu tinggal isi <strong>nama + kode</strong> — tanpa akun, langsung mengerjakan paket ujian kelasmu dengan peringkat kelas langsung. Gurumu bisa memantau dari dashboard-nya secara live.
+              </p>
+            </div>
+            <button type="button" onClick={() => { stopSpeaking(); setView("joinClass"); window.scrollTo({ top: 0 }); }} aria-label="Buka formulir gabung kelas ujian"
+              className="font-display min-h-[52px] shrink-0 rounded-2xl px-6 font-bold text-white" style={{ background: "#1E7A46" }}>
+              🏫 Gabung Kelas
             </button>
           </section>
 
@@ -2116,7 +2704,7 @@ export function App() {
                       <span className="text-[9px] font-bold">SKOR</span>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="truncate font-display font-bold">{a.mapel} • {a.jenjang}</div>
+                      <div className="truncate font-display font-bold">{a.mapel} • {a.jenjang}{a.class_name ? ` • 🏫 Kelas: ${a.class_name}` : ""}</div>
                       <div className="text-xs font-semibold" style={{ color: "var(--dim)" }}>
                         {a.student_name} • {a.correct}/{a.total} benar • {a.mode === "ujian" ? "🏆 Ujian" : "✏️ Latihan"} • {fmtDur(a.duration_sec)} • {new Date(a.created_at).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                       </div>

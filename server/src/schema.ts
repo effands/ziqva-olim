@@ -11,9 +11,57 @@ export const attempts = sqliteTable("attempts", {
   total: integer("total").notNull(),
   durationSec: integer("duration_sec").notNull().default(0),
   deviceId: text("device_id").notNull().default(""),
+  // Tertaut ke Kelas Ujian bila percobaan ini berasal dari sesi kelas
+  // (null untuk latihan/ujian mandiri biasa).
+  classId: integer("class_id"),
+  className: text("class_name").notNull().default(""),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .notNull()
     .$defaultFn(() => new Date()),
+});
+
+// Kelas Ujian yang dibuat guru (Mode Kelas Ujian). Paket soal yang sama
+// untuk satu kelas disimpan sebagai JSON di package_json; urutan soal &
+// pilihan diacak di perangkat masing-masing siswa saat sesi dimulai.
+export const examClasses = sqliteTable("exam_classes", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  teacherId: integer("teacher_id").notNull(),
+  className: text("class_name").notNull(),
+  jenjang: text("jenjang").notNull(),
+  subjectId: text("subject_id").notNull().default(""),
+  subjectName: text("subject_name").notNull(),
+  level: integer("level").notNull().default(1),
+  questionCount: integer("question_count").notNull().default(20),
+  durationMinutes: integer("duration_minutes").notNull().default(20),
+  code: text("code").notNull().unique(),
+  status: text("status", { enum: ["open", "closed"] }).notNull().default("open"),
+  packageJson: text("package_json").notNull().default("[]"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  closedAt: integer("closed_at", { mode: "timestamp_ms" }),
+});
+
+// Peserta satu Kelas Ujian. Satu baris per nama (name_key) per kelas:
+// nama yang sama bergabung lagi dianggap peserta yang sama (dilanjutkan
+// bila belum selesai, ditolak sebagai "sudah selesai" bila sudah selesai)
+// supaya peringkat kelas tidak kacau oleh duplikat.
+export const classParticipants = sqliteTable("class_participants", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  classId: integer("class_id").notNull(),
+  studentName: text("student_name").notNull(),
+  nameKey: text("name_key").notNull(),
+  deviceId: text("device_id").notNull().default(""),
+  status: text("status", { enum: ["in_progress", "finished"] }).notNull().default("in_progress"),
+  score: integer("score"),
+  correct: integer("correct"),
+  total: integer("total"),
+  durationSec: integer("duration_sec"),
+  attemptId: integer("attempt_id"),
+  joinedAt: integer("joined_at", { mode: "timestamp_ms" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  finishedAt: integer("finished_at", { mode: "timestamp_ms" }),
 });
 
 export const studentCodes = sqliteTable("student_codes", {

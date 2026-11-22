@@ -36,6 +36,13 @@
       "when": 1795331018681,
       "tag": "0005_add_presence_table_for_online_users",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1795331559787,
+      "tag": "0006_add_exam_classes_tables",
+      "breakpoints": true
     }
   ]
 }
