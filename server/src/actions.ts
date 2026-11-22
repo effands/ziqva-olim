@@ -24,12 +24,21 @@ const userShape = z.object({
   username: z.string(),
   role: z.string(),
   organization: z.string(),
+  whatsapp: z.string(),
+  email: z.string(),
+  child_name: z.string(),
+  city: z.string(),
+  school_address: z.string(),
 });
 
 type UserRow = typeof schema.users.$inferSelect;
 
 function toUser(u: UserRow) {
-  return { id: u.id, name: u.name, username: u.username, role: u.role, organization: u.organization };
+  return {
+    id: u.id, name: u.name, username: u.username, role: u.role, organization: u.organization,
+    whatsapp: u.whatsapp ?? "", email: u.email ?? "",
+    child_name: u.childName ?? "", city: u.city ?? "", school_address: u.schoolAddress ?? "",
+  };
 }
 
 async function userForToken(ctx: Ctx, token: string): Promise<UserRow> {
@@ -248,6 +257,9 @@ export const Actions = {
       total: z.number().int().min(1).max(100),
       duration_sec: z.number().int().min(0).max(86400),
       device_id: z.string().max(100).default(""),
+      // Penanda sesi khusus, mis. "Ujian Sertifikat" — tampil di Prestasiku
+      // & Panel Superadmin. Kosong untuk latihan/ujian biasa.
+      class_name: z.string().trim().max(60).default(""),
     }),
     response: z.object({ id: z.number(), monitor_code: z.string() }),
     async handler(ctx, args) {
@@ -264,6 +276,7 @@ export const Actions = {
           total: args.total,
           durationSec: args.duration_sec,
           deviceId: args.device_id,
+          className: args.class_name,
         })
         .returning({ id: schema.attempts.id });
       const inserted = result[0];
@@ -501,6 +514,44 @@ export const Actions = {
       } catch {
         return { user: null };
       }
+    },
+  }),
+
+  updateProfile: defineAction({
+    description: "Updates the logged-in teacher/parent/admin profile details (name, child's name, school/organization, WhatsApp, email, city, school address) shown on the Profil Saya page.",
+    request: z.object({
+      token: z.string().min(1).max(200),
+      name: z.string().trim().min(1, "Nama wajib diisi").max(60),
+      child_name: z.string().trim().max(60).default(""),
+      organization: z.string().trim().max(80).default(""),
+      whatsapp: z.string().trim().max(30).default(""),
+      email: z.string().trim().max(120).default(""),
+      city: z.string().trim().max(60).default(""),
+      school_address: z.string().trim().max(200).default(""),
+    }),
+    response: z.object({ user: userShape }),
+    async handler(ctx, args) {
+      const user = await userForToken(ctx, args.token);
+      // Aturan yang sama seperti pendaftaran: minimal salah satu kontak
+      // (WhatsApp atau Email) harus terisi untuk info olimpiade.
+      if (!args.whatsapp && !args.email) {
+        throw new Error("Isi minimal salah satu: Nomor WhatsApp atau Email, supaya kami bisa mengirim info olimpiade terbaru.");
+      }
+      const db = ctx.db<typeof schema>();
+      await db.update(schema.users).set({
+        name: args.name,
+        childName: args.child_name,
+        organization: args.organization,
+        whatsapp: args.whatsapp,
+        email: args.email,
+        city: args.city,
+        schoolAddress: args.school_address,
+      }).where(eq(schema.users.id, user.id));
+      const rows = await db.select().from(schema.users).where(eq(schema.users.id, user.id)).limit(1);
+      const updated = rows[0];
+      if (!updated) throw new Error("Akun tidak ditemukan. Silakan masuk lagi.");
+      ctx.invalidateQueries();
+      return { user: toUser(updated) };
     },
   }),
 
@@ -1113,6 +1164,7 @@ export const Actions = {
         total: z.number(),
         duration_sec: z.number(),
         created_at: z.string(),
+        class_name: z.string(),
       })),
     }),
     async handler(ctx, args) {
@@ -1180,6 +1232,7 @@ export const Actions = {
           total: r.total,
           duration_sec: r.durationSec,
           created_at: r.createdAt.toISOString(),
+          class_name: r.className ?? "",
         })),
       };
     },

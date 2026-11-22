@@ -189,6 +189,24 @@
       var token = await newSession(user.id);
       return { token: token, user: toUser(user) };
     },
+    async updateProfile(args) {
+      var me = await userForToken(args.token);
+      var name = String(args.name || "").trim();
+      if (!name) throw new Error("Isi nama lengkap dulu ya.");
+      var whatsapp = String(args.whatsapp || "").trim();
+      var email = String(args.email || "").trim().toLowerCase();
+      if (!whatsapp && !email) throw new Error("Isi minimal salah satu: Nomor WhatsApp atau Email, supaya kami bisa mengirim info olimpiade terbaru.");
+      var updated = await patchRows("app_users", "id=eq." + me.id, {
+        name: name,
+        child_name: String(args.child_name || "").trim(),
+        organization: String(args.organization || "").trim(),
+        whatsapp: whatsapp,
+        email: email,
+        city: String(args.city || "").trim(),
+        school_address: String(args.school_address || "").trim(),
+      });
+      return { ok: true, user: toUser(updated[0] || me) };
+    },
     async me(args) {
       if (!args.token) return { user: null };
       try { return { user: toUser(await userForToken(args.token)) }; } catch (e) { return { user: null }; }

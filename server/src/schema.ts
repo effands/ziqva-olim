@@ -85,6 +85,11 @@ export const users = sqliteTable("users", {
   // (ditegakkan di aksi register). Akun lama kolomnya kosong.
   whatsapp: text("whatsapp").notNull().default(""),
   email: text("email").notNull().default(""),
+  // Detail Profil Saya (bisa diedit lewat aksi updateProfile): nama anak
+  // (untuk orang tua), kota/kabupaten, dan alamat sekolah.
+  childName: text("child_name").notNull().default(""),
+  city: text("city").notNull().default(""),
+  schoolAddress: text("school_address").notNull().default(""),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .notNull()
     .$defaultFn(() => new Date()),

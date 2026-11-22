@@ -20,10 +20,13 @@ import type { Actions } from "../../server/src/actions";
 
 const FIELDS = actionFields<typeof Actions>();
 
-type View = "home" | "quiz" | "result" | "history" | "login" | "dashboard" | "belajar" | "ranking" | "joinClass" | "classResult" | "admin";
+type View = "home" | "quiz" | "result" | "history" | "login" | "dashboard" | "belajar" | "ranking" | "joinClass" | "classResult" | "admin" | "profile";
 type Mode = "ujian" | "latihan";
 type Role = "guru" | "orangtua" | "admin";
-type SessionUser = { id: number; name: string; username: string; role: string; organization: string };
+type SessionUser = {
+  id: number; name: string; username: string; role: string; organization: string;
+  whatsapp: string; email: string; child_name: string; city: string; school_address: string;
+};
 
 /** Label peran yang tampil di area profil & menu akun. */
 function roleLabel(role: string) {
@@ -1230,7 +1233,7 @@ function JoinClassView(props: { initialName: string; deviceId: string; onStart: 
 }
 
 /* ---------------- DASHBOARD PANTAU ---------------- */
-function MonitorView(props: { token: string; user: SessionUser; onLogout: () => void; onPractice: () => void }) {
+function MonitorView(props: { token: string; user: SessionUser; onLogout: () => void; onPractice: () => void; onProfile: () => void }) {
   const queryClient = useQueryClient();
   const { token, user } = props;
   const isGuru = user.role === "guru";
@@ -1268,6 +1271,7 @@ function MonitorView(props: { token: string; user: SessionUser; onLogout: () => 
             </p>
           </div>
           <button type="button" onClick={() => dash.refetch()} aria-label="Segarkan data pantauan" className="min-h-[44px] rounded-full px-4 font-display text-sm font-bold" style={{ background: "var(--surface2)" }}>🔄 Segarkan</button>
+          <button type="button" onClick={props.onProfile} aria-label="Buka halaman profil saya" className="min-h-[44px] rounded-full px-4 font-display text-sm font-bold" style={{ background: "var(--surface2)" }}>👤 Profil Saya</button>
           <button type="button" onClick={props.onLogout} aria-label="Keluar dari akun" className="min-h-[44px] rounded-full px-4 font-display text-sm font-bold text-white" style={{ background: "#D6336C" }}>Keluar</button>
         </div>
       </section>
@@ -1428,7 +1432,7 @@ function waChatUrl(raw: string): string {
   return `https://wa.me/${digits}`;
 }
 
-function AdminView(props: { token: string; user: SessionUser; onLogout: () => void }) {
+function AdminView(props: { token: string; user: SessionUser; onLogout: () => void; onProfile: () => void }) {
   const queryClient = useQueryClient();
   const { token, user } = props;
   const dash = useQuery({ queryKey: ["admin-dashboard", token], queryFn: () => api.adminDashboard({ token }) });
@@ -1470,6 +1474,7 @@ function AdminView(props: { token: string; user: SessionUser; onLogout: () => vo
             </p>
           </div>
           <button type="button" onClick={() => dash.refetch()} aria-label="Segarkan data superadmin" className="min-h-[44px] rounded-full px-4 font-display text-sm font-bold" style={{ background: "var(--surface2)" }}>🔄 Segarkan</button>
+          <button type="button" onClick={props.onProfile} aria-label="Buka halaman profil saya" className="min-h-[44px] rounded-full px-4 font-display text-sm font-bold" style={{ background: "var(--surface2)" }}>👤 Profil Saya</button>
           <button type="button" onClick={props.onLogout} aria-label="Keluar dari akun superadmin" className="min-h-[44px] rounded-full px-4 font-display text-sm font-bold text-white" style={{ background: "#D6336C" }}>Keluar</button>
         </div>
       </section>
@@ -1621,7 +1626,7 @@ function AdminView(props: { token: string; user: SessionUser; onLogout: () => vo
               <tr key={a.id} style={{ borderTop: "1px solid var(--border)" }}>
                 <td className="px-3 py-3 font-display font-bold whitespace-nowrap">{a.student_name}</td>
                 <td className="px-3 py-3 whitespace-nowrap">{a.jenjang}</td>
-                <td className="px-3 py-3">{a.mapel}</td>
+                <td className="px-3 py-3">{a.mapel}{a.class_name === "Ujian Sertifikat" ? <span className="font-display ml-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-extrabold whitespace-nowrap" style={{ background: "#FFF3DC", color: "#92600A", border: "1px solid var(--gold)" }}>🏆 Ujian Sertifikat</span> : a.class_name ? <span className="ml-1.5 text-xs font-semibold whitespace-nowrap" style={{ color: "var(--dim)" }}>🏫 {a.class_name}</span> : null}</td>
                 <td className="px-3 py-3 whitespace-nowrap">{a.mode === "ujian" ? "🏆 Ujian" : "✏️ Latihan"}</td>
                 <td className="px-3 py-3 whitespace-nowrap">
                   <span className="font-display inline-flex min-w-[44px] items-center justify-center rounded-lg px-2 py-1 font-extrabold text-white" style={{ background: a.score >= 75 ? "#1E7A46" : a.score >= 60 ? "#D97706" : "#6E6785" }}>{a.score}</span>
@@ -2042,6 +2047,321 @@ function DaftarCtaCard(props: { variant: "home" | "result" | "history"; onDaftar
   );
 }
 
+/* ---------------- PROFIL SAYA ----------------
+   Halaman data diri untuk pengguna yang login (Guru / Orang Tua /
+   Superadmin): nama, nama anak, sekolah/instansi, WhatsApp, email, kota,
+   dan alamat sekolah — semua bisa diedit & disimpan lewat updateProfile.
+   Username & peran tampil sebagai info tetap. */
+function ProfileView(props: { token: string; user: SessionUser; onBack: () => void }) {
+  const queryClient = useQueryClient();
+  const { user } = props;
+  const [pName, setPName] = useState(user.name);
+  const [pChild, setPChild] = useState(user.child_name);
+  const [pOrg, setPOrg] = useState(user.organization);
+  const [pWa, setPWa] = useState(user.whatsapp);
+  const [pEmail, setPEmail] = useState(user.email);
+  const [pCity, setPCity] = useState(user.city);
+  const [pAddr, setPAddr] = useState(user.school_address);
+  const [error, setError] = useState("");
+  const [savedMsg, setSavedMsg] = useState("");
+
+  const save = useMutation({
+    mutationFn: api.updateProfile,
+    onSuccess: () => {
+      setError("");
+      setSavedMsg("✅ Profil berhasil disimpan! Data terbarumu sudah tercatat.");
+      queryClient.invalidateQueries({ queryKey: ["me"] });
+    },
+    onError: (e) => { setSavedMsg(""); setError(e instanceof Error ? e.message : "Gagal menyimpan profil. Coba lagi ya."); },
+  });
+
+  const submit = () => {
+    if (!pName.trim()) { setError("Nama lengkap wajib diisi."); setSavedMsg(""); focusField("profile-name"); return; }
+    if (!pWa.trim() && !pEmail.trim()) {
+      setError("Isi minimal salah satu: Nomor WhatsApp atau Email, supaya kami bisa mengirim info olimpiade terbaru.");
+      setSavedMsg("");
+      focusField(pWa.trim() ? "profile-email" : "profile-whatsapp");
+      return;
+    }
+    setError("");
+    save.mutate({
+      token: props.token, name: pName.trim(), child_name: pChild.trim(), organization: pOrg.trim(),
+      whatsapp: pWa.trim(), email: pEmail.trim(), city: pCity.trim(), school_address: pAddr.trim(),
+    });
+  };
+
+  const inputCls = "mt-1.5 min-h-[52px] w-full rounded-2xl px-4 text-base font-semibold outline-none";
+  const inputStyle = { background: "var(--surface2)", border: "2px solid var(--border)" } as const;
+  const labelCls = "font-display text-sm font-bold";
+  const childLabel = user.role === "orangtua" ? "Nama Anak" : user.role === "guru" ? "Nama Anak (boleh dikosongkan)" : "Nama Anak (boleh dikosongkan)";
+
+  return (
+    <main className="mx-auto w-full max-w-2xl px-4 pb-10">
+      <section className="mt-5 rounded-3xl p-5 shadow-sm sm:p-6" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="font-display flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-xl font-extrabold" style={{ background: "var(--gold)", color: "#2B2440" }} aria-hidden>{initialsOf(user.name)}</span>
+          <div className="min-w-0 flex-1">
+            <h1 className="font-display truncate text-xl font-extrabold">👤 Profil Saya</h1>
+            <p className="text-sm font-semibold" style={{ color: "var(--dim)" }}>@{user.username} • {roleLabel(user.role)} — username &amp; peran tidak bisa diubah</p>
+          </div>
+          <button type="button" onClick={props.onBack} aria-label="Kembali ke dashboard" className="font-display min-h-[44px] rounded-full px-4 text-sm font-bold" style={{ background: "var(--surface2)" }}>← Kembali</button>
+        </div>
+
+        <div className="mt-5 grid gap-4">
+          <div>
+            <label htmlFor="profile-name" className={labelCls}>Nama Lengkap *</label>
+            <input id="profile-name" {...FIELDS.updateProfile.name} value={pName} onChange={(e) => setPName(e.target.value)} placeholder="Nama lengkap kamu" className={inputCls} style={inputStyle} />
+          </div>
+          <div>
+            <label htmlFor="profile-child" className={labelCls}>{childLabel}</label>
+            <input id="profile-child" {...FIELDS.updateProfile.child_name} value={pChild} onChange={(e) => setPChild(e.target.value)} placeholder={user.role === "orangtua" ? "Nama anak yang dipantau / peserta" : "Nama anak, bila ada"} className={inputCls} style={inputStyle} />
+          </div>
+          <div>
+            <label htmlFor="profile-org" className={labelCls}>Nama Sekolah / Instansi</label>
+            <input id="profile-org" {...FIELDS.updateProfile.organization} value={pOrg} onChange={(e) => setPOrg(e.target.value)} placeholder="Contoh: SD Negeri 1 Sukamaju / RA Al-Ikhlas" className={inputCls} style={inputStyle} />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="profile-whatsapp" className={labelCls}>Nomor WhatsApp</label>
+              <input id="profile-whatsapp" {...FIELDS.updateProfile.whatsapp} value={pWa} onChange={(e) => setPWa(e.target.value)} placeholder="08xxxxxxxxxx" inputMode="tel" className={inputCls} style={inputStyle} />
+            </div>
+            <div>
+              <label htmlFor="profile-email" className={labelCls}>Email</label>
+              <input id="profile-email" {...FIELDS.updateProfile.email} value={pEmail} onChange={(e) => setPEmail(e.target.value)} placeholder="nama@email.com" inputMode="email" className={inputCls} style={inputStyle} />
+            </div>
+          </div>
+          <p className="-mt-2 text-xs font-semibold" style={{ color: "var(--dim)" }}>Minimal isi salah satu (WhatsApp atau Email) — untuk menerima info olimpiade terbaru. Tidak dibagikan ke siapa pun.</p>
+          <div>
+            <label htmlFor="profile-city" className={labelCls}>Kota / Kabupaten</label>
+            <input id="profile-city" {...FIELDS.updateProfile.city} value={pCity} onChange={(e) => setPCity(e.target.value)} placeholder="Contoh: Bandung / Kab. Sleman" className={inputCls} style={inputStyle} />
+          </div>
+          <div>
+            <label htmlFor="profile-address" className={labelCls}>Alamat Sekolah</label>
+            <textarea id="profile-address" {...FIELDS.updateProfile.school_address} value={pAddr} onChange={(e) => setPAddr(e.target.value)} placeholder="Jalan, nomor, kelurahan/desa, kecamatan — alamat sekolah atau instansi" rows={3}
+              className="mt-1.5 w-full rounded-2xl px-4 py-3 text-base font-semibold outline-none" style={inputStyle} />
+          </div>
+        </div>
+
+        {error && <p className="mt-4 rounded-xl px-3 py-2 text-sm font-bold text-red-600" style={{ background: "#FAE7E9" }} role="alert">{error}</p>}
+        {savedMsg && <p className="pop-in mt-4 rounded-xl px-3 py-2 text-sm font-bold" style={{ background: "#E2F4E9", color: "#14532D" }} role="status">{savedMsg}</p>}
+        <button type="button" onClick={submit} disabled={save.isPending} aria-label="Simpan perubahan profil saya"
+          className="font-display mt-5 min-h-[56px] w-full rounded-2xl text-lg font-extrabold text-white disabled:opacity-50" style={{ background: "var(--accent)" }}>
+          {save.isPending ? "Sedang menyimpan…" : "💾 Simpan Profil"}
+        </button>
+      </section>
+    </main>
+  );
+}
+
+/* ---------------- SERTIFIKAT PRESTASI ----------------
+   Sertifikat resmi ZIQVA OLIM digambar di perangkat pengguna (canvas)
+   sebagai PNG A4 mendatar 1754×1240. Hanya untuk attempt bertanda
+   "Ujian Sertifikat" dengan skor ≥ 80 (lulus). Nama di sertifikat terisi
+   otomatis dari nama peserta dan BISA DIUBAH di pratinjau — perubahan
+   hanya berlaku untuk gambar sertifikat itu, tidak mengubah data skor. */
+export const CERT_EXAM_LABEL = "Ujian Sertifikat";
+export const CERT_PASS_SCORE = 80;
+
+export interface CertData {
+  id: number; student_name: string; mapel: string; jenjang: string;
+  score: number; correct: number; total: number; created_at: string;
+}
+
+const ROMAN_MONTHS = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
+export function certNumber(attemptId: number, createdAt: string): string {
+  const d = new Date(createdAt);
+  const year = Number.isNaN(d.getTime()) ? new Date().getFullYear() : d.getFullYear();
+  const roman = Number.isNaN(d.getTime()) ? "I" : (ROMAN_MONTHS[d.getMonth()] ?? "I");
+  return `ZO/SERT/${year}/${roman}/${String(attemptId).padStart(6, "0")}`;
+}
+
+/** Gambar sertifikat lengkap ke canvas 1754×1240 (A4 mendatar @150dpi). */
+export function drawCertificate(canvas: HTMLCanvasElement, data: CertData, displayName: string) {
+  const W = 1754, H = 1240;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  const NAVY = "#1E2A78", GOLD = "#C9A227", GOLD_DARK = "#9A7B1C", CREAM = "#FFF9EC", INK = "#2B2440", RED = "#B02A37";
+  const cx = W / 2;
+
+  // Kertas krem + watermark bintang samar di tengah.
+  ctx.fillStyle = CREAM; ctx.fillRect(0, 0, W, H);
+  ctx.save();
+  ctx.globalAlpha = 0.055; ctx.fillStyle = GOLD_DARK;
+  ctx.font = "620px Georgia, serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText("★", cx, 640);
+  ctx.restore();
+
+  // Bingkai ganda: biru dongker tebal di luar, emas di dalam.
+  ctx.strokeStyle = NAVY; ctx.lineWidth = 10; ctx.strokeRect(28, 28, W - 56, H - 56);
+  ctx.strokeStyle = GOLD; ctx.lineWidth = 3; ctx.strokeRect(52, 52, W - 104, H - 104);
+  ctx.strokeStyle = NAVY; ctx.lineWidth = 1.5; ctx.strokeRect(66, 66, W - 132, H - 132);
+  // Ornamen sudut: belah ketupat emas + garis siku dongker.
+  const corner = (x: number, y: number, sx: number, sy: number) => {
+    ctx.save(); ctx.translate(x, y); ctx.scale(sx, sy);
+    ctx.strokeStyle = NAVY; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(0, 64); ctx.lineTo(0, 0); ctx.lineTo(64, 0); ctx.stroke();
+    ctx.fillStyle = GOLD;
+    ctx.beginPath(); ctx.moveTo(26, 10); ctx.lineTo(36, 26); ctx.lineTo(26, 42); ctx.lineTo(16, 26); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  };
+  corner(84, 84, 1, 1); corner(W - 84, 84, -1, 1); corner(84, H - 84, 1, -1); corner(W - 84, H - 84, -1, -1);
+
+  ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+
+  // Lingkaran bintang emas di atas kop.
+  ctx.beginPath(); ctx.arc(cx, 168, 52, 0, Math.PI * 2);
+  ctx.fillStyle = "#F7E7B4"; ctx.fill();
+  ctx.lineWidth = 4; ctx.strokeStyle = GOLD; ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, 168, 42, 0, Math.PI * 2);
+  ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.fillStyle = GOLD_DARK; ctx.font = "52px Georgia, serif"; ctx.textBaseline = "middle";
+  ctx.fillText("★", cx, 172);
+  ctx.textBaseline = "alphabetic";
+
+  // Kop resmi.
+  ctx.fillStyle = NAVY; ctx.font = "800 64px 'Baloo 2', Georgia, serif";
+  ctx.fillText("ZIQVA OLIM", cx, 282);
+  ctx.fillStyle = GOLD_DARK; ctx.font = "700 25px Georgia, serif";
+  ctx.fillText("P L A T F O R M   O L I M P I A D E   D I G I T A L   I N D O N E S I A", cx, 322);
+  ctx.strokeStyle = GOLD; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(cx - 330, 344); ctx.lineTo(cx + 330, 344); ctx.stroke();
+
+  // Judul + nomor sertifikat.
+  ctx.fillStyle = NAVY; ctx.font = "700 76px Georgia, 'Times New Roman', serif";
+  ctx.fillText("SERTIFIKAT PRESTASI", cx, 436);
+  ctx.fillStyle = "#6E6785"; ctx.font = "600 24px Georgia, serif";
+  ctx.fillText(`Nomor: ${certNumber(data.id, data.created_at)}`, cx, 478);
+
+  ctx.fillStyle = INK; ctx.font = "italic 30px Georgia, serif";
+  ctx.fillText("Diberikan dengan bangga kepada:", cx, 548);
+
+  // Nama peserta besar + garis bawah emas.
+  const nameText = (displayName.trim() || data.student_name).slice(0, 48);
+  let nameSize = 84;
+  ctx.font = `800 ${nameSize}px 'Baloo 2', Georgia, serif`;
+  while (ctx.measureText(nameText).width > 1300 && nameSize > 40) { nameSize -= 4; ctx.font = `800 ${nameSize}px 'Baloo 2', Georgia, serif`; }
+  ctx.fillStyle = NAVY;
+  ctx.fillText(nameText, cx, 646);
+  const nameW = Math.min(ctx.measureText(nameText).width + 30, 1360);
+  ctx.strokeStyle = GOLD; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(cx - nameW / 2, 668); ctx.lineTo(cx + nameW / 2, 668); ctx.stroke();
+
+  // Keterangan pencapaian di bawah nama (huruf emas kapital).
+  const medal = medalFor(data.score);
+  const achievement = `PERAIH ${medal.label.toUpperCase()}`;
+  ctx.fillStyle = GOLD_DARK; ctx.font = "800 34px Georgia, serif";
+  ctx.fillText(achievement.split("").join(" "), cx, 724);
+
+  // Kalimat resmi — lebar dibatasi 1080px supaya tidak menabrak stempel.
+  const body = `Atas prestasi dan keberhasilannya menyelesaikan seluruh 5 Level Olimpiade ${data.mapel} Jenjang ${data.jenjang} dan lulus Ujian Sertifikat ZIQVA OLIM dengan skor ${data.score} (${data.correct} dari ${data.total} soal benar).`;
+  ctx.fillStyle = INK; ctx.font = "28px Georgia, serif";
+  const words = body.split(" ");
+  const lines: string[] = [];
+  let line = "";
+  for (const w of words) {
+    const test = line ? `${line} ${w}` : w;
+    if (ctx.measureText(test).width > 1080 && line) { lines.push(line); line = w; } else line = test;
+  }
+  if (line) lines.push(line);
+  lines.forEach((l, i) => ctx.fillText(l, cx, 786 + i * 42));
+
+  // Blok bawah: tanggal (kiri), stempel (tengah-kiri), tanda tangan (kanan).
+  const bottomY = 1010;
+  const dateStr = new Date(data.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+  ctx.textAlign = "left"; ctx.fillStyle = INK; ctx.font = "26px Georgia, serif";
+  ctx.fillText(`Diterbitkan pada ${dateStr}`, 150, bottomY - 60);
+
+  // Stempel bundar merah dengan bintang di tengah.
+  const stampX = 320, stampY = 1064;
+  ctx.save(); ctx.translate(stampX, stampY); ctx.rotate(-0.16);
+  ctx.globalAlpha = 0.88;
+  ctx.beginPath(); ctx.arc(0, 0, 104, 0, Math.PI * 2);
+  ctx.lineWidth = 5; ctx.strokeStyle = RED; ctx.stroke();
+  ctx.beginPath(); ctx.arc(0, 0, 88, 0, Math.PI * 2);
+  ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = RED; ctx.textAlign = "center";
+  ctx.font = "800 25px Georgia, serif";
+  ctx.fillText("ZIQVA OLIM", 0, -34);
+  ctx.font = "34px Georgia, serif";
+  ctx.fillText("★", 0, 12);
+  ctx.font = "800 19px Georgia, serif";
+  ctx.fillText("SERTIFIKAT RESMI", 0, 48);
+  ctx.restore();
+
+  // Tanda tangan Pimpinan.
+  const signX = 1330;
+  ctx.textAlign = "center"; ctx.fillStyle = INK; ctx.font = "26px Georgia, serif";
+  ctx.fillText("Pimpinan ZIQVA OLIM", signX, bottomY - 96);
+  ctx.fillStyle = NAVY; ctx.font = "italic 700 54px 'Segoe Script', 'Brush Script MT', cursive";
+  ctx.fillText("Ziqva Olim", signX, bottomY - 24);
+  ctx.strokeStyle = INK; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(signX - 150, bottomY + 2); ctx.lineTo(signX + 150, bottomY + 2); ctx.stroke();
+  ctx.fillStyle = INK; ctx.font = "700 26px Georgia, serif";
+  ctx.fillText("Tim ZIQVA OLIM", signX, bottomY + 42);
+
+  // Catatan kaki.
+  ctx.textAlign = "center"; ctx.fillStyle = "#6E6785"; ctx.font = "italic 21px Georgia, serif";
+  ctx.fillText("Sertifikat ini diterbitkan secara elektronik dan sah tanpa tanda tangan basah.", cx, H - 96);
+}
+
+function CertificateModal(props: { data: CertData; onClose: () => void }) {
+  const { data } = props;
+  const [certName, setCertName] = useState(data.student_name);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    if (canvasRef.current) drawCertificate(canvasRef.current, data, certName);
+  }, [data, certName]);
+
+  const download = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    drawCertificate(canvas, data, certName);
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Sertifikat-ZIQVA-OLIM-${(certName.trim() || data.student_name).replace(/[^\w-]+/g, "-")}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 4000);
+    }, "image/png");
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-3 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label="Pratinjau sertifikat prestasi">
+      <div className="pop-in max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-3xl p-5 shadow-xl sm:p-6" style={{ background: "var(--surface)" }}>
+        <div className="flex items-start gap-2">
+          <h2 className="font-display flex-1 text-xl font-extrabold">📜 Sertifikat Prestasi — {data.mapel} {data.jenjang}</h2>
+          <button type="button" onClick={props.onClose} aria-label="Tutup pratinjau sertifikat" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-base font-bold" style={{ background: "var(--surface2)" }}>✕</button>
+        </div>
+        <p className="mt-1 text-sm font-semibold" style={{ color: "var(--dim)" }}>
+          Lulus Ujian Sertifikat dengan skor <strong>{data.score}</strong> ({data.correct}/{data.total} benar) • {medalFor(data.score).label} • No. {certNumber(data.id, data.created_at)}
+        </p>
+        <div className="mt-4">
+          <label htmlFor="cert-name" className="font-display text-sm font-bold">Nama di Sertifikat</label>
+          <input id="cert-name" value={certName} onChange={(e) => setCertName(e.target.value)} maxLength={48}
+            placeholder="Nama yang tercetak di sertifikat" aria-label="Nama yang tercetak di sertifikat, bisa diubah sebelum mengunduh"
+            className="mt-1.5 min-h-[52px] w-full rounded-2xl px-4 text-base font-semibold outline-none" style={{ background: "var(--surface2)", border: "2px solid var(--border)" }} />
+          <p className="mt-1 text-xs font-semibold" style={{ color: "var(--dim)" }}>Terisi otomatis dari nama peserta. Boleh diganti — misalnya nama anak bila yang bermain akun orang tuanya. Nama yang diganti hanya berlaku di sertifikat ini; data skor &amp; peringkat tetap memakai nama peserta.</p>
+        </div>
+        <div className="mt-4 overflow-hidden rounded-2xl" style={{ border: "1px solid var(--border)" }}>
+          <canvas ref={canvasRef} className="block h-auto w-full" role="img" aria-label={`Pratinjau sertifikat prestasi atas nama ${certName.trim() || data.student_name}, peraih ${medalFor(data.score).label} Olimpiade ${data.mapel} jenjang ${data.jenjang}`} />
+        </div>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          <button type="button" onClick={download} aria-label="Unduh sertifikat sebagai gambar PNG resolusi tinggi"
+            className="font-display min-h-[56px] rounded-2xl text-base font-extrabold text-white" style={{ background: "var(--accent)" }}>📜 Unduh Sertifikat (PNG)</button>
+          <button type="button" onClick={props.onClose} aria-label="Tutup pratinjau sertifikat"
+            className="font-display min-h-[56px] rounded-2xl text-base font-bold" style={{ background: "var(--surface2)" }}>Nanti Saja</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function App() {
   const queryClient = useQueryClient();
   const [view, setView] = useState<View>("home");
@@ -2078,6 +2398,11 @@ export function App() {
   const [welcomeMsg, setWelcomeMsg] = useState("");
   const [welcomeSpeaking, setWelcomeSpeaking] = useState(false);
   const [lastResult, setLastResult] = useState<{ answers: (number | null)[]; usedSec: number; correct: number; score: number } | null>(null);
+  // Ujian Sertifikat: sesi khusus campuran Level 3–5 yang terbuka setelah
+  // kelima level satu mapel tuntas; attempt-nya ditandai class_name khusus.
+  const [certSession, setCertSession] = useState(false);
+  const [lastAttemptId, setLastAttemptId] = useState<number | null>(null);
+  const [certModal, setCertModal] = useState<CertData | null>(null);
   const [token, setToken] = useState<string>(() => { try { return localStorage.getItem(TOKEN_KEY) ?? ""; } catch { return ""; } });
   const me = useQuery({ queryKey: ["me", token], queryFn: () => api.me({ token }), enabled: token.length > 0 });
   const sessionUser: SessionUser | null = token && me.data ? me.data.user : null;
@@ -2129,7 +2454,7 @@ export function App() {
   const onlineCount = onlineQ.data?.online;
   const saveAttempt = useMutation({
     mutationFn: api.saveAttempt,
-    onSuccess: (r) => { setMonitorCode(r.monitor_code); queryClient.invalidateQueries({ queryKey: ["attempts"] }); queryClient.invalidateQueries({ queryKey: ["leaderboard"] }); },
+    onSuccess: (r) => { setMonitorCode(r.monitor_code); setLastAttemptId(r.id); queryClient.invalidateQueries({ queryKey: ["attempts"] }); queryClient.invalidateQueries({ queryKey: ["leaderboard"] }); },
     onError: (e) => alertSaveError(e),
   });
   const deleteAttempt = useMutation({
@@ -2173,6 +2498,9 @@ export function App() {
     setClassSession(null);
     setClassResult(null);
     setPendingClassSubmission(null);
+    setCertSession(false);
+    setLastAttemptId(null);
+    setCertModal(null);
     setRewards({ ...EMPTY_REWARDS });
     setLevelStore({});
     setLevel(1);
@@ -2269,6 +2597,12 @@ export function App() {
   const comboKey = activeSubject ? `${jenjang}|${activeSubject.id}` : "";
   const unlockedLevel = levelStore[comboKey]?.unlocked ?? 1;
   const bestThisLevel = activeSubject ? levelStore[comboKey]?.best?.[String(level)] : undefined;
+  // Tantangan Sertifikat mapel terpilih: level dianggap TUNTAS bila skor
+  // terbaiknya ≥ UNLOCK_SCORE (sistem buka level yang sama). Kelima level
+  // tuntas → Ujian Sertifikat terbuka.
+  const certBest = (activeSubject ? levelStore[comboKey]?.best : undefined) ?? {};
+  const certDoneCount = [1, 2, 3, 4, 5].filter((n) => (certBest[String(n)] ?? 0) >= UNLOCK_SCORE).length;
+  const certUnlocked = certDoneCount >= 5;
 
   // Di Mode Ujian, level pilihan tidak boleh melewati level yang sudah terbuka.
   useEffect(() => {
@@ -2332,6 +2666,7 @@ export function App() {
       durationMinutes: payload.classInfo.duration_minutes,
     });
     setSessionQ(shuffled);
+    setCertSession(false);
     setClassResult(null);
     setPendingClassSubmission(null);
     setClassSubmitError("");
@@ -2380,6 +2715,43 @@ export function App() {
     if (qs.length === 0) return;
     setSessionQ(qs);
     setSessionLevel(level);
+    setCertSession(false);
+    setLastAttemptId(null);
+    setLastResult(null);
+    setNewBadges([]);
+    setEarnedPoints(0);
+    setUnlockedNow(null);
+    setMonitorCode("");
+    setView("quiz");
+    window.scrollTo({ top: 0 });
+  };
+
+  /* Ujian Sertifikat: 20 soal campuran tingkat tersulit (gabungan Level
+     3–5), murni Mode Ujian tanpa ikon bantuan "i". Hanya bisa dimulai bila
+     kelima level mapel ini sudah tuntas (tombolnya pun baru tampil saat
+     itu) — hasilnya disimpan dengan penanda class_name "Ujian Sertifikat". */
+  const startCertExam = () => {
+    if (!name.trim()) { setNameError("Isi nama peserta dulu ya, supaya hasil Ujian Sertifikatmu tercatat."); focusField("student-name"); return; }
+    if (!activeSubject) return;
+    const english = school === "cambridge";
+    const seen = new Set<string>();
+    const pool: Question[] = [];
+    const push = (list: Question[]) => {
+      for (const q of list) {
+        const k = q.q.trim().toLowerCase();
+        if (!seen.has(k)) { seen.add(k); pool.push(q); }
+      }
+    };
+    push(buildSession(jenjang, activeSubject.id, 5, 8, english));
+    push(buildSession(jenjang, activeSubject.id, 4, 8, english));
+    push(buildSession(jenjang, activeSubject.id, 3, 8, english));
+    const qs = shuffle(pool).slice(0, SESSION_SIZE);
+    if (qs.length === 0) return;
+    setSessionQ(qs);
+    setSessionLevel(5);
+    setMode("ujian");
+    setCertSession(true);
+    setLastAttemptId(null);
     setLastResult(null);
     setNewBadges([]);
     setEarnedPoints(0);
@@ -2399,6 +2771,7 @@ export function App() {
       saveAttempt.mutate({
         student_name: name.trim(), jenjang, mapel: activeSubject.name, mode,
         score, correct, total: questions.length, duration_sec: usedSec, device_id: deviceId,
+        class_name: certSession ? CERT_EXAM_LABEL : "",
       });
     }
 
@@ -2519,6 +2892,8 @@ export function App() {
                           <button type="button" role="menuitem" onClick={() => { setProfileOpen(false); setView("admin"); }} aria-label="Buka panel superadmin"
                             className="font-display flex min-h-[44px] w-full items-center gap-2 rounded-xl px-3 text-left text-sm font-bold transition hover:opacity-80" style={{ background: "var(--surface2)" }}>🛡️ Panel Superadmin</button>
                         )}
+                        <button type="button" role="menuitem" onClick={() => { setProfileOpen(false); setView("profile"); }} aria-label="Buka halaman profil saya"
+                          className="font-display mt-1 flex min-h-[44px] w-full items-center gap-2 rounded-xl px-3 text-left text-sm font-bold transition hover:opacity-80" style={{ background: "var(--surface2)" }}>👤 Profil Saya</button>
                         <button type="button" role="menuitem" onClick={() => { setProfileOpen(false); setView("dashboard"); }} aria-label="Buka dashboard pantau"
                           className="font-display mt-1 flex min-h-[44px] w-full items-center gap-2 rounded-xl px-3 text-left text-sm font-bold transition hover:opacity-80" style={{ background: "var(--surface2)" }}>👀 Dashboard Pantau</button>
                         <button type="button" role="menuitem" onClick={() => { setProfileOpen(false); handleLogout(); }} aria-label="Keluar dari akun"
@@ -2580,10 +2955,23 @@ export function App() {
       {view === "login" && <AuthView initialTab={authInitialTab} onSuccess={handleAuthSuccess} />}
 
       {view === "dashboard" && sessionUser && (
-        <MonitorView token={token} user={sessionUser} onLogout={handleLogout} onPractice={() => setView("home")} />
+        <MonitorView token={token} user={sessionUser} onLogout={handleLogout} onPractice={() => setView("home")} onProfile={() => setView("profile")} />
+      )}
+      {view === "profile" && sessionUser && (
+        <ProfileView token={token} user={sessionUser} onBack={() => setView(sessionUser.role === "admin" ? "admin" : "dashboard")} />
+      )}
+      {view === "profile" && !sessionUser && !me.isPending && (
+        <main className="mx-auto w-full max-w-md px-4 pb-10">
+          <div className="mt-5 rounded-3xl p-6 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+            <div className="text-5xl" aria-hidden>👤</div>
+            <p className="font-display mt-2 text-lg font-bold">Masuk dulu untuk melihat Profil Saya</p>
+            <p className="mt-1 text-sm" style={{ color: "var(--dim)" }}>Halaman profil berisi data Guru / Orang Tua / Superadmin yang sedang masuk.</p>
+            <button type="button" onClick={() => setView("login")} className="font-display mt-4 min-h-[52px] rounded-2xl px-6 font-bold text-white" style={{ background: "var(--accent)" }}>Masuk / Daftar →</button>
+          </div>
+        </main>
       )}
       {view === "admin" && sessionUser?.role === "admin" && (
-        <AdminView token={token} user={sessionUser} onLogout={handleLogout} />
+        <AdminView token={token} user={sessionUser} onLogout={handleLogout} onProfile={() => setView("profile")} />
       )}
       {view === "admin" && sessionUser?.role !== "admin" && !me.isPending && (
         <main className="mx-auto w-full max-w-md px-4 pb-10">
@@ -2618,11 +3006,12 @@ export function App() {
 
       {view === "quiz" && !classSession && activeSubject && (
         <QuizView jenjang={jenjang} subjectName={activeSubject.name} subjectId={activeSubject.id} mode={mode}
-          levelLabel={`Level ${sessionLevel} · ${LEVELS[sessionLevel - 1]?.name ?? ""}`}
+          levelLabel={certSession ? "🏆 Ujian Sertifikat · Campuran Level 3–5" : `Level ${sessionLevel} · ${LEVELS[sessionLevel - 1]?.name ?? ""}`}
           soundOn={soundOn} onToggleSound={toggleSound}
           questions={questions} onFinish={handleFinish} onQuit={() => setView("home")} quitSignal={quitSignal}
           english={school === "cambridge"}
-          onInfo={(q) => openModuleForQuestion(q, "Kembali ke Soal")} />
+          contextLabel={certSession ? `🏆 Ujian Sertifikat ${activeSubject.name} — ${SESSION_SIZE} soal tersulit campuran Level 3–5, murni Mode Ujian. Raih skor ${CERT_PASS_SCORE}+ untuk membuka Sertifikat Prestasimu!` : undefined}
+          onInfo={certSession ? undefined : (q) => openModuleForQuestion(q, "Kembali ke Soal")} />
       )}
 
       {view === "joinClass" && (
@@ -2968,6 +3357,45 @@ export function App() {
             </p>
           </section>
 
+          {/* Tantangan Sertifikat mapel terpilih */}
+          <section className="mt-5 rounded-3xl p-5 shadow-sm" style={{ background: certUnlocked ? "linear-gradient(150deg,#FFF7E0,#FFEFC4)" : "var(--surface)", border: `2px solid ${certUnlocked ? "var(--gold)" : "var(--border)"}` }} aria-label={`Tantangan sertifikat ${activeSubject?.name ?? ""}`}>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="font-display flex-1 text-lg font-bold">🏆 Tantangan Sertifikat — {activeSubject?.name}</h2>
+              <span className="font-display rounded-full px-3 py-1.5 text-sm font-extrabold" style={{ background: certUnlocked ? "var(--gold)" : "var(--surface2)", color: certUnlocked ? "#2B2440" : "var(--dim)" }}>
+                Tantangan Sertifikat: {certDoneCount}/5 level tuntas
+              </span>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-1.5" aria-label={`Progres level ${activeSubject?.name ?? ""}: ${certDoneCount} dari 5 level tuntas`}>
+              {[1, 2, 3, 4, 5].map((n) => {
+                const best = certBest[String(n)];
+                const done = (best ?? 0) >= UNLOCK_SCORE;
+                return (
+                  <span key={n} className="font-display inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-extrabold"
+                    style={{ background: done ? "#1E7A46" : "var(--surface2)", color: done ? "#fff" : "var(--dim)", border: "1px solid var(--border)" }}>
+                    {done ? "✅" : "🎚️"} Level {n}{best !== undefined ? ` • ${best}` : " • —"}
+                  </span>
+                );
+              })}
+            </div>
+            {certUnlocked ? (
+              <>
+                <p className="mt-3 text-sm leading-relaxed font-semibold">
+                  🎉 Luar biasa! Kamu sudah menuntaskan <strong>seluruh 5 level {activeSubject?.name}</strong> (skor terbaik Level 5: {certBest["5"]}). Ujian penentunya sudah terbuka:
+                  {SESSION_SIZE} soal campuran tersulit (Level 3–5), murni Mode Ujian tanpa bantuan. Raih skor <strong>{CERT_PASS_SCORE}+</strong> dan <strong>Sertifikat Prestasi resmi ZIQVA OLIM</strong> jadi milikmu — bisa diunduh &amp; dicetak!
+                </p>
+                <button type="button" onClick={startCertExam} aria-label={`Mulai ujian sertifikat ${activeSubject?.name ?? ""} jenjang ${jenjang}`}
+                  className="font-display mt-3 min-h-[56px] w-full rounded-2xl text-lg font-extrabold shadow sm:w-auto sm:px-8" style={{ background: "var(--gold)", color: "#2B2440" }}>
+                  🏆 Ujian Sertifikat — {activeSubject?.name} • {jenjang}
+                </button>
+              </>
+            ) : (
+              <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--dim)" }}>
+                Tuntaskan <strong>kelima level {activeSubject?.name}</strong> — raih skor terbaik <strong>{UNLOCK_SCORE}+</strong> di setiap level — untuk membuka <strong>🏆 Ujian Sertifikat</strong>:
+                ujian penentu {SESSION_SIZE} soal tersulit yang hadiahnya <strong>Sertifikat Prestasi resmi</strong> yang bisa diunduh. Kurang {5 - certDoneCount} level lagi — semangat! 💪
+              </p>
+            )}
+          </section>
+
           {/* Mode + start */}
           <section className="mt-5 rounded-3xl p-5 shadow-sm" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
             <h2 className="font-display text-lg font-bold">🚀 5 · Pilih Mode &amp; Mulai</h2>
@@ -3022,7 +3450,7 @@ export function App() {
       {view === "result" && lastResult && activeSubject && (
         <main className="mx-auto w-full max-w-3xl px-4 pb-10">
           <section className="pop-in mt-4 rounded-3xl p-6 text-center shadow-sm" style={{ background: "linear-gradient(160deg,#FFF7E0,#FFEFC4)", border: "2px solid var(--gold)", color: "#2B2440" }}>
-            <p className="text-sm font-bold tracking-wide" style={{ color: "#92600A" }}>HASIL {mode === "ujian" ? "UJIAN" : "LATIHAN"} • {activeSubject.name.toUpperCase()} • {jenjang} • LEVEL {sessionLevel} {LEVELS[sessionLevel - 1]?.name.toUpperCase()}</p>
+            <p className="text-sm font-bold tracking-wide" style={{ color: "#92600A" }}>{certSession ? `HASIL UJIAN SERTIFIKAT • ${activeSubject.name.toUpperCase()} • ${jenjang}` : `HASIL ${mode === "ujian" ? "UJIAN" : "LATIHAN"} • ${activeSubject.name.toUpperCase()} • ${jenjang} • LEVEL ${sessionLevel} ${LEVELS[sessionLevel - 1]?.name.toUpperCase()}`}</p>
             <p className="mt-1 text-sm font-semibold" style={{ color: "#92600A" }}>Peserta: {name}</p>
             <div className="font-display my-2 text-[84px] leading-none font-extrabold" style={{ color: "#D97706" }}>{lastResult.score}</div>
             <p className="font-display text-lg font-bold">({lastResult.correct}/{questions.length} benar) • ⏱ {fmtDur(lastResult.usedSec)}</p>
@@ -3034,6 +3462,32 @@ export function App() {
                 <p className="text-xs font-bold tracking-wide" style={{ color: "#92600A" }}>🔑 KODE PANTAU {name.toUpperCase()}</p>
                 <p className="font-display text-3xl font-extrabold tracking-[0.3em]" style={{ color: "#2B2440" }}>{monitorCode}</p>
                 <p className="text-xs font-semibold" style={{ color: "#92600A" }}>Berikan kode ini ke guru / orang tua supaya mereka bisa memantau skormu dari akun mereka.</p>
+              </div>
+            )}
+            {certSession && lastResult.score >= CERT_PASS_SCORE && (
+              <div className="pop-in mx-auto mt-4 max-w-md rounded-2xl px-4 py-4" style={{ background: "#fff", border: "2px solid var(--gold)" }} role="status" aria-label="Kamu lulus ujian sertifikat">
+                <p className="font-display text-lg font-extrabold" style={{ color: "#92600A" }}>🎉 LULUS UJIAN SERTIFIKAT!</p>
+                <p className="mt-1 text-sm font-semibold" style={{ color: "#92600A" }}>
+                  Kamu berhak atas <strong>Sertifikat Prestasi resmi ZIQVA OLIM</strong> — {medalFor(lastResult.score).label} Olimpiade {activeSubject.name} Jenjang {jenjang}. Namamu terisi otomatis dan masih bisa diganti dulu sebelum mengunduh (misalnya nama lengkapmu yang resmi).
+                </p>
+                <button type="button" disabled={lastAttemptId === null}
+                  onClick={() => lastAttemptId !== null && setCertModal({ id: lastAttemptId, student_name: name.trim() || "Peserta", mapel: activeSubject.name, jenjang, score: lastResult.score, correct: lastResult.correct, total: questions.length, created_at: new Date().toISOString() })}
+                  aria-label="Buka pratinjau dan unduh sertifikat prestasi"
+                  className="font-display mt-3 min-h-[54px] w-full rounded-2xl text-base font-extrabold text-white disabled:opacity-50" style={{ background: "var(--accent)" }}>
+                  {lastAttemptId === null ? "⏳ Menyiapkan Sertifikat…" : "📜 Unduh Sertifikat"}
+                </button>
+              </div>
+            )}
+            {certSession && lastResult.score < CERT_PASS_SCORE && (
+              <div className="mx-auto mt-4 max-w-md rounded-2xl px-4 py-4" style={{ background: "#fff", border: "2px dashed #D97706" }} role="status" aria-label="Belum lulus ujian sertifikat">
+                <p className="font-display text-base font-extrabold" style={{ color: "#92600A" }}>💪 Sedikit lagi menuju Sertifikat!</p>
+                <p className="mt-1 text-sm font-semibold" style={{ color: "#92600A" }}>
+                  Skormu {lastResult.score} — target lulus Ujian Sertifikat adalah <strong>{CERT_PASS_SCORE}+</strong>. Kabar baiknya: tantanganmu tinggal satu langkah, karena kelima level {activeSubject.name} sudah kamu tuntaskan (5/5). Baca lagi pembahasan di bawah, lalu coba Ujian Sertifikat sekali lagi — soalnya selalu baru!
+                </p>
+                <button type="button" onClick={startCertExam} aria-label={`Coba lagi ujian sertifikat ${activeSubject.name}`}
+                  className="font-display mt-3 min-h-[52px] w-full rounded-2xl text-base font-extrabold" style={{ background: "var(--gold)", color: "#2B2440" }}>
+                  🔁 Coba Ujian Sertifikat Lagi
+                </button>
               </div>
             )}
             {!sessionUser && <DaftarCtaCard variant="result" onDaftar={openRegister} />}
@@ -3191,12 +3645,23 @@ export function App() {
                       <span className="text-[9px] font-bold">SKOR</span>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="truncate font-display font-bold">{a.mapel} • {a.jenjang}{a.class_name ? ` • 🏫 Kelas: ${a.class_name}` : ""}</div>
+                      <div className="truncate font-display font-bold">{a.mapel} • {a.jenjang}{a.class_name === CERT_EXAM_LABEL ? " • 🏆 Ujian Sertifikat" : a.class_name ? ` • 🏫 Kelas: ${a.class_name}` : ""}</div>
                       <div className="text-xs font-semibold" style={{ color: "var(--dim)" }}>
                         {a.student_name} • {a.correct}/{a.total} benar • {a.mode === "ujian" ? "🏆 Ujian" : "✏️ Latihan"} • {fmtDur(a.duration_sec)} • {new Date(a.created_at).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                       </div>
                       <div className="text-xs font-bold" style={{ color: medalFor(a.score).color }}>🏅 {medalFor(a.score).label}</div>
                       {a.monitor_code && <div className="mt-0.5 text-xs font-bold" style={{ color: "var(--dim)" }}>🔑 Kode Pantau: <span className="tracking-widest">{a.monitor_code}</span> — untuk guru / orang tua</div>}
+                      {a.class_name === CERT_EXAM_LABEL && a.score >= CERT_PASS_SCORE && (
+                        <button type="button"
+                          onClick={() => setCertModal({ id: a.id, student_name: a.student_name, mapel: a.mapel, jenjang: a.jenjang, score: a.score, correct: a.correct, total: a.total, created_at: a.created_at })}
+                          aria-label={`Unduh sertifikat prestasi untuk ${a.mapel} skor ${a.score}`}
+                          className="font-display mt-1.5 inline-flex min-h-[40px] items-center rounded-full px-4 text-sm font-extrabold text-white" style={{ background: "var(--accent)" }}>
+                          📜 Sertifikat
+                        </button>
+                      )}
+                      {a.class_name === CERT_EXAM_LABEL && a.score < CERT_PASS_SCORE && (
+                        <div className="mt-0.5 text-xs font-bold" style={{ color: "#92600A" }}>🏆 Ujian Sertifikat — belum lulus (target {CERT_PASS_SCORE}+). Tuntaskan lagi dari Beranda ya!</div>
+                      )}
                     </div>
                     <button type="button" onClick={() => deleteAttempt.mutate({ id: a.id, device_id: deviceId })} aria-label={`Hapus riwayat ${a.mapel} skor ${a.score}`}
                       className="min-h-[40px] shrink-0 rounded-full px-3 text-sm font-bold" style={{ background: "var(--surface2)", color: "var(--dim)" }}>Hapus</button>
@@ -3261,6 +3726,10 @@ export function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {certModal && (
+        <CertificateModal data={certModal} onClose={() => setCertModal(null)} />
       )}
 
       {moduleCtx && (
