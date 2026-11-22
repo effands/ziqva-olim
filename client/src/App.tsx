@@ -2682,7 +2682,7 @@ export function App() {
             </div>
             <div className="grid grid-cols-2 gap-px lg:grid-cols-4" style={{ background: "var(--border)" }} aria-label="Statistik ZIQVA OLIM">
               <div className="flex items-center justify-center px-3 py-3 text-center text-[13px] font-bold" style={{ background: "var(--surface2)" }}>📚 Total {TOTAL_AUTHORED} soal inti tertulis</div>
-              <div className="flex items-center justify-center px-3 py-3 text-center text-[13px] font-bold" style={{ background: "var(--surface2)" }}>🎲 298.000+ variasi soal acak dari generator</div>
+              <div className="flex items-center justify-center px-3 py-3 text-center text-[13px] font-bold" style={{ background: "var(--surface2)" }}>🎲 298.000+ variasi soal acak</div>
               <div className="flex items-center justify-center px-3 py-3 text-center text-[13px] font-bold" style={{ background: "var(--surface2)" }}>🗂️ {SUBJECTS.length} mapel • 4 jenjang • 5 level</div>
               <div className="flex items-center justify-center gap-2 px-3 py-3 text-center text-[13px] font-bold" style={{ background: "var(--surface2)" }} role="status"
                 aria-label={onlineCount != null ? `${onlineCount} pemakai sedang online sekarang` : "Menghitung pemakai yang sedang online"}>
