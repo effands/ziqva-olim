@@ -1,6 +1,14 @@
 // Bank soal original ZIQVA OLIM — disusun mengikuti pola soal olimpiade
 // pada video contoh (pilihan ganda, listening, urutan gambar, pola bilangan)
 // dan diperluas ke semua jenjang & mata pelajaran.
+//
+// Sesi soal TIDAK lagi memakai bank ini secara mentah: buildSession()
+// mencampur soal bank (dengan level kesulitan menurut urutannya) dengan
+// soal baru dari generator prosedural (generators.ts), mengacak posisi
+// pilihan jawaban, membuang duplikat, dan memprioritaskan soal yang
+// belum pernah keluar di perangkat ini.
+
+import { generateQuestions, shuffle, shuffleOptions } from "./generators";
 
 export type JenjangId = "TK" | "SD" | "SMP" | "SMA";
 export type SchoolType = "umum" | "madrasah" | "kristen" | "cambridge";
@@ -60,6 +68,9 @@ export const SUBJECTS: SubjectDef[] = [
   { id: "cambridge-eng", name: "Cambridge English", short: "CEN", color: "#0A5CAD", bg: "#E1EFFB", school: ["cambridge"], jenjang: ["SD", "SMP", "SMA"] },
   { id: "cambridge-sci", name: "Cambridge Science", short: "CSC", color: "#087F5B", bg: "#DFF7EE", school: ["cambridge"], jenjang: ["SD", "SMP", "SMA"] },
   { id: "cambridge-math", name: "Cambridge Maths", short: "CMA", color: "#9C36B5", bg: "#F6E4FA", school: ["cambridge"], jenjang: ["SD", "SMP", "SMA"] },
+  { id: "korea", name: "Bahasa Korea", short: "KOR", color: "#0A5CAD", bg: "#E1EFFB", school: "all", jenjang: ["TK", "SD", "SMP", "SMA"] },
+  { id: "jepang", name: "Bahasa Jepang", short: "JPN", color: "#D6336C", bg: "#FDE7F3", school: "all", jenjang: ["TK", "SD", "SMP", "SMA"] },
+  { id: "mandarin", name: "Bahasa Mandarin", short: "MAN", color: "#E03131", bg: "#FDE7E7", school: "all", jenjang: ["TK", "SD", "SMP", "SMA"] },
 ];
 
 export function subjectsFor(jenjang: JenjangId, school: SchoolType): SubjectDef[] {
@@ -449,8 +460,98 @@ export const BANK: Bank = {
   },
 };
 
+/* ---------------- Level kesulitan & pembangun sesi ---------------- */
+export interface LevelDef {
+  n: number;
+  name: string;
+  desc: string;
+}
+export const LEVELS: LevelDef[] = [
+  { n: 1, name: "Pemula", desc: "Konsep paling dasar, jawaban langsung. Cocok untuk pemanasan dan percaya diri." },
+  { n: 2, name: "Mudah", desc: "Masih ringan, mulai ada variasi dan satu langkah berpikir." },
+  { n: 3, name: "Sedang", desc: "Butuh dua langkah berpikir, perbandingan, atau mengingat lebih banyak." },
+  { n: 4, name: "Sulit", desc: "Analisis dan penalaran multi-langkah; pilihan jawaban dibuat mirip-mirip." },
+  { n: 5, name: "Ahli Olimpiade", desc: "Tantangan tersulit setara soal lomba olimpiade sungguhan. Berani coba?" },
+];
+/** Jumlah soal per sesi — mengikuti tes olimpiade asli pada video contoh (20 soal, 1 menit per soal). */
+export const SESSION_SIZE = 20;
+/** Skor minimum pada suatu level agar level berikutnya terbuka otomatis. */
+export const UNLOCK_SCORE = 80;
+
+const SEEN_KEY = "ziqva-seen-v1";
+function qkey(q: Question): string {
+  return `${q.q}::${q.options[q.answer] ?? ""}`;
+}
+function loadSeen(): Record<string, string[]> {
+  try {
+    const raw = localStorage.getItem(SEEN_KEY);
+    const parsed: unknown = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, string[]>) : {};
+  } catch {
+    return {};
+  }
+}
+
+/** Bank soal tertulis mentah (tanpa acak) untuk jenjang + mapel. */
 export function getPackage(jenjang: JenjangId, subjectId: string): Question[] {
   return BANK[jenjang]?.[subjectId] ?? [];
+}
+
+/**
+ * Bangun satu sesi soal: `count` soal unik (default 20) untuk
+ * jenjang + mapel + level, diacak dari bank tertulis + generator,
+ * tanpa pengulangan di dalam sesi, dan memprioritaskan soal yang
+ * belum pernah keluar di perangkat ini.
+ */
+export function buildSession(jenjang: JenjangId, subjectId: string, level: number, count: number = SESSION_SIZE): Question[] {
+  const combo = `${jenjang}|${subjectId}|${level}`;
+  const authored = getPackage(jenjang, subjectId);
+  const total = authored.length;
+  const withLevel = authored.map((q, i) => ({
+    q,
+    lv: Math.min(5, 1 + Math.floor((i * 5) / Math.max(1, total))),
+  }));
+  const ordered = [...withLevel].sort((a, b) => Math.abs(a.lv - level) - Math.abs(b.lv - level));
+
+  const pool: Question[] = [];
+  const inPool = new Set<string>();
+  const inPoolText = new Set<string>();
+  const push = (q: Question) => {
+    const k = qkey(q);
+    const t = q.q.trim().toLowerCase();
+    // Satu teks soal hanya boleh muncul sekali dalam pool sesi, walau
+    // bank tertulis dan generator memuat soal yang sama.
+    if (!inPool.has(k) && !inPoolText.has(t)) {
+      inPool.add(k);
+      inPoolText.add(t);
+      pool.push(q);
+    }
+  };
+  for (const a of ordered) push(shuffleOptions(a.q));
+  for (let round = 0; round < 4 && pool.length < count * 2; round++) {
+    for (const q of generateQuestions(jenjang, subjectId, level, count * 2)) push(q);
+  }
+
+  const store = loadSeen();
+  const seenSet = new Set(store[combo] ?? []);
+  const fresh = shuffle(pool.filter((q) => !seenSet.has(qkey(q))));
+  const old = shuffle(pool.filter((q) => seenSet.has(qkey(q))));
+  let session = [...fresh, ...old].slice(0, count);
+  if (session.length < count) {
+    // Bank benar-benar habis: isi sisa sesi dengan variasi acak ulang dari pool.
+    const extra = shuffle(pool).slice(0, count - session.length).map((q) => shuffleOptions(q));
+    const keys = new Set(session.map(qkey));
+    session = [...session, ...extra.filter((q) => !keys.has(qkey(q)))];
+  }
+
+  const merged = [...(store[combo] ?? []), ...session.map(qkey)];
+  store[combo] = [...new Set(merged)].slice(-600);
+  try {
+    localStorage.setItem(SEEN_KEY, JSON.stringify(store));
+  } catch {
+    /* penyimpanan tidak tersedia */
+  }
+  return session;
 }
 
 export function medalFor(score: number): { label: string; color: string } {

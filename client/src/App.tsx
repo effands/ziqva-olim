@@ -2,16 +2,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
 import {
-JENJANG, SCHOOL_TYPES, SUBJECTS, getPackage, medalFor, motivationFor, subjectsFor,
+JENJANG, LEVELS, SCHOOL_TYPES, SUBJECTS, SESSION_SIZE, UNLOCK_SCORE, buildSession, medalFor, motivationFor, subjectsFor,
 type JenjangId, type Question, type SchoolType,
 } from "./data/questions";
+import { materialFor } from "./data/materials";
 import heroImg from "./assets/media-generation-hero-kids-olympiad-0-8efd557a-635d-47a5-88c3-3e408d6372e3.webp";
 import { actionFields } from "@hatch/space-sdk/fields" with { type: "macro" };
 import type { Actions } from "../../server/src/actions";
 
 const FIELDS = actionFields<typeof Actions>();
 
-type View = "home" | "quiz" | "result" | "history" | "login" | "dashboard";
+type View = "home" | "quiz" | "result" | "history" | "login" | "dashboard" | "belajar";
 type Mode = "ujian" | "latihan";
 type Role = "guru" | "orangtua";
 type SessionUser = { id: number; name: string; username: string; role: string; organization: string };
@@ -40,20 +41,146 @@ function fmtDur(sec: number) {
   return `${Math.floor(sec / 60)} mnt ${sec % 60} dtk`;
 }
 
-function speak(text: string, english: boolean) {
-  try {
-    window.speechSynthesis?.cancel();
-    const clean = text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, "").replace(/\s+/g, " ").trim();
-    const u = new SpeechSynthesisUtterance(clean);
-    u.lang = english ? "en-US" : "id-ID";
-    u.rate = 0.92;
-    window.speechSynthesis?.speak(u);
-  } catch { /* suara tidak tersedia */ }
+/* ---------------- SUARA: TTS (Dengarkan Soal) + efek klik WebAudio ----------------
+   Semua suara hanya berbunyi dari ketukan user (user gesture) — tidak ada
+   autoplay. Pengaturan ON/OFF tersimpan di perangkat dan mematikan SEMUA
+   suara (TTS + efek klik). */
+const SOUND_KEY = "ziqva-sound";
+function loadSoundOn(): boolean {
+  try { return localStorage.getItem(SOUND_KEY) !== "off"; } catch { return true; }
 }
+
+export function langForSubject(subjectId: string): string {
+  if (subjectId === "korea") return "ko-KR";
+  if (subjectId === "jepang") return "ja-JP";
+  if (subjectId === "mandarin") return "zh-CN";
+  if (subjectId === "jawa") return "jv-ID";
+  if (subjectId === "arab") return "ar-SA";
+  if (subjectId.includes("inggris") || subjectId.startsWith("cambridge-eng")) return "en-US";
+  return "id-ID";
+}
+
+function voicesReady(): Promise<SpeechSynthesisVoice[]> {
+  return new Promise((resolve) => {
+    const synth = window.speechSynthesis;
+    const existing = synth.getVoices();
+    if (existing.length) { resolve(existing); return; }
+    let done = false;
+    const finish = () => { if (!done) { done = true; resolve(synth.getVoices()); } };
+    try { synth.addEventListener("voiceschanged", finish, { once: true }); } catch { /* abaikan */ }
+    setTimeout(finish, 800);
+  });
+}
+
+/** Ucapkan teks dengan suara sesuai bahasa. Mengembalikan false bila TTS tak didukung. */
+async function speakText(text: string, lang: string, setSpeaking: (b: boolean) => void): Promise<boolean> {
+  if (!("speechSynthesis" in window)) { setSpeaking(false); return false; }
+  const synth = window.speechSynthesis;
+  const clean = text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, "").replace(/\s+/g, " ").trim();
+  if (!clean) { setSpeaking(false); return true; }
+  try { synth.cancel(); } catch { /* abaikan */ }
+  try { synth.resume(); } catch { /* abaikan */ }
+  const voices = await voicesReady();
+  const target = lang.toLowerCase();
+  const voice =
+    voices.find((v) => v.lang.toLowerCase() === target) ??
+    voices.find((v) => v.lang.toLowerCase().startsWith(target.split("-")[0] ?? target)) ??
+    voices.find((v) => v.default) ??
+    voices[0];
+  const u = new SpeechSynthesisUtterance(clean);
+  if (voice) u.voice = voice;
+  u.lang = voice?.lang ?? lang;
+  u.rate = 0.95;
+  u.pitch = 1;
+  setSpeaking(true);
+  u.onend = () => setSpeaking(false);
+  u.onerror = () => setSpeaking(false);
+  try { synth.resume(); } catch { /* abaikan */ }
+  synth.speak(u);
+  window.setTimeout(() => setSpeaking(false), Math.min(45000, 5000 + clean.length * 95));
+  return true;
+}
+
+/* Efek suara WebAudio — dibuat langsung di browser, tanpa file audio. */
+let audioCtx: AudioContext | null = null;
+function ensureAudioCtx(): AudioContext | null {
+  try {
+    if (!audioCtx) {
+      const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AC) return null;
+      audioCtx = new AC();
+    }
+    if (audioCtx.state === "suspended") void audioCtx.resume();
+    return audioCtx;
+  } catch { return null; }
+}
+function tone(freq: number, startIn: number, dur: number, peak = 0.12, type: OscillatorType = "sine") {
+  const ctx = ensureAudioCtx();
+  if (!ctx) return;
+  const t0 = ctx.currentTime + startIn;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, t0);
+  gain.gain.setValueAtTime(0.0001, t0);
+  gain.gain.exponentialRampToValueAtTime(peak, t0 + 0.015);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(t0);
+  osc.stop(t0 + dur + 0.05);
+}
+/** Bunyi pilih jawaban: pendek, ceria, aman untuk telinga anak. */
+function sfxSelect() { tone(740, 0, 0.09, 0.1, "triangle"); tone(988, 0.05, 0.1, 0.08, "triangle"); }
+/** Bunyi jawaban benar (Mode Latihan): nada naik ceria. */
+function sfxCorrect() { tone(523, 0, 0.11, 0.11); tone(659, 0.09, 0.11, 0.11); tone(784, 0.18, 0.16, 0.12); }
+/** Bunyi jawaban salah (Mode Latihan): nada turun lembut, tidak menusuk. */
+function sfxWrong() { tone(330, 0, 0.16, 0.07); tone(262, 0.13, 0.22, 0.06); }
+/** Bunyi perayaan kecil (dapat lencana / naik level). */
+function sfxCelebrate() { tone(523, 0, 0.12, 0.1); tone(659, 0.1, 0.12, 0.1); tone(784, 0.2, 0.12, 0.1); tone(1047, 0.3, 0.22, 0.11); }
+
+/* ---------------- REWARDS & LEVEL (tersimpan di perangkat) ---------------- */
+const REWARD_KEY = "ziqva-rewards-v1";
+const LEVEL_KEY = "ziqva-levels-v1";
+interface Rewards { points: number; totalCorrect: number; totalSessions: number; streak: number; lastDay: string; badges: string[] }
+const EMPTY_REWARDS: Rewards = { points: 0, totalCorrect: 0, totalSessions: 0, streak: 0, lastDay: "", badges: [] };
+function loadRewards(): Rewards {
+  try {
+    const raw = localStorage.getItem(REWARD_KEY);
+    if (!raw) return { ...EMPTY_REWARDS };
+    return { ...EMPTY_REWARDS, ...(JSON.parse(raw) as Partial<Rewards>) };
+  } catch { return { ...EMPTY_REWARDS }; }
+}
+function saveRewards(r: Rewards) { try { localStorage.setItem(REWARD_KEY, JSON.stringify(r)); } catch { /* abaikan */ } }
+
+interface BadgeDef { id: string; icon: string; name: string; desc: string }
+const BADGES: BadgeDef[] = [
+  { id: "pertama", icon: "🎯", name: "Langkah Pertama", desc: "Selesaikan 1 sesi latihan pertamamu" },
+  { id: "benar50", icon: "⭐", name: "Pengumpul Bintang", desc: "Kumpulkan 50 jawaban benar" },
+  { id: "benar200", icon: "🌟", name: "Bintang Bersinar", desc: "Kumpulkan 200 jawaban benar" },
+  { id: "benar500", icon: "💎", name: "Master Bintang", desc: "Kumpulkan 500 jawaban benar" },
+  { id: "sesi10", icon: "🏃", name: "Rajin Berlatih", desc: "Selesaikan 10 sesi latihan" },
+  { id: "sesi30", icon: "🏆", name: "Pejuang Olimpiade", desc: "Selesaikan 30 sesi latihan" },
+  { id: "skor80", icon: "🎖️", name: "Nyaris Sempurna", desc: "Raih skor 80 atau lebih dalam satu sesi" },
+  { id: "sempurna", icon: "👑", name: "Sempurna!", desc: "Raih skor 100 dalam satu sesi" },
+  { id: "streak3", icon: "🔥", name: "Api Menyala", desc: "Latihan 3 hari berturut-turut" },
+  { id: "streak7", icon: "🌋", name: "Seminggu Penuh", desc: "Latihan 7 hari berturut-turut" },
+  { id: "naiklevel", icon: "🚀", name: "Naik Level", desc: "Buka level kesulitan berikutnya (skor 80+)" },
+];
+function dayStr(d: Date) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
+
+type LevelStore = Record<string, { unlocked: number; best: Record<string, number> }>;
+function loadLevels(): LevelStore {
+  try {
+    const raw = localStorage.getItem(LEVEL_KEY);
+    return raw ? (JSON.parse(raw) as LevelStore) : {};
+  } catch { return {}; }
+}
+function saveLevels(s: LevelStore) { try { localStorage.setItem(LEVEL_KEY, JSON.stringify(s)); } catch { /* abaikan */ } }
 
 /* ---------------- QUIZ ---------------- */
 function QuizView(props: {
-  jenjang: JenjangId; subjectName: string; subjectId: string; mode: Mode;
+  jenjang: JenjangId; subjectName: string; subjectId: string; mode: Mode; levelLabel: string;
+  soundOn: boolean; onToggleSound: () => void;
   questions: Question[]; onFinish: (answers: (number | null)[], usedSec: number) => void; onQuit: () => void;
 }) {
   const { questions, mode } = props;
@@ -63,10 +190,11 @@ function QuizView(props: {
   const [revealed, setRevealed] = useState<boolean[]>(() => questions.map(() => false));
   const [timeLeft, setTimeLeft] = useState(totalTime);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+  const [ttsMsg, setTtsMsg] = useState("");
   const startRef = useRef(Date.now());
   const finishedRef = useRef(false);
 
-  const english = props.subjectId.includes("inggris") || props.subjectId.startsWith("cambridge-eng");
   const current = questions[idx];
   const answeredCount = answers.filter((a) => a !== null).length;
 
@@ -92,6 +220,23 @@ function QuizView(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Hentikan bacaan TTS saat keluar dari kuis.
+  useEffect(() => () => { try { window.speechSynthesis?.cancel(); } catch { /* abaikan */ } }, []);
+
+  const handleListen = () => {
+    if (!current) return;
+    if (!props.soundOn) {
+      setTtsMsg("Suara sedang OFF. Nyalakan tombol 🔊 di atas untuk mendengarkan soal.");
+      return;
+    }
+    if (!("speechSynthesis" in window)) {
+      setTtsMsg("Maaf, browser perangkat ini tidak mendukung suara bacaan (TTS). Coba Chrome di Android atau Safari di iPhone, ya.");
+      return;
+    }
+    setTtsMsg("");
+    void speakText(`${current.q}. Pilihan: ${current.options.join(". ")}`, langForSubject(props.subjectId), setSpeaking);
+  };
+
   if (!current) return null;
   const isRevealed = mode === "latihan" && revealed[idx];
   const lowTime = timeLeft <= 60;
@@ -99,6 +244,14 @@ function QuizView(props: {
   const choose = (opt: number) => {
     if (isRevealed) return;
     setAnswers((prev) => prev.map((a, i) => (i === idx ? opt : a)));
+    if (props.soundOn) {
+      if (mode === "latihan") {
+        if (opt === current.answer) { sfxSelect(); window.setTimeout(sfxCorrect, 110); }
+        else sfxWrong();
+      } else {
+        sfxSelect();
+      }
+    }
     if (mode === "latihan") setRevealed((prev) => prev.map((r, i) => (i === idx ? true : r)));
   };
 
@@ -118,21 +271,23 @@ function QuizView(props: {
             <div className={`font-display text-lg leading-none font-bold ${lowTime ? "text-red-500" : ""}`} style={lowTime ? undefined : { color: "var(--accent)" }}>⏱ {fmtTime(timeLeft)}</div>
             <div className="text-[11px]" style={{ color: "var(--dim)" }}>{mode === "ujian" ? "Mode Ujian" : "Mode Latihan"}</div>
           </div>
+          <button type="button" onClick={props.onToggleSound} aria-label={props.soundOn ? "Matikan semua suara" : "Nyalakan suara"} aria-pressed={props.soundOn} className="rounded-full px-3 py-2 text-sm font-bold" style={{ background: "var(--surface2)", color: "var(--dim)" }}>{props.soundOn ? "🔊" : "🔇"}</button>
           <button type="button" onClick={props.onQuit} aria-label="Keluar dari kuis" className="rounded-full px-3 py-2 text-sm font-bold" style={{ background: "var(--surface2)", color: "var(--dim)" }}>✕</button>
         </div>
       </div>
 
-      <p className="mt-2 text-sm font-bold" style={{ color: "var(--dim)" }}>{props.jenjang} • {props.subjectName} • Soal {idx + 1} dari {questions.length}</p>
+      <p className="mt-2 text-sm font-bold" style={{ color: "var(--dim)" }}>{props.jenjang} • {props.subjectName} • {props.levelLabel} • Soal {idx + 1} dari {questions.length}</p>
 
       <div className="pop-in mt-2 rounded-3xl p-5 shadow-sm" key={idx} style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
         {current.emoji && <div className="floaty mb-2 text-5xl" aria-hidden>{current.emoji}</div>}
         {current.stimulus && <p className="mb-3 rounded-xl px-3 py-2 text-[15px] leading-relaxed" style={{ background: "var(--surface2)" }}>{current.stimulus}</p>}
         <h2 className="text-lg leading-snug font-bold whitespace-pre-line">{current.q}</h2>
 
-        <button type="button" onClick={() => speak(`${current.q}. Pilihan: ${current.options.join(". ")}`, english)} aria-label="Dengarkan soal dibacakan"
-          className="mt-4 inline-flex min-h-[44px] items-center gap-2 rounded-full px-4 py-2 text-sm font-bold text-white" style={{ background: "#E84393" }}>
-          ▶ 🔊 Dengarkan Soal
+        <button type="button" onClick={handleListen} aria-label="Dengarkan soal dibacakan" aria-live="polite"
+          className={`mt-4 inline-flex min-h-[44px] items-center gap-2 rounded-full px-4 py-2 text-sm font-bold text-white ${speaking ? "speaking" : ""}`} style={{ background: speaking ? "#C2255C" : "#E84393" }}>
+          {speaking ? "🔊 Sedang dibacakan…" : "▶ 🔊 Dengarkan Soal"}
         </button>
+        {ttsMsg && <p className="mt-2 rounded-xl px-3 py-2 text-xs font-bold" style={{ background: "#FBF0DA", color: "#92600A" }} role="status">{ttsMsg}</p>}
 
         <div className="mt-4 grid gap-2.5">
           {current.options.map((opt, oi) => {
@@ -497,6 +652,78 @@ function MonitorView(props: { token: string; user: SessionUser; onLogout: () => 
   );
 }
 
+/* ---------------- BAHAN BELAJAR ---------------- */
+function BelajarView(props: {
+  jenjang: JenjangId;
+  subjects: { id: string; name: string; short: string; color: string; bg: string }[];
+  initialSubject: string;
+  onPractice: (subjectId: string) => void;
+}) {
+  const [sel, setSel] = useState(props.initialSubject);
+  const active = props.subjects.find((s) => s.id === sel) ?? props.subjects[0];
+  const material = active ? materialFor(active.id) : null;
+  useEffect(() => { setSel(props.initialSubject); }, [props.initialSubject]);
+  if (!active) return null;
+  return (
+    <main className="mx-auto w-full max-w-5xl px-4 pb-10">
+      <section className="mt-4 rounded-3xl p-5 shadow-sm" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+        <h1 className="font-display text-2xl font-extrabold">📚 Bahan Belajar — dari Dasar, Pelan-Pelan Naik</h1>
+        <p className="mt-1 max-w-2xl text-[15px] leading-relaxed" style={{ color: "var(--dim)" }}>
+          Belajar itu seperti naik tangga: mulai dari konsep paling dasar, pahami contohnya, lalu tantang dirimu dengan soal.
+          Pilih mata pelajaran, baca materinya sebentar, lalu langsung latihan — rasa penasaranmu adalah bahan bakarnya! ✨
+        </p>
+      </section>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-[280px_1fr]">
+        <nav className="grid grid-cols-2 gap-2 self-start sm:grid-cols-3 lg:grid-cols-1" aria-label="Pilih bahan belajar mata pelajaran">
+          {props.subjects.map((s) => (
+            <button key={s.id} type="button" onClick={() => setSel(s.id)} aria-pressed={active.id === s.id} aria-label={`Bahan belajar ${s.name}`}
+              className="rounded-2xl p-3 text-left transition"
+              style={{ background: active.id === s.id ? s.bg : "var(--surface)", border: `2px solid ${active.id === s.id ? s.color : "var(--border)"}` }}>
+              <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-lg px-1.5 font-display text-[11px] font-extrabold text-white" style={{ background: s.color }}>{s.short}</span>
+              <span className="mt-1 block font-display text-sm leading-tight font-bold">{s.name}</span>
+            </button>
+          ))}
+        </nav>
+
+        <article className="rounded-3xl p-5 shadow-sm sm:p-6" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+          {!material ? (
+            <p style={{ color: "var(--dim)" }}>Materi untuk mapel ini sedang disiapkan. Sementara itu, langsung latihan saja — pembahasan di setiap soal akan membantumu belajar!</p>
+          ) : (
+            <>
+              <h2 className="font-display text-xl leading-snug font-extrabold">{material.title}</h2>
+              <p className="mt-2 text-[15px] leading-relaxed" style={{ color: "var(--dim)" }}>{material.intro}</p>
+              {material.focus[props.jenjang] && (
+                <p className="mt-3 rounded-2xl px-4 py-3 text-sm leading-relaxed font-semibold" style={{ background: "var(--surface2)" }}>
+                  🎯 <strong>Fokus untuk jenjang {props.jenjang}:</strong> {material.focus[props.jenjang]}
+                </p>
+              )}
+              <div className="mt-4 grid gap-4">
+                {material.sections.map((sec) => (
+                  <section key={sec.h}>
+                    <h3 className="font-display text-base font-bold" style={{ color: "var(--accent)" }}>{sec.h}</h3>
+                    <p className="mt-1 text-[15px] leading-relaxed">{sec.body}</p>
+                  </section>
+                ))}
+              </div>
+              <div className="mt-5 rounded-2xl px-4 py-3" style={{ background: "#E2F4E9", border: "1px solid #1E7A46" }}>
+                <h3 className="font-display text-sm font-bold">💡 Tips agar makin penasaran</h3>
+                <ul className="mt-1 grid gap-1 text-sm leading-relaxed">
+                  {material.tips.map((t) => <li key={t}>• {t}</li>)}
+                </ul>
+              </div>
+              <button type="button" onClick={() => props.onPractice(active.id)} aria-label={`Mulai latihan ${active.name}`}
+                className="font-display mt-5 min-h-[54px] w-full rounded-2xl text-lg font-extrabold text-white" style={{ background: "var(--accent)" }}>
+                🎯 Sudah Paham? Latihan {active.name} Sekarang →
+              </button>
+            </>
+          )}
+        </article>
+      </div>
+    </main>
+  );
+}
+
 /* ---------------- APP ---------------- */
 export function App() {
   const queryClient = useQueryClient();
@@ -507,6 +734,18 @@ export function App() {
   const [jenjang, setJenjang] = useState<JenjangId>("TK");
   const [subjectId, setSubjectId] = useState<string>("inggris");
   const [mode, setMode] = useState<Mode>("ujian");
+  const [level, setLevel] = useState(1);
+  const [sessionQ, setSessionQ] = useState<Question[]>([]);
+  const [sessionLevel, setSessionLevel] = useState(1);
+  const [soundOn, setSoundOn] = useState<boolean>(() => loadSoundOn());
+  const [rewards, setRewards] = useState<Rewards>(() => loadRewards());
+  const [levelStore, setLevelStore] = useState<LevelStore>(() => loadLevels());
+  const [newBadges, setNewBadges] = useState<string[]>([]);
+  const [earnedPoints, setEarnedPoints] = useState(0);
+  const [unlockedNow, setUnlockedNow] = useState<number | null>(null);
+  const [showWelcome, setShowWelcome] = useState(true);
+  const [welcomeMsg, setWelcomeMsg] = useState("");
+  const [welcomeSpeaking, setWelcomeSpeaking] = useState(false);
   const [lastResult, setLastResult] = useState<{ answers: (number | null)[]; usedSec: number; correct: number; score: number } | null>(null);
   const [token, setToken] = useState<string>(() => { try { return localStorage.getItem(TOKEN_KEY) ?? ""; } catch { return ""; } });
   const me = useQuery({ queryKey: ["me", token], queryFn: () => api.me({ token }), enabled: token.length > 0 });
@@ -548,16 +787,48 @@ export function App() {
 
   const subjects = useMemo(() => subjectsFor(jenjang, school), [jenjang, school]);
   const activeSubject = subjects.find((s) => s.id === subjectId) ?? subjects[0];
-  const questions = activeSubject ? getPackage(jenjang, activeSubject.id) : [];
+  const questions = sessionQ;
 
   useEffect(() => {
     if (activeSubject && activeSubject.id !== subjectId) setSubjectId(activeSubject.id);
   }, [activeSubject, subjectId]);
 
+  // Sambutan otomatis hilang sendiri setelah beberapa detik (bisa ditutup lebih cepat).
+  useEffect(() => {
+    if (!showWelcome) return;
+    const t = window.setTimeout(() => setShowWelcome(false), 12000);
+    return () => window.clearTimeout(t);
+  }, [showWelcome]);
+
+  const toggleSound = () => {
+    setSoundOn((prev) => {
+      const next = !prev;
+      try { localStorage.setItem(SOUND_KEY, next ? "on" : "off"); } catch { /* abaikan */ }
+      if (!next) { try { window.speechSynthesis?.cancel(); } catch { /* abaikan */ } }
+      return next;
+    });
+  };
+
+  const comboKey = activeSubject ? `${jenjang}|${activeSubject.id}` : "";
+  const unlockedLevel = levelStore[comboKey]?.unlocked ?? 1;
+  const bestThisLevel = activeSubject ? levelStore[comboKey]?.best?.[String(level)] : undefined;
+
+  // Di Mode Ujian, level pilihan tidak boleh melewati level yang sudah terbuka.
+  useEffect(() => {
+    if (mode === "ujian" && level > unlockedLevel) setLevel(unlockedLevel);
+  }, [mode, level, unlockedLevel, comboKey]);
+
   const startQuiz = () => {
     if (!name.trim()) { setNameError("Isi nama peserta dulu ya, supaya hasil latihannya tercatat."); return; }
-    if (questions.length === 0) return;
+    if (!activeSubject) return;
+    const qs = buildSession(jenjang, activeSubject.id, level, SESSION_SIZE);
+    if (qs.length === 0) return;
+    setSessionQ(qs);
+    setSessionLevel(level);
     setLastResult(null);
+    setNewBadges([]);
+    setEarnedPoints(0);
+    setUnlockedNow(null);
     setMonitorCode("");
     setView("quiz");
     window.scrollTo({ top: 0 });
@@ -575,6 +846,57 @@ export function App() {
         score, correct, total: questions.length, duration_sec: usedSec, device_id: deviceId,
       });
     }
+
+    /* --- rewards: poin, bintang, streak, lencana --- */
+    const gained = correct * 10 + (score >= UNLOCK_SCORE ? 20 : 0) + (score === 100 ? 30 : 0);
+    setEarnedPoints(gained);
+    const today = dayStr(new Date());
+    const yest = dayStr(new Date(Date.now() - 86400000));
+    const next: Rewards = { ...rewards, points: rewards.points + gained, totalCorrect: rewards.totalCorrect + correct, totalSessions: rewards.totalSessions + 1 };
+    if (rewards.lastDay === today) next.streak = Math.max(1, rewards.streak);
+    else if (rewards.lastDay === yest) next.streak = rewards.streak + 1;
+    else next.streak = 1;
+    next.lastDay = today;
+
+    /* --- progres level: skor 80+ membuka level berikutnya --- */
+    let leveledUp = false;
+    if (activeSubject) {
+      const key = `${jenjang}|${activeSubject.id}`;
+      const prev = levelStore[key] ?? { unlocked: 1, best: {} as Record<string, number> };
+      const newBest: Record<string, number> = {
+        ...prev.best,
+        [String(sessionLevel)]: Math.max(prev.best[String(sessionLevel)] ?? 0, score),
+      };
+      let newUnlocked = prev.unlocked;
+      if (score >= UNLOCK_SCORE && sessionLevel >= prev.unlocked && sessionLevel < 5) {
+        newUnlocked = sessionLevel + 1;
+        leveledUp = true;
+        setUnlockedNow(sessionLevel + 1);
+      }
+      const updated: LevelStore = { ...levelStore, [key]: { unlocked: newUnlocked, best: newBest } };
+      setLevelStore(updated);
+      saveLevels(updated);
+    }
+
+    const has = new Set(next.badges);
+    const fresh: string[] = [];
+    const award = (id: string, cond: boolean) => { if (cond && !has.has(id)) { has.add(id); fresh.push(id); } };
+    award("pertama", next.totalSessions >= 1);
+    award("benar50", next.totalCorrect >= 50);
+    award("benar200", next.totalCorrect >= 200);
+    award("benar500", next.totalCorrect >= 500);
+    award("sesi10", next.totalSessions >= 10);
+    award("sesi30", next.totalSessions >= 30);
+    award("skor80", score >= UNLOCK_SCORE);
+    award("sempurna", score === 100);
+    award("streak3", next.streak >= 3);
+    award("streak7", next.streak >= 7);
+    award("naiklevel", leveledUp || has.has("naiklevel"));
+    next.badges = [...has];
+    setRewards(next);
+    saveRewards(next);
+    setNewBadges(fresh);
+    if ((fresh.length > 0 || leveledUp) && soundOn) sfxCelebrate();
   };
 
   const stats = history.data?.stats;
@@ -590,10 +912,13 @@ export function App() {
               <div className="text-[11px] font-semibold text-white/70">Latihan Olimpiade TK – SMA</div>
             </div>
           </div>
-          <nav className="ml-auto flex gap-2" aria-label="Navigasi utama">
+          <nav className="ml-auto flex flex-wrap gap-2" aria-label="Navigasi utama">
             <button type="button" onClick={() => setView("home")} aria-label="Ke beranda"
               className="min-h-[40px] rounded-full px-4 font-display text-sm font-bold"
               style={{ background: view === "home" ? "var(--gold)" : "rgba(255,255,255,.15)", color: view === "home" ? "#2B2440" : "#fff" }}>Beranda</button>
+            <button type="button" onClick={() => setView("belajar")} aria-label="Buka bahan belajar"
+              className="min-h-[40px] rounded-full px-4 font-display text-sm font-bold"
+              style={{ background: view === "belajar" ? "var(--gold)" : "rgba(255,255,255,.15)", color: view === "belajar" ? "#2B2440" : "#fff" }}>📚 Belajar</button>
             <button type="button" onClick={() => setView("history")} aria-label="Lihat riwayat dan prestasiku"
               className="min-h-[40px] rounded-full px-4 font-display text-sm font-bold"
               style={{ background: view === "history" ? "var(--gold)" : "rgba(255,255,255,.15)", color: view === "history" ? "#2B2440" : "#fff" }}>🏅 Prestasiku</button>
@@ -602,6 +927,9 @@ export function App() {
               style={{ background: view === "dashboard" || view === "login" ? "var(--gold)" : "rgba(255,255,255,.15)", color: view === "dashboard" || view === "login" ? "#2B2440" : "#fff" }}>
               {sessionUser ? `👀 Pantau (${sessionUser.name.split(" ")[0]})` : "👨‍🏫 Guru & Ortu"}
             </button>
+            <button type="button" onClick={toggleSound} aria-label={soundOn ? "Matikan semua suara (bacaan soal dan efek klik)" : "Nyalakan suara"} aria-pressed={soundOn}
+              className="min-h-[40px] rounded-full px-3 font-display text-sm font-bold"
+              style={{ background: "rgba(255,255,255,.15)", color: "#fff" }}>{soundOn ? "🔊 Suara" : "🔇 Mati"}</button>
           </nav>
         </div>
       </header>
@@ -624,11 +952,48 @@ export function App() {
 
       {view === "quiz" && activeSubject && (
         <QuizView jenjang={jenjang} subjectName={activeSubject.name} subjectId={activeSubject.id} mode={mode}
+          levelLabel={`Level ${sessionLevel} · ${LEVELS[sessionLevel - 1]?.name ?? ""}`}
+          soundOn={soundOn} onToggleSound={toggleSound}
           questions={questions} onFinish={handleFinish} onQuit={() => setView("home")} />
+      )}
+
+      {view === "belajar" && (
+        <BelajarView jenjang={jenjang} subjects={subjects} initialSubject={activeSubject?.id ?? subjects[0]?.id ?? "matematika"}
+          onPractice={(sid) => { setSubjectId(sid); setView("home"); window.scrollTo({ top: 0 }); }} />
       )}
 
       {view === "home" && (
         <main className="mx-auto w-full max-w-5xl px-4 pb-10">
+          {showWelcome && (
+            <section className="pop-in relative mt-4 overflow-hidden rounded-3xl p-5 text-center shadow-sm sm:p-6" style={{ background: "linear-gradient(150deg,#FFF3DC,#FDE7F3)", border: "2px solid var(--gold)" }} aria-label="Sambutan selamat datang">
+              <button type="button" onClick={() => setShowWelcome(false)} aria-label="Tutup sambutan" className="absolute top-3 right-3 flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold" style={{ background: "rgba(255,255,255,.7)", color: "#92600A" }}>✕</button>
+              <div className="flex items-end justify-center gap-2 text-4xl sm:text-5xl" aria-hidden>
+                <span className="sparkle inline-block">⭐</span>
+                <span className="floaty inline-block text-6xl sm:text-7xl">🏆</span>
+                <span className="sparkle inline-block" style={{ animationDelay: ".6s" }}>✨</span>
+                <span className="wiggle inline-block">🎉</span>
+                <span className="sparkle inline-block" style={{ animationDelay: "1.1s" }}>⭐</span>
+              </div>
+              <h2 className="fade-up font-display mt-2 text-2xl font-extrabold sm:text-3xl" style={{ animationDelay: ".1s" }}>Selamat Datang, Pejuang Olimpiade! 🎓</h2>
+              <p className="fade-up mx-auto mt-2 max-w-xl text-[15px] leading-relaxed font-semibold" style={{ animationDelay: ".3s", color: "#7A5B12" }}>
+                Di ZIQVA OLIM kamu bisa membaca <strong>bahan belajar dari dasar</strong>, lalu menantang <strong>{SESSION_SIZE} soal acak yang selalu baru</strong> di setiap sesi —
+                dari Level 1 Pemula sampai Level 5 Ahli Olimpiade. Setiap jawaban benar mengumpulkan ⭐ bintang, 🪙 poin, dan lencana. Jaga api streak-mu tetap menyala! 🔥
+              </p>
+              <div className="fade-up mt-4 flex flex-wrap justify-center gap-2" style={{ animationDelay: ".5s" }}>
+                <button type="button" onClick={() => setShowWelcome(false)} className="font-display min-h-[48px] rounded-full px-5 font-bold text-white" style={{ background: "var(--accent)" }}>🚀 Ayo Mulai!</button>
+                <button type="button" onClick={() => { setShowWelcome(false); setView("belajar"); }} className="font-display min-h-[48px] rounded-full px-5 font-bold" style={{ background: "#fff", border: "2px solid var(--gold)", color: "#92600A" }}>📚 Bahan Belajar Dulu</button>
+                <button type="button" onClick={() => {
+                    if (!soundOn) { setWelcomeMsg("Suara sedang OFF — nyalakan tombol 🔊 Suara di bagian atas halaman dulu, ya."); return; }
+                    setWelcomeMsg("");
+                    void speakText("Selamat datang di ZIQVA OLIM! Ayo belajar dari dasar, kumpulkan bintang dan lencana, dan taklukkan soal olimpiade dari Level 1 sampai Level 5. Semangat, Pejuang Olimpiade!", "id-ID", setWelcomeSpeaking);
+                  }} aria-label="Dengarkan sambutan dengan suara"
+                  className={`font-display min-h-[48px] rounded-full px-5 font-bold text-white ${welcomeSpeaking ? "speaking" : ""}`} style={{ background: "#E84393" }}>
+                  {welcomeSpeaking ? "🔊 Sedang menyapa…" : "🔊 Dengarkan Sambutan"}
+                </button>
+              </div>
+              {welcomeMsg && <p className="mt-2 text-xs font-bold" style={{ color: "#92600A" }} role="status">{welcomeMsg}</p>}
+            </section>
+          )}
           <section className="mt-4 overflow-hidden rounded-3xl shadow-sm" style={{ border: "1px solid var(--border)" }}>
             <img src={heroImg} alt="Ilustrasi anak-anak Indonesia dari TK sampai SMA merayakan kemenangan olimpiade dengan piala dan medali" className="h-44 w-full object-cover object-top sm:h-64" />
             <div className="p-5 sm:p-6" style={{ background: "var(--surface)" }}>
@@ -636,7 +1001,9 @@ export function App() {
               <p className="mt-2 max-w-2xl text-[15px] leading-relaxed" style={{ color: "var(--dim)" }}>
                 Formatnya meniru video contoh Olimpiade PAUD/TK: soal pilihan ganda, tombol <strong>“Dengarkan Soal”</strong>, penghitung waktu,
                 indikator progres, dan skor besar di akhir — kini untuk <strong>semua jenjang &amp; semua mata pelajaran</strong>:
-                Matematika, Bahasa Inggris, IPA/Sains, Sejarah, Bahasa Jawa, Bahasa Arab, PAI, Akidah, Fikih, Qur'an Hadis, SKI, Agama Kristen, sampai kelas Cambridge.
+                Matematika, Bahasa Inggris, IPA/Sains, Sejarah, Bahasa Jawa, Bahasa Arab, PAI, Akidah, Fikih, Qur'an Hadis, SKI, Agama Kristen, kelas Cambridge,
+                sampai Bahasa Korea, Bahasa Jepang, dan Bahasa Mandarin. Setiap sesi berisi <strong>{SESSION_SIZE} soal acak yang selalu baru</strong> (dicoba seratus kali pun tetap fresh),
+                berjenjang dari <strong>Level 1 Pemula sampai Level 5 Ahli Olimpiade</strong> — skor {UNLOCK_SCORE}+ membuka level berikutnya!
               </p>
               {stats && stats.total_attempts > 0 && (
                 <div className="mt-4 flex flex-wrap gap-2 text-sm font-bold">
@@ -647,6 +1014,17 @@ export function App() {
                 </div>
               )}
             </div>
+          </section>
+
+          {/* Rewards strip */}
+          <section className="mt-5 flex flex-wrap items-center gap-2 rounded-3xl p-4 shadow-sm" style={{ background: "var(--surface)", border: "2px solid var(--gold)" }} aria-label="Hadiah dan pencapaian saya">
+            <span className="font-display text-base font-extrabold">🎁 Hadiahku:</span>
+            <span className="rounded-full px-3 py-1.5 text-sm font-bold" style={{ background: "var(--surface2)" }}>⭐ {rewards.totalCorrect} Bintang</span>
+            <span className="rounded-full px-3 py-1.5 text-sm font-bold" style={{ background: "var(--surface2)" }}>🪙 {rewards.points} Poin</span>
+            <span className="rounded-full px-3 py-1.5 text-sm font-bold" style={{ background: "var(--surface2)" }}>🔥 {rewards.streak} hari streak</span>
+            <span className="rounded-full px-3 py-1.5 text-sm font-bold" style={{ background: "var(--surface2)" }}>🏅 {rewards.badges.length}/{BADGES.length} lencana</span>
+            <button type="button" onClick={() => setView("history")} className="rounded-full px-3 py-1.5 text-sm font-bold text-white" style={{ background: "var(--accent)" }}>Lihat Lencana →</button>
+            {rewards.totalSessions === 0 && <p className="w-full text-sm font-semibold" style={{ color: "var(--dim)" }}>Selesaikan sesi pertamamu untuk membuka lencana 🎯 <strong>Langkah Pertama</strong> — setiap jawaban benar bernilai 10 poin + 1 bintang!</p>}
           </section>
 
           {/* Login guru & orang tua */}
@@ -713,24 +1091,56 @@ export function App() {
             <p className="text-sm" style={{ color: "var(--dim)" }}>{subjects.length} mapel tersedia untuk {JENJANG.find((j) => j.id === jenjang)?.name} • {SCHOOL_TYPES.find((t) => t.id === school)?.name}. Ketuk mapel untuk memilih paket soalnya.</p>
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
               {subjects.map((s) => {
-                const count = getPackage(jenjang, s.id).length;
                 const active = activeSubject?.id === s.id;
+                const un = levelStore[`${jenjang}|${s.id}`]?.unlocked ?? 1;
                 return (
-                  <button key={s.id} type="button" disabled={count === 0} onClick={() => setSubjectId(s.id)} aria-pressed={active} aria-label={`Mapel ${s.name}, ${count} soal`}
-                    className="rounded-2xl p-3.5 text-left transition disabled:opacity-40"
+                  <button key={s.id} type="button" onClick={() => setSubjectId(s.id)} aria-pressed={active} aria-label={`Mapel ${s.name}, ${SESSION_SIZE} soal acak per sesi, level terbuka sampai ${un}`}
+                    className="rounded-2xl p-3.5 text-left transition"
                     style={{ background: active ? s.bg : "var(--surface)", border: `2px solid ${active ? s.color : "var(--border)"}` }}>
                     <span className="inline-flex h-9 min-w-9 items-center justify-center rounded-xl px-2 font-display text-xs font-extrabold text-white" style={{ background: s.color }}>{s.short}</span>
                     <div className="mt-2 font-display text-[15px] leading-tight font-bold">{s.name}</div>
-                    <div className="mt-0.5 text-xs font-semibold" style={{ color: "var(--dim)" }}>{count} soal • ±{count} menit</div>
+                    <div className="mt-0.5 text-xs font-semibold" style={{ color: "var(--dim)" }}>{SESSION_SIZE} soal acak • Level 1–{un} terbuka</div>
                   </button>
                 );
               })}
             </div>
           </section>
 
+          {/* Level kesulitan */}
+          <section className="mt-5">
+            <h2 className="font-display text-lg font-bold">🎚️ 4 · Pilih Level Kesulitan</h2>
+            <p className="text-sm leading-relaxed" style={{ color: "var(--dim)" }}>
+              Setiap mapel punya 5 level. Raih skor <strong>{UNLOCK_SCORE}+</strong> untuk membuka level berikutnya — untuk {activeSubject?.name ?? "mapel ini"} kamu sudah membuka sampai <strong>Level {unlockedLevel}</strong>.
+              {mode === "ujian" ? " Di Mode Ujian, level terkunci belum bisa dipilih; di Mode Latihan semua level bebas dicoba." : " Kamu sedang di Mode Latihan: semua level bebas dicoba."}
+            </p>
+            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+              {LEVELS.map((lv) => {
+                const locked = mode === "ujian" && lv.n > unlockedLevel;
+                const isSel = level === lv.n;
+                const best = levelStore[comboKey]?.best?.[String(lv.n)];
+                return (
+                  <button key={lv.n} type="button" disabled={locked} onClick={() => setLevel(lv.n)} aria-pressed={isSel}
+                    aria-label={`Level ${lv.n} ${lv.name}${locked ? `, terkunci. Raih skor ${UNLOCK_SCORE} di level ${lv.n - 1} untuk membuka.` : ""}`}
+                    className="rounded-2xl p-3.5 text-left transition disabled:opacity-50"
+                    style={{ background: isSel ? "var(--accent)" : "var(--surface)", color: isSel ? "#fff" : "var(--text)", border: "2px solid var(--border)" }}>
+                    <div className="font-display text-base font-extrabold">{locked ? "🔒" : "⭐"} Level {lv.n}</div>
+                    <div className="font-display text-sm font-bold">{lv.name}</div>
+                    <div className="mt-0.5 text-xs leading-snug" style={{ color: isSel ? "rgba(255,255,255,.8)" : "var(--dim)" }}>
+                      {locked ? `Skor ${UNLOCK_SCORE}+ di Level ${lv.n - 1} untuk membuka` : best !== undefined ? `Skor terbaikmu: ${best}` : "Belum pernah dicoba"}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-2 text-sm leading-relaxed font-semibold" style={{ color: "var(--accent)" }}>
+              Level {level} · {LEVELS[level - 1]?.name}: {LEVELS[level - 1]?.desc}
+              {bestThisLevel !== undefined && <> Skor terbaikmu di level ini: <strong>{bestThisLevel}</strong>.</>}
+            </p>
+          </section>
+
           {/* Mode + start */}
           <section className="mt-5 rounded-3xl p-5 shadow-sm" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-            <h2 className="font-display text-lg font-bold">⚡ 4 · Pilih Mode &amp; Mulai</h2>
+            <h2 className="font-display text-lg font-bold">🚀 5 · Pilih Mode &amp; Mulai</h2>
             <div className="mt-3 grid grid-cols-2 gap-2">
               <button type="button" onClick={() => setMode("ujian")} aria-pressed={mode === "ujian"} aria-label="Mode ujian seperti olimpiade asli"
                 className="rounded-2xl p-4 text-left" style={{ background: mode === "ujian" ? "#1E2A78" : "var(--surface2)", color: mode === "ujian" ? "#fff" : "var(--text)", border: "2px solid var(--border)" }}>
@@ -743,11 +1153,11 @@ export function App() {
                 <div className="mt-0.5 text-xs leading-snug" style={{ color: mode === "latihan" ? "rgba(255,255,255,.8)" : "var(--dim)" }}>Setiap jawaban langsung dicek + ada pembahasan. Cocok untuk belajar.</div>
               </button>
             </div>
-            <button type="button" onClick={startQuiz} disabled={questions.length === 0} aria-label={`Mulai latihan ${activeSubject?.name ?? ""} jenjang ${jenjang}`}
+            <button type="button" onClick={startQuiz} disabled={!activeSubject} aria-label={`Mulai latihan ${activeSubject?.name ?? ""} jenjang ${jenjang} level ${level}`}
               className="font-display mt-4 min-h-[60px] w-full rounded-2xl text-xl font-extrabold text-white shadow disabled:opacity-40" style={{ background: "var(--gold)", color: "#2B2440" }}>
-              🚀 Mulai — {activeSubject?.name} • {jenjang} ({questions.length} soal)
+              🚀 Mulai — {activeSubject?.name} • {jenjang} • Level {level} ({SESSION_SIZE} soal acak)
             </button>
-            <p className="mt-2 text-center text-xs" style={{ color: "var(--dim)" }}>⏱ Waktu: 1 menit per soal • 🔊 Gunakan tombol “Dengarkan Soal” untuk soal listening seperti di video</p>
+            <p className="mt-2 text-center text-xs" style={{ color: "var(--dim)" }}>⏱ Waktu: 1 menit per soal ({SESSION_SIZE} soal = {SESSION_SIZE} menit) • 🔊 Gunakan tombol “Dengarkan Soal” untuk soal listening seperti di video • 📚 Belum paham materinya? Buka menu <strong>Belajar</strong> di atas</p>
           </section>
 
           {/* Analisa video */}
@@ -767,7 +1177,7 @@ export function App() {
       {view === "result" && lastResult && activeSubject && (
         <main className="mx-auto w-full max-w-3xl px-4 pb-10">
           <section className="pop-in mt-4 rounded-3xl p-6 text-center shadow-sm" style={{ background: "linear-gradient(160deg,#FFF7E0,#FFEFC4)", border: "2px solid var(--gold)", color: "#2B2440" }}>
-            <p className="text-sm font-bold tracking-wide" style={{ color: "#92600A" }}>HASIL {mode === "ujian" ? "UJIAN" : "LATIHAN"} • {activeSubject.name.toUpperCase()} • {jenjang}</p>
+            <p className="text-sm font-bold tracking-wide" style={{ color: "#92600A" }}>HASIL {mode === "ujian" ? "UJIAN" : "LATIHAN"} • {activeSubject.name.toUpperCase()} • {jenjang} • LEVEL {sessionLevel} {LEVELS[sessionLevel - 1]?.name.toUpperCase()}</p>
             <p className="mt-1 text-sm font-semibold" style={{ color: "#92600A" }}>Peserta: {name}</p>
             <div className="font-display my-2 text-[84px] leading-none font-extrabold" style={{ color: "#D97706" }}>{lastResult.score}</div>
             <p className="font-display text-lg font-bold">({lastResult.correct}/{questions.length} benar) • ⏱ {fmtDur(lastResult.usedSec)}</p>
@@ -779,6 +1189,41 @@ export function App() {
                 <p className="text-xs font-bold tracking-wide" style={{ color: "#92600A" }}>🔑 KODE PANTAU {name.toUpperCase()}</p>
                 <p className="font-display text-3xl font-extrabold tracking-[0.3em]" style={{ color: "#2B2440" }}>{monitorCode}</p>
                 <p className="text-xs font-semibold" style={{ color: "#92600A" }}>Berikan kode ini ke guru / orang tua supaya mereka bisa memantau skormu dari akun mereka.</p>
+              </div>
+            )}
+          </section>
+
+          {/* Rewards yang baru didapat */}
+          <section className="pop-in mt-4 rounded-3xl p-5 shadow-sm" style={{ background: "var(--surface)", border: "2px solid var(--gold)" }} aria-label="Hadiah yang kamu dapatkan">
+            <h2 className="font-display text-lg font-extrabold">🎁 Hadiah Sesi Ini</h2>
+            <div className="mt-2 flex flex-wrap gap-2 text-sm font-bold">
+              <span className="rounded-full px-3 py-1.5" style={{ background: "var(--surface2)" }}>🪙 +{earnedPoints} Poin</span>
+              <span className="rounded-full px-3 py-1.5" style={{ background: "var(--surface2)" }}>⭐ +{lastResult.correct} Bintang</span>
+              <span className="rounded-full px-3 py-1.5" style={{ background: "var(--surface2)" }}>🔥 Streak {rewards.streak} hari</span>
+              <span className="rounded-full px-3 py-1.5" style={{ background: "var(--surface2)" }}>🪙 Total {rewards.points} Poin • ⭐ {rewards.totalCorrect} Bintang</span>
+            </div>
+            {unlockedNow !== null && (
+              <p className="pop-in mt-3 rounded-2xl px-4 py-3 font-display text-base font-extrabold" style={{ background: "#E2F4E9", border: "1px solid #1E7A46" }}>
+                🚀 HEBAT! Skor {lastResult.score} membuka <strong>Level {unlockedNow} · {LEVELS[unlockedNow - 1]?.name}</strong> untuk {activeSubject.name}! Berani coba soal yang lebih menantang?
+              </p>
+            )}
+            {unlockedNow === null && sessionLevel < 5 && lastResult.score < UNLOCK_SCORE && (
+              <p className="mt-3 text-sm font-semibold" style={{ color: "var(--dim)" }}>
+                Sedikit lagi! Raih skor <strong>{UNLOCK_SCORE}+</strong> di Level {sessionLevel} untuk membuka Level {sessionLevel + 1} · {LEVELS[sessionLevel]?.name}. Baca pembahasan di bawah, lalu coba lagi — soal berikutnya selalu baru! ✨
+              </p>
+            )}
+            {newBadges.length > 0 && (
+              <div className="mt-3 grid gap-2">
+                {newBadges.map((id) => {
+                  const b = BADGES.find((x) => x.id === id);
+                  if (!b) return null;
+                  return (
+                    <p key={id} className="pop-in flex items-center gap-3 rounded-2xl px-4 py-3 font-bold" style={{ background: "#FFF3DC", border: "1px solid var(--gold)" }}>
+                      <span className="text-3xl" aria-hidden>{b.icon}</span>
+                      <span>Lencana baru terbuka: <strong>{b.name}</strong> — {b.desc}</span>
+                    </p>
+                  );
+                })}
               </div>
             )}
           </section>
@@ -809,6 +1254,57 @@ export function App() {
       {view === "history" && (
         <main className="mx-auto w-full max-w-3xl px-4 pb-10">
           <h1 className="font-display mt-5 text-2xl font-extrabold">🏅 Prestasiku</h1>
+
+          {/* Rewards & lencana */}
+          <section className="mt-4 rounded-3xl p-5 shadow-sm" style={{ background: "var(--surface)", border: "1px solid var(--border)" }} aria-label="Poin, bintang, streak, dan lencana saya">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {[
+                { label: "Poin", value: `${rewards.points}`, icon: "🪙" },
+                { label: "Bintang (jawaban benar)", value: `${rewards.totalCorrect}`, icon: "⭐" },
+                { label: "Streak Latihan", value: `${rewards.streak} hari`, icon: "🔥" },
+                { label: "Lencana Terbuka", value: `${rewards.badges.length}/${BADGES.length}`, icon: "🏅" },
+              ].map((c) => (
+                <div key={c.label} className="rounded-2xl p-3 text-center" style={{ background: "var(--surface2)" }}>
+                  <div className="text-2xl" aria-hidden>{c.icon}</div>
+                  <div className="font-display text-xl font-extrabold">{c.value}</div>
+                  <div className="text-[11px] font-semibold" style={{ color: "var(--dim)" }}>{c.label}</div>
+                </div>
+              ))}
+            </div>
+            <h2 className="font-display mt-4 text-base font-bold">🎖️ Koleksi Lencana</h2>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              {BADGES.map((b) => {
+                const owned = rewards.badges.includes(b.id);
+                return (
+                  <div key={b.id} className="flex items-center gap-3 rounded-2xl p-3" style={{ background: owned ? "#FFF3DC" : "var(--surface2)", border: `1px solid ${owned ? "var(--gold)" : "var(--border)"}`, opacity: owned ? 1 : 0.65 }}>
+                    <span className="text-3xl" aria-hidden style={owned ? undefined : { filter: "grayscale(1)" }}>{b.icon}</span>
+                    <div className="min-w-0">
+                      <div className="font-display text-sm font-bold">{b.name} {owned ? "✅" : "🔒"}</div>
+                      <div className="text-xs leading-snug" style={{ color: "var(--dim)" }}>{b.desc}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <h2 className="font-display mt-4 text-base font-bold">🎚️ Progres Level per Mapel ({jenjang})</h2>
+            <div className="mt-2 grid gap-1.5">
+              {subjects.map((s) => {
+                const st = levelStore[`${jenjang}|${s.id}`];
+                const un = st?.unlocked ?? 1;
+                return (
+                  <div key={s.id} className="flex items-center gap-2 text-sm">
+                    <span className="w-36 shrink-0 truncate font-display font-bold">{s.name}</span>
+                    <div className="flex gap-1" aria-label={`${s.name}: level terbuka sampai ${un} dari 5`}>
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <span key={n} className="flex h-6 w-6 items-center justify-center rounded-md text-[11px] font-extrabold" style={{ background: n <= un ? "var(--gold)" : "var(--surface2)", color: n <= un ? "#2B2440" : "var(--dim)", border: "1px solid var(--border)" }}>{n}</span>
+                      ))}
+                    </div>
+                    <span className="text-xs font-semibold" style={{ color: "var(--dim)" }}>{un >= 5 ? "Semua level terbuka! 👑" : `Skor ${UNLOCK_SCORE}+ di Level ${un} membuka Level ${un + 1}`}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
           {history.isPending && <p className="mt-3" style={{ color: "var(--dim)" }}>Memuat riwayat…</p>}
           {history.data && stats && stats.total_attempts === 0 && (
             <div className="mt-4 rounded-3xl p-6 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
