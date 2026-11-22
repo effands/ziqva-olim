@@ -14,15 +14,22 @@
     var headers = { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY, "Content-Type": "application/json" };
     if (opts.prefer) headers.Prefer = opts.prefer;
     var res;
-    try {
-      res = await originalFetch(SB_URL + "/rest/v1/" + path, {
-        method: opts.method || "GET",
-        headers: headers,
-        body: opts.body ? JSON.stringify(opts.body) : undefined,
-      });
-    } catch (e) {
-      throw new Error("Tidak dapat terhubung ke database. Periksa koneksi internet lalu coba lagi.");
+    var requestInit = {
+      method: opts.method || "GET",
+      headers: headers,
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
+    };
+    // Hingga 3 percobaan: koneksi seluler yang putus sesaat jangan langsung gagal.
+    var lastErr = null;
+    for (var attemptNo = 0; attemptNo < 3 && !res; attemptNo++) {
+      try {
+        res = await originalFetch(SB_URL + "/rest/v1/" + path, requestInit);
+      } catch (e) {
+        lastErr = e;
+        if (attemptNo < 2) await new Promise(function (r) { setTimeout(r, 400 + attemptNo * 500); });
+      }
     }
+    if (!res) throw new Error("Tidak dapat terhubung ke database. Periksa koneksi internet lalu coba lagi.");
     var text = await res.text();
     var data = null;
     try { data = text ? JSON.parse(text) : null; } catch (e) { data = null; }
@@ -139,6 +146,10 @@
     },
     async register(args) {
       var username = String(args.username).trim().toLowerCase();
+      if (String(args.role || "").toLowerCase() === "admin") {
+        var adminRow = await getOne("app_users", "role=eq.admin&select=id");
+        if (adminRow) throw new Error("Akun Superadmin sudah ada. Hanya boleh ada satu Superadmin.");
+      }
       var existing = await getOne("app_users", "username=eq." + enc(username) + "&select=id");
       if (existing) throw new Error("Username itu sudah dipakai. Coba username lain atau masuk dengan akun yang ada.");
       var salt = randomHex(16);
@@ -368,6 +379,84 @@
         finished_count: parts.filter(function (p) { return p.status === "finished"; }).length,
         total_participants: parts.length,
       };
+    },
+    async adminExists(args) {
+      var row = await getOne("app_users", "role=eq.admin&select=id");
+      return { exists: !!row, admin_exists: !!row };
+    },
+    async adminDashboard(args) {
+      var user = await userForToken(args.token);
+      if (String(user.role || "").toLowerCase() !== "admin") throw new Error("Hanya Superadmin yang bisa membuka panel ini.");
+      var usersRaw = (await getRows("app_users", "select=*&order=id.asc")) || [];
+      var users = usersRaw.map(function (u) { return { id: u.id, name: u.name, username: u.username, role: u.role, organization: u.organization, created_at: u.created_at }; });
+      var guru = 0, orangtua = 0, admin = 0;
+      users.forEach(function (u) {
+        var r = String(u.role || "").toLowerCase();
+        if (r === "admin") admin += 1;
+        else if (r.indexOf("guru") !== -1 || r.indexOf("teacher") !== -1) guru += 1;
+        else orangtua += 1;
+      });
+      var attempts = (await getRows("attempts", "select=*&order=id.desc&limit=5000")) || [];
+      var uniq = {};
+      attempts.forEach(function (a) { uniq[nameKey(a.student_name)] = true; });
+      var classesRaw = (await getRows("exam_classes", "select=*&order=id.desc")) || [];
+      var parts = [];
+      if (classesRaw.length) {
+        var ids = classesRaw.map(function (c) { return c.id; }).join(",");
+        parts = (await getRows("class_participants", "class_id=in.(" + ids + ")&select=class_id,status")) || [];
+      }
+      var teacherById = {};
+      users.forEach(function (u) { teacherById[u.id] = u.name; });
+      var classes = classesRaw.map(function (c) {
+        var ps = parts.filter(function (p) { return p.class_id === c.id; });
+        var pub = classPub(c);
+        pub.teacher_name = teacherById[c.teacher_id] || "—";
+        pub.participant_count = ps.length; pub.participants_count = ps.length;
+        pub.finished_count = ps.filter(function (p) { return p.status === "finished"; }).length;
+        return pub;
+      });
+      var cutoff = new Date(Date.now() - 90000).toISOString();
+      var onlineRows = (await getRows("presence", "last_seen=gt." + enc(cutoff) + "&select=device_id")) || [];
+      return {
+        user: toUser(user),
+        total_users: users.length, guru: guru, orangtua: orangtua, admin: admin,
+        unique_students: Object.keys(uniq).length,
+        total_attempts: attempts.length,
+        total_classes: classesRaw.length,
+        open_classes: classesRaw.filter(function (c) { return c.status === "open"; }).length,
+        closed_classes: classesRaw.filter(function (c) { return c.status !== "open"; }).length,
+        class_participants: parts.length,
+        online: onlineRows.length,
+        users: users, classes: classes,
+        recent_attempts: attempts.slice(0, 50).map(strip),
+      };
+    },
+    async adminDeleteUser(args) {
+      var user = await userForToken(args.token);
+      if (String(user.role || "").toLowerCase() !== "admin") throw new Error("Hanya Superadmin yang bisa menghapus akun.");
+      var target = await getOne("app_users", "id=eq." + enc(args.user_id) + "&select=*");
+      if (!target) throw new Error("Akun tidak ditemukan.");
+      if (target.id === user.id) throw new Error("Kamu tidak bisa menghapus akunmu sendiri.");
+      if (String(target.role || "").toLowerCase() === "admin") throw new Error("Akun Superadmin lain tidak bisa dihapus.");
+      await deleteRows("watched", "user_id=eq." + enc(target.id));
+      await deleteRows("app_sessions", "user_id=eq." + enc(target.id));
+      await deleteRows("app_users", "id=eq." + enc(target.id));
+      return { ok: true };
+    },
+    async adminDeleteClass(args) {
+      var user = await userForToken(args.token);
+      if (String(user.role || "").toLowerCase() !== "admin") throw new Error("Hanya Superadmin yang bisa menghapus kelas.");
+      var cls = await getOne("exam_classes", "id=eq." + enc(args.class_id) + "&select=id");
+      if (!cls) throw new Error("Kelas tidak ditemukan.");
+      await deleteRows("class_participants", "class_id=eq." + enc(args.class_id));
+      await deleteRows("exam_classes", "id=eq." + enc(args.class_id));
+      return { ok: true };
+    },
+    async adminDeleteAttempt(args) {
+      var user = await userForToken(args.token);
+      if (String(user.role || "").toLowerCase() !== "admin") throw new Error("Hanya Superadmin yang bisa menghapus nilai.");
+      await deleteRows("attempts", "id=eq." + enc(args.attempt_id));
+      return { ok: true };
     },
     async resetAllData(args) {
       var deviceId = args.device_id || "";

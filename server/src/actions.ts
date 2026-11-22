@@ -50,6 +50,12 @@ async function createSession(ctx: Ctx, userId: number) {
   return token;
 }
 
+async function requireAdmin(ctx: Ctx, token: string): Promise<UserRow> {
+  const user = await userForToken(ctx, token);
+  if (user.role !== "admin") throw new Error("Hanya Superadmin yang bisa membuka dan mengelola panel ini.");
+  return user;
+}
+
 function nameKey(name: string) {
   return name.trim().toLowerCase();
 }
@@ -404,17 +410,23 @@ export const Actions = {
   }),
 
   register: defineAction({
-    description: "Creates a teacher (guru) or parent (orang tua) account for monitoring student scores.",
+    description: "Creates a teacher (guru), parent (orang tua), or the single Superadmin (admin) account for monitoring student scores.",
     request: z.object({
       name: z.string().trim().min(1, "Nama wajib diisi").max(60),
       username: z.string().trim().toLowerCase().min(3, "Username minimal 3 karakter").max(30).regex(/^[a-z0-9_.]+$/, "Username hanya boleh huruf kecil, angka, titik, dan garis bawah"),
       password: z.string().min(6, "Kata sandi minimal 6 karakter").max(72),
-      role: z.enum(["guru", "orangtua"]),
+      role: z.enum(["guru", "orangtua", "admin"]),
       organization: z.string().trim().max(80).default(""),
     }),
     response: z.object({ token: z.string(), user: userShape }),
     async handler(ctx, args) {
       const db = ctx.db<typeof schema>();
+      // Superadmin hanya boleh ada SATU di seluruh aplikasi (akun pemilik).
+      if (args.role === "admin") {
+        const admins = await db.select({ id: schema.users.id }).from(schema.users)
+          .where(eq(schema.users.role, "admin")).limit(1);
+        if (admins[0]) throw new Error("Akun Superadmin sudah ada. Hanya boleh ada satu Superadmin.");
+      }
       const existing = await db.select().from(schema.users).where(eq(schema.users.username, args.username)).limit(1);
       if (existing[0]) throw new Error("Username itu sudah dipakai. Coba username lain atau masuk dengan akun yang ada.");
       const inserted = await db.insert(schema.users).values({
@@ -1005,6 +1017,189 @@ export const Actions = {
         ranking: rankFinished(parts),
         in_progress: parts.filter((p) => p.status === "in_progress").map((p) => p.studentName),
       };
+    },
+  }),
+
+  /* ---------------- SUPERADMIN ----------------
+     Satu akun pemilik (role "admin") untuk memantau jumlah & mengelola
+     seluruh data aplikasi: akun, kelas, dan nilai dari semua peserta. */
+  adminExists: defineAction({
+    description: "Reports whether the single Superadmin account has already been created (used to show or hide the Superadmin option on the registration form).",
+    request: z.object({}),
+    response: z.object({ exists: z.boolean() }),
+    async handler(ctx) {
+      const db = ctx.db<typeof schema>();
+      const rows = await db.select({ id: schema.users.id }).from(schema.users)
+        .where(eq(schema.users.role, "admin")).limit(1);
+      return { exists: rows.length > 0 };
+    },
+  }),
+
+  adminDashboard: defineAction({
+    description: "Returns global monitoring data for the Superadmin only: account totals per role, unique participants, total score sessions, exam-class totals, current online count, all accounts, all classes, and the 50 most recent score activities.",
+    request: z.object({ token: z.string().min(1).max(200) }),
+    response: z.object({
+      totals: z.object({
+        total_users: z.number(),
+        guru: z.number(),
+        orangtua: z.number(),
+        admin: z.number(),
+        unique_students: z.number(),
+        total_attempts: z.number(),
+        total_classes: z.number(),
+        open_classes: z.number(),
+        closed_classes: z.number(),
+        class_participants: z.number(),
+        online: z.number(),
+      }),
+      users: z.array(z.object({
+        id: z.number(),
+        name: z.string(),
+        username: z.string(),
+        role: z.string(),
+        organization: z.string(),
+        created_at: z.string(),
+      })),
+      classes: z.array(z.object({
+        id: z.number(),
+        class_name: z.string(),
+        teacher_name: z.string(),
+        jenjang: z.string(),
+        subject_name: z.string(),
+        level: z.number(),
+        status: z.string(),
+        participant_count: z.number(),
+        finished_count: z.number(),
+        created_at: z.string(),
+      })),
+      recent_attempts: z.array(z.object({
+        id: z.number(),
+        student_name: z.string(),
+        jenjang: z.string(),
+        mapel: z.string(),
+        mode: z.string(),
+        score: z.number(),
+        correct: z.number(),
+        total: z.number(),
+        duration_sec: z.number(),
+        created_at: z.string(),
+      })),
+    }),
+    async handler(ctx, args) {
+      await requireAdmin(ctx, args.token);
+      const db = ctx.db<typeof schema>();
+
+      const userRows = await db.select().from(schema.users).orderBy(desc(schema.users.id)).limit(1000);
+      const attemptRows = await db.select().from(schema.attempts).orderBy(desc(schema.attempts.id)).limit(5000);
+      const uniqueStudents = new Set(attemptRows.map((a) => nameKey(a.studentName))).size;
+
+      const classRows = await db.select().from(schema.examClasses).orderBy(desc(schema.examClasses.id)).limit(500);
+      const teacherNameById = new Map(userRows.map((u) => [u.id, u.name]));
+      const classes = [];
+      let classParticipants = 0;
+      for (const c of classRows) {
+        const parts = await db.select().from(schema.classParticipants).where(eq(schema.classParticipants.classId, c.id));
+        classParticipants += parts.length;
+        classes.push({
+          id: c.id,
+          class_name: c.className,
+          teacher_name: teacherNameById.get(c.teacherId) ?? "(akun guru sudah dihapus)",
+          jenjang: c.jenjang,
+          subject_name: c.subjectName,
+          level: c.level,
+          status: c.status,
+          participant_count: parts.length,
+          finished_count: parts.filter((p) => p.status === "finished").length,
+          created_at: c.createdAt.toISOString(),
+        });
+      }
+
+      return {
+        totals: {
+          total_users: userRows.length,
+          guru: userRows.filter((u) => u.role === "guru").length,
+          orangtua: userRows.filter((u) => u.role === "orangtua").length,
+          admin: userRows.filter((u) => u.role === "admin").length,
+          unique_students: uniqueStudents,
+          total_attempts: attemptRows.length,
+          total_classes: classRows.length,
+          open_classes: classRows.filter((c) => c.status === "open").length,
+          closed_classes: classRows.filter((c) => c.status === "closed").length,
+          class_participants: classParticipants,
+          online: await countOnline(ctx),
+        },
+        users: userRows.map((u) => ({
+          id: u.id,
+          name: u.name,
+          username: u.username,
+          role: u.role,
+          organization: u.organization,
+          created_at: u.createdAt.toISOString(),
+        })),
+        classes,
+        recent_attempts: attemptRows.slice(0, 50).map((r) => ({
+          id: r.id,
+          student_name: r.studentName,
+          jenjang: r.jenjang,
+          mapel: r.mapel,
+          mode: r.mode,
+          score: r.score,
+          correct: r.correct,
+          total: r.total,
+          duration_sec: r.durationSec,
+          created_at: r.createdAt.toISOString(),
+        })),
+      };
+    },
+  }),
+
+  adminDeleteUser: defineAction({
+    description: "Superadmin only: deletes one teacher/parent account together with its sessions and watch list. The Superadmin cannot delete their own account or another admin account.",
+    request: z.object({ token: z.string().min(1).max(200), user_id: z.number().int().positive() }),
+    response: z.object({ ok: z.literal(true) }),
+    async handler(ctx, args): Promise<{ ok: true }> {
+      const admin = await requireAdmin(ctx, args.token);
+      if (args.user_id === admin.id) throw new Error("Kamu tidak bisa menghapus akun Superadmin milikmu sendiri.");
+      const db = ctx.db<typeof schema>();
+      const rows = await db.select().from(schema.users).where(eq(schema.users.id, args.user_id)).limit(1);
+      const target = rows[0];
+      if (!target) throw new Error("Akun itu sudah tidak ada.");
+      if (target.role === "admin") throw new Error("Akun Superadmin lain tidak bisa dihapus.");
+      await db.delete(schema.watchedStudents).where(eq(schema.watchedStudents.userId, target.id));
+      await db.delete(schema.sessions).where(eq(schema.sessions.userId, target.id));
+      await db.delete(schema.users).where(eq(schema.users.id, target.id));
+      ctx.invalidateQueries();
+      return { ok: true as const };
+    },
+  }),
+
+  adminDeleteClass: defineAction({
+    description: "Superadmin only: deletes one exam class together with all of its participants.",
+    request: z.object({ token: z.string().min(1).max(200), class_id: z.number().int().positive() }),
+    response: z.object({ ok: z.literal(true) }),
+    async handler(ctx, args): Promise<{ ok: true }> {
+      await requireAdmin(ctx, args.token);
+      const db = ctx.db<typeof schema>();
+      const rows = await db.select({ id: schema.examClasses.id }).from(schema.examClasses)
+        .where(eq(schema.examClasses.id, args.class_id)).limit(1);
+      if (!rows[0]) throw new Error("Kelas itu sudah tidak ada.");
+      await db.delete(schema.classParticipants).where(eq(schema.classParticipants.classId, args.class_id));
+      await db.delete(schema.examClasses).where(eq(schema.examClasses.id, args.class_id));
+      ctx.invalidateQueries();
+      return { ok: true as const };
+    },
+  }),
+
+  adminDeleteAttempt: defineAction({
+    description: "Superadmin only: deletes one score/attempt row from any participant.",
+    request: z.object({ token: z.string().min(1).max(200), attempt_id: z.number().int().positive() }),
+    response: z.object({ ok: z.literal(true) }),
+    async handler(ctx, args): Promise<{ ok: true }> {
+      await requireAdmin(ctx, args.token);
+      const db = ctx.db<typeof schema>();
+      await db.delete(schema.attempts).where(eq(schema.attempts.id, args.attempt_id));
+      ctx.invalidateQueries();
+      return { ok: true as const };
     },
   }),
 } satisfies ActionsModule;

@@ -20,9 +20,9 @@ import type { Actions } from "../../server/src/actions";
 
 const FIELDS = actionFields<typeof Actions>();
 
-type View = "home" | "quiz" | "result" | "history" | "login" | "dashboard" | "belajar" | "ranking" | "joinClass" | "classResult";
+type View = "home" | "quiz" | "result" | "history" | "login" | "dashboard" | "belajar" | "ranking" | "joinClass" | "classResult" | "admin";
 type Mode = "ujian" | "latihan";
-type Role = "guru" | "orangtua";
+type Role = "guru" | "orangtua" | "admin";
 type SessionUser = { id: number; name: string; username: string; role: string; organization: string };
 
 const TOKEN_KEY = "ziqva-olim-token";
@@ -686,6 +686,10 @@ function focusField(id: string) {
 function AuthView(props: { onSuccess: (token: string, user: SessionUser) => void }) {
   const [tab, setTab] = useState<"login" | "register">("login");
   const [role, setRole] = useState<Role>("orangtua");
+  // Pilihan Superadmin hanya tampil selama akun Superadmin BELUM pernah
+  // dibuat — server juga menolak pembuatan admin kedua (satu-satunya).
+  const adminQ = useQuery({ queryKey: ["admin-exists"], queryFn: () => api.adminExists({}) });
+  const adminAvailable = adminQ.data ? !adminQ.data.exists : false;
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -760,6 +764,13 @@ function AuthView(props: { onSuccess: (token: string, user: SessionUser) => void
                     <div className="font-display font-bold">👨‍🏫 Guru</div>
                     <div className="text-xs" style={{ color: "var(--dim)" }}>Pantau murid di kelasnya &amp; papan peringkat kelas</div>
                   </button>
+                  {adminAvailable && (
+                    <button type="button" role="radio" aria-checked={role === "admin"} onClick={() => setRole("admin")}
+                      className="rounded-2xl p-3.5 text-left sm:col-span-2" style={{ background: role === "admin" ? "#FFF3DC" : "var(--surface2)", border: `2px solid ${role === "admin" ? "var(--gold)" : "var(--border)"}` }}>
+                      <div className="font-display font-bold">🛡️ Superadmin</div>
+                      <div className="text-xs" style={{ color: "var(--dim)" }}>Khusus pemilik aplikasi — pantau &amp; kelola semua data. Hanya bisa dibuat satu kali.</div>
+                    </button>
+                  )}
                 </div>
               </div>
               <div>
@@ -767,8 +778,8 @@ function AuthView(props: { onSuccess: (token: string, user: SessionUser) => void
                 <input id="reg-name" {...FIELDS.register.name} value={name} onChange={(e) => setName(e.target.value)} placeholder="Contoh: Ibu Sari / Pak Budi" className={inputCls} style={inputStyle} autoComplete="name" />
               </div>
               <div>
-                <label htmlFor="reg-org" className="font-display text-sm font-bold">{role === "guru" ? "Sekolah / Kelas (opsional)" : "Sekolah Anak (opsional)"}</label>
-                <input id="reg-org" {...FIELDS.register.organization} value={organization} onChange={(e) => setOrganization(e.target.value)} placeholder={role === "guru" ? "Contoh: SDN 1 Malang — Kelas 4" : "Contoh: TK Islam Sabilillah"} className={inputCls} style={inputStyle} autoComplete="organization" />
+                <label htmlFor="reg-org" className="font-display text-sm font-bold">{role === "guru" ? "Sekolah / Kelas (opsional)" : role === "admin" ? "Organisasi (opsional)" : "Sekolah Anak (opsional)"}</label>
+                <input id="reg-org" {...FIELDS.register.organization} value={organization} onChange={(e) => setOrganization(e.target.value)} placeholder={role === "guru" ? "Contoh: SDN 1 Malang — Kelas 4" : role === "admin" ? "Contoh: Pemilik ZIQVA OLIM" : "Contoh: TK Islam Sabilillah"} className={inputCls} style={inputStyle} autoComplete="organization" />
               </div>
             </>
           )}
@@ -1220,11 +1231,11 @@ function MonitorView(props: { token: string; user: SessionUser; onLogout: () => 
     <main className="mx-auto w-full max-w-5xl px-4 pb-10">
       <section className="mt-5 rounded-3xl p-5 shadow-sm" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
         <div className="flex flex-wrap items-center gap-3">
-          <span className="flex h-14 w-14 items-center justify-center rounded-2xl text-3xl" style={{ background: "var(--surface2)" }} aria-hidden>{isGuru ? "👨‍🏫" : "👨‍👩‍👧"}</span>
+          <span className="flex h-14 w-14 items-center justify-center rounded-2xl text-3xl" style={{ background: "var(--surface2)" }} aria-hidden>{isGuru ? "👨‍🏫" : user.role === "admin" ? "🛡️" : "👨‍👩‍👧"}</span>
           <div className="min-w-0 flex-1">
             <h1 className="font-display truncate text-xl font-extrabold">Halo, {user.name}!</h1>
             <p className="text-sm font-semibold" style={{ color: "var(--dim)" }}>
-              {isGuru ? "🧑‍🏫 Guru" : "👨‍👩‍👧 Orang Tua"} • @{user.username}{user.organization ? ` • ${user.organization}` : ""}
+              {isGuru ? "🧑‍🏫 Guru" : user.role === "admin" ? "🛡️ Superadmin" : "👨‍👩‍👧 Orang Tua"} • @{user.username}{user.organization ? ` • ${user.organization}` : ""}
             </p>
           </div>
           <button type="button" onClick={() => dash.refetch()} aria-label="Segarkan data pantauan" className="min-h-[44px] rounded-full px-4 font-display text-sm font-bold" style={{ background: "var(--surface2)" }}>🔄 Segarkan</button>
@@ -1361,6 +1372,195 @@ function MonitorView(props: { token: string; user: SessionUser; onLogout: () => 
             </>
           )}
         </>
+      )}
+    </main>
+  );
+}
+
+/* ---------------- PANEL SUPERADMIN ----------------
+   Hanya untuk akun pemilik (role "admin"). Menampilkan jumlah global
+   seluruh aplikasi (akun per peran, peserta unik, total sesi nilai,
+   kelas ujian, pemakai online) dan pengelolaan: hapus akun, hapus
+   kelas, hapus baris nilai — semua lewat aksi server khusus admin
+   dengan konfirmasi di dalam halaman sebelum menghapus. */
+type AdminConfirm = { kind: "user" | "class" | "attempt"; id: number; label: string } | null;
+
+function adminRoleLabel(role: string) {
+  if (role === "admin") return "🛡️ Superadmin";
+  if (role === "guru") return "👨‍🏫 Guru";
+  return "👨‍👩‍👧 Orang Tua";
+}
+
+function AdminView(props: { token: string; user: SessionUser; onLogout: () => void }) {
+  const queryClient = useQueryClient();
+  const { token, user } = props;
+  const dash = useQuery({ queryKey: ["admin-dashboard", token], queryFn: () => api.adminDashboard({ token }) });
+  const [confirm, setConfirm] = useState<AdminConfirm>(null);
+  const [actionError, setActionError] = useState("");
+
+  const afterDelete = () => { setConfirm(null); setActionError(""); queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] }); };
+  const onDeleteError = (e: unknown) => setActionError(e instanceof Error ? e.message : "Gagal menghapus. Coba lagi ya.");
+  const delUser = useMutation({ mutationFn: api.adminDeleteUser, onSuccess: afterDelete, onError: onDeleteError });
+  const delClass = useMutation({ mutationFn: api.adminDeleteClass, onSuccess: afterDelete, onError: onDeleteError });
+  const delAttempt = useMutation({ mutationFn: api.adminDeleteAttempt, onSuccess: afterDelete, onError: onDeleteError });
+  const deleting = delUser.isPending || delClass.isPending || delAttempt.isPending;
+
+  const runDelete = () => {
+    if (!confirm) return;
+    setActionError("");
+    if (confirm.kind === "user") delUser.mutate({ token, user_id: confirm.id });
+    else if (confirm.kind === "class") delClass.mutate({ token, class_id: confirm.id });
+    else delAttempt.mutate({ token, attempt_id: confirm.id });
+  };
+
+  const data = dash.data;
+  const t = data?.totals;
+
+  return (
+    <main className="mx-auto w-full max-w-5xl px-4 pb-10">
+      <section className="mt-5 rounded-3xl p-5 shadow-sm" style={{ background: "var(--surface)", border: "2px solid var(--gold)" }}>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="flex h-14 w-14 items-center justify-center rounded-2xl text-3xl" style={{ background: "#FFF3DC" }} aria-hidden>🛡️</span>
+          <div className="min-w-0 flex-1">
+            <h1 className="font-display truncate text-xl font-extrabold">Panel Superadmin — Halo, {user.name}!</h1>
+            <p className="text-sm font-semibold" style={{ color: "var(--dim)" }}>
+              🛡️ Superadmin • @{user.username}{user.organization ? ` • ${user.organization}` : ""} • Pantau jumlah &amp; kelola seluruh data ZIQVA OLIM
+            </p>
+          </div>
+          <button type="button" onClick={() => dash.refetch()} aria-label="Segarkan data superadmin" className="min-h-[44px] rounded-full px-4 font-display text-sm font-bold" style={{ background: "var(--surface2)" }}>🔄 Segarkan</button>
+          <button type="button" onClick={props.onLogout} aria-label="Keluar dari akun superadmin" className="min-h-[44px] rounded-full px-4 font-display text-sm font-bold text-white" style={{ background: "#D6336C" }}>Keluar</button>
+        </div>
+      </section>
+
+      {dash.isPending && <p className="mt-4" style={{ color: "var(--dim)" }}>Memuat data superadmin…</p>}
+      {dash.isError && (
+        <div className="mt-4 rounded-3xl p-6 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+          <p className="font-display text-lg font-bold">Panel belum bisa dimuat</p>
+          <p className="mt-1 text-sm" style={{ color: "var(--dim)" }}>Sesi login mungkin sudah berakhir, atau akun ini bukan Superadmin.</p>
+          <button type="button" onClick={props.onLogout} className="font-display mt-4 min-h-[52px] rounded-2xl px-6 font-bold text-white" style={{ background: "var(--accent)" }}>Masuk Lagi</button>
+        </div>
+      )}
+
+      {data && t && (
+        <>
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {[
+              { label: "Total Peserta", value: `${t.unique_students}`, icon: "🧒" },
+              { label: "Total Sesi Latihan/Ujian", value: `${t.total_attempts}`, icon: "🎯" },
+              { label: "Akun Guru", value: `${t.guru}`, icon: "👨‍🏫" },
+              { label: "Akun Orang Tua", value: `${t.orangtua}`, icon: "👨‍👩‍👧" },
+              { label: "Kelas Aktif", value: `${t.open_classes}`, icon: "🏫" },
+              { label: "Sedang Online", value: `${t.online}`, icon: "🟢" },
+            ].map((c) => (
+              <div key={c.label} className="rounded-2xl p-4 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                <div className="text-2xl" aria-hidden>{c.icon}</div>
+                <div className="font-display text-2xl font-extrabold">{c.value}</div>
+                <div className="text-xs font-semibold" style={{ color: "var(--dim)" }}>{c.label}</div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-center text-xs font-semibold" style={{ color: "var(--dim)" }}>
+            Total akun terdaftar: {t.total_users} (termasuk {t.admin} Superadmin) • Total Kelas Ujian: {t.total_classes} ({t.open_classes} aktif, {t.closed_classes} ditutup) • Total peserta kelas: {t.class_participants}
+          </p>
+
+          <h2 className="font-display mt-6 text-lg font-bold">👥 Akun Terdaftar ({data.users.length})</h2>
+          {data.users.length === 0 ? (
+            <p className="mt-2 text-sm" style={{ color: "var(--dim)" }}>Belum ada akun terdaftar.</p>
+          ) : (
+            <div className="mt-2 grid gap-2">
+              {data.users.map((u) => {
+                const isSelf = u.id === user.id;
+                const isAdmin = u.role === "admin";
+                return (
+                  <div key={u.id} className="flex items-center gap-3 rounded-2xl p-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-display font-bold">{u.name} <span className="text-xs font-bold" style={{ color: "var(--dim)" }}>@{u.username}</span></div>
+                      <div className="text-xs font-semibold" style={{ color: "var(--dim)" }}>
+                        {adminRoleLabel(u.role)}{u.organization ? ` • ${u.organization}` : ""} • Daftar {new Date(u.created_at).toLocaleString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      </div>
+                    </div>
+                    {isSelf ? (
+                      <span className="rounded-full px-3 py-1.5 text-xs font-bold" style={{ background: "#FFF3DC", color: "#92600A" }}>Akun kamu</span>
+                    ) : isAdmin ? (
+                      <span className="rounded-full px-3 py-1.5 text-xs font-bold" style={{ background: "var(--surface2)", color: "var(--dim)" }}>Superadmin</span>
+                    ) : (
+                      <button type="button" onClick={() => { setActionError(""); setConfirm({ kind: "user", id: u.id, label: `akun ${u.name} (@${u.username})` }); }}
+                        aria-label={`Hapus akun ${u.name}`}
+                        className="min-h-[40px] shrink-0 rounded-full px-4 font-display text-sm font-bold text-white" style={{ background: "#D6336C" }}>🗑️ Hapus</button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <h2 className="font-display mt-6 text-lg font-bold">🏫 Semua Kelas Ujian ({data.classes.length})</h2>
+          {data.classes.length === 0 ? (
+            <p className="mt-2 text-sm" style={{ color: "var(--dim)" }}>Belum ada Kelas Ujian yang dibuat guru.</p>
+          ) : (
+            <div className="mt-2 grid gap-2">
+              {data.classes.map((c) => (
+                <div key={c.id} className="flex items-center gap-3 rounded-2xl p-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-display font-bold">{c.class_name}</div>
+                    <div className="text-xs font-semibold" style={{ color: "var(--dim)" }}>
+                      Guru: {c.teacher_name} • {c.jenjang} • {c.subject_name} • Level {c.level} • {c.status === "open" ? "🟢 Aktif" : "🔴 Ditutup"} • {c.participant_count} peserta, {c.finished_count} selesai
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => { setActionError(""); setConfirm({ kind: "class", id: c.id, label: `kelas "${c.class_name}" beserta semua pesertanya` }); }}
+                    aria-label={`Hapus kelas ${c.class_name}`}
+                    className="min-h-[40px] shrink-0 rounded-full px-4 font-display text-sm font-bold text-white" style={{ background: "#D6336C" }}>🗑️ Hapus</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <h2 className="font-display mt-6 text-lg font-bold">🕐 Aktivitas Nilai Terakhir (50 terbaru)</h2>
+          {data.recent_attempts.length === 0 ? (
+            <p className="mt-2 text-sm" style={{ color: "var(--dim)" }}>Belum ada peserta yang menyelesaikan latihan / ujian.</p>
+          ) : (
+            <div className="mt-2 grid gap-2">
+              {data.recent_attempts.map((a) => (
+                <div key={a.id} className="flex items-center gap-3 rounded-2xl p-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                  <div className="font-display flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-2xl text-white" style={{ background: a.score >= 75 ? "#1E7A46" : a.score >= 60 ? "#D97706" : "#6E6785" }}>
+                    <span className="text-lg leading-none font-extrabold">{a.score}</span>
+                    <span className="text-[9px] font-bold">SKOR</span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-display font-bold">{a.student_name} — {a.mapel} • {a.jenjang}</div>
+                    <div className="text-xs font-semibold" style={{ color: "var(--dim)" }}>
+                      {a.correct}/{a.total} benar • {a.mode === "ujian" ? "🏆 Ujian" : "✏️ Latihan"} • {fmtDur(a.duration_sec)} • {new Date(a.created_at).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => { setActionError(""); setConfirm({ kind: "attempt", id: a.id, label: `nilai ${a.student_name} (${a.mapel}, skor ${a.score})` }); }}
+                    aria-label={`Hapus nilai ${a.student_name} pada ${a.mapel}`}
+                    className="min-h-[40px] shrink-0 rounded-full px-4 font-display text-sm font-bold text-white" style={{ background: "#D6336C" }}>🗑️ Hapus</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {confirm && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-4 sm:items-center" role="dialog" aria-modal="true" aria-label="Konfirmasi hapus data">
+          <section className="pop-in w-full max-w-md rounded-3xl p-6 shadow-xl" style={{ background: "var(--surface)", border: "2px solid #D6336C" }}>
+            <div className="text-center text-5xl" aria-hidden>⚠️</div>
+            <h2 className="font-display mt-2 text-center text-xl font-extrabold">Hapus {confirm.label}?</h2>
+            <p className="mt-1 text-center text-sm leading-relaxed" style={{ color: "var(--dim)" }}>
+              Data yang sudah dihapus <strong>tidak bisa dikembalikan</strong>. Pastikan memang data ini yang mau dihapus ya.
+            </p>
+            {actionError && <p className="mt-3 rounded-xl px-3 py-2 text-sm font-bold text-red-600" style={{ background: "#FAE7E9" }} role="alert">{actionError}</p>}
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => { setConfirm(null); setActionError(""); }} disabled={deleting}
+                className="font-display min-h-[52px] rounded-2xl font-bold disabled:opacity-50" style={{ background: "var(--surface2)" }}>Batal</button>
+              <button type="button" onClick={runDelete} disabled={deleting}
+                className="font-display min-h-[52px] rounded-2xl font-bold text-white disabled:opacity-50" style={{ background: "#D6336C" }}>
+                {deleting ? "Menghapus…" : "🗑️ Ya, Hapus"}
+              </button>
+            </div>
+          </section>
+        </div>
       )}
     </main>
   );
@@ -1734,10 +1934,10 @@ export function App() {
   const me = useQuery({ queryKey: ["me", token], queryFn: () => api.me({ token }), enabled: token.length > 0 });
   const sessionUser: SessionUser | null = token && me.data ? me.data.user : null;
 
-  const handleAuthSuccess = (t: string, _user: SessionUser) => {
+  const handleAuthSuccess = (t: string, user: SessionUser) => {
     try { localStorage.setItem(TOKEN_KEY, t); } catch { /* penyimpanan tidak tersedia */ }
     setToken(t);
-    setView("dashboard");
+    setView(user.role === "admin" ? "admin" : "dashboard");
     window.scrollTo({ top: 0 });
   };
   const logout = useMutation({
@@ -2130,6 +2330,11 @@ export function App() {
               style={{ background: view === "dashboard" || view === "login" ? "var(--gold)" : "rgba(255,255,255,.15)", color: view === "dashboard" || view === "login" ? "#2B2440" : "#fff" }}>
               {sessionUser ? `👀 Pantau (${sessionUser.name.split(" ")[0]})` : "👨‍🏫 Guru & Ortu"}
             </button>
+            {sessionUser?.role === "admin" && (
+              <button type="button" onClick={() => setView("admin")} aria-label="Buka panel superadmin"
+                className="min-h-[40px] rounded-full px-4 font-display text-sm font-bold"
+                style={{ background: view === "admin" ? "var(--gold)" : "rgba(255,255,255,.15)", color: view === "admin" ? "#2B2440" : "#fff" }}>🛡️ Panel Superadmin</button>
+            )}
             <button type="button" onClick={toggleSound} aria-label={soundOn ? "Matikan semua suara (bacaan soal dan efek klik)" : "Nyalakan suara"} aria-pressed={soundOn}
               className="min-h-[40px] rounded-full px-3 font-display text-sm font-bold"
               style={{ background: "rgba(255,255,255,.15)", color: "#fff" }}>{soundOn ? "🔊 Suara ON" : "🔇 Suara OFF"}</button>
@@ -2159,6 +2364,19 @@ export function App() {
 
       {view === "dashboard" && sessionUser && (
         <MonitorView token={token} user={sessionUser} onLogout={handleLogout} onPractice={() => setView("home")} />
+      )}
+      {view === "admin" && sessionUser?.role === "admin" && (
+        <AdminView token={token} user={sessionUser} onLogout={handleLogout} />
+      )}
+      {view === "admin" && sessionUser?.role !== "admin" && !me.isPending && (
+        <main className="mx-auto w-full max-w-md px-4 pb-10">
+          <div className="mt-5 rounded-3xl p-6 text-center" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+            <div className="text-5xl" aria-hidden>🛡️</div>
+            <p className="font-display mt-2 text-lg font-bold">Panel Superadmin khusus pemilik aplikasi</p>
+            <p className="mt-1 text-sm" style={{ color: "var(--dim)" }}>Masuk dengan akun Superadmin untuk memantau &amp; mengelola seluruh data.</p>
+            <button type="button" onClick={() => setView(sessionUser ? "dashboard" : "login")} className="font-display mt-4 min-h-[52px] rounded-2xl px-6 font-bold text-white" style={{ background: "var(--accent)" }}>{sessionUser ? "Ke Dashboard Pantau" : "Masuk / Daftar →"}</button>
+          </div>
+        </main>
       )}
       {view === "dashboard" && !sessionUser && !me.isPending && (
         <main className="mx-auto w-full max-w-md px-4 pb-10">
