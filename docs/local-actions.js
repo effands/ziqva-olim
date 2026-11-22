@@ -152,9 +152,13 @@
       }
       var existing = await getOne("app_users", "username=eq." + enc(username) + "&select=id");
       if (existing) throw new Error("Username itu sudah dipakai. Coba username lain atau masuk dengan akun yang ada.");
+      var wa = String(args.whatsapp || "").trim();
+      var email = String(args.email || "").trim();
+      if (!wa && !email) throw new Error("Isi minimal salah satu: Nomor WhatsApp atau Email, supaya kami bisa mengirim info olimpiade terbaru.");
       var salt = randomHex(16);
       var user = await insertRow("app_users", {
         name: args.name, username: username, role: args.role, organization: args.organization || "",
+        whatsapp: wa, email: email,
         password_record: salt + "$" + (await hashPw(args.password, salt)),
       });
       var token = await newSession(user.id);
@@ -388,7 +392,7 @@
       var user = await userForToken(args.token);
       if (String(user.role || "").toLowerCase() !== "admin") throw new Error("Hanya Superadmin yang bisa membuka panel ini.");
       var usersRaw = (await getRows("app_users", "select=*&order=id.asc")) || [];
-      var users = usersRaw.map(function (u) { return { id: u.id, name: u.name, username: u.username, role: u.role, organization: u.organization, created_at: u.created_at }; });
+      var users = usersRaw.map(function (u) { return { id: u.id, name: u.name, username: u.username, role: u.role, organization: u.organization, whatsapp: u.whatsapp || "", email: u.email || "", created_at: u.created_at }; });
       var guru = 0, orangtua = 0, admin = 0;
       users.forEach(function (u) {
         var r = String(u.role || "").toLowerCase();

@@ -81,6 +81,10 @@ export const users = sqliteTable("users", {
   passwordHash: text("password_hash").notNull(),
   role: text("role", { enum: ["guru", "orangtua", "admin"] }).notNull(),
   organization: text("organization").notNull().default(""),
+  // Kontak untuk info olimpiade: minimal salah satu diisi saat daftar
+  // (ditegakkan di aksi register). Akun lama kolomnya kosong.
+  whatsapp: text("whatsapp").notNull().default(""),
+  email: text("email").notNull().default(""),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .notNull()
     .$defaultFn(() => new Date()),

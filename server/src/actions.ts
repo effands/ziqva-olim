@@ -417,10 +417,17 @@ export const Actions = {
       password: z.string().min(6, "Kata sandi minimal 6 karakter").max(72),
       role: z.enum(["guru", "orangtua", "admin"]),
       organization: z.string().trim().max(80).default(""),
+      whatsapp: z.string().trim().max(30).default(""),
+      email: z.string().trim().max(120).default(""),
     }),
     response: z.object({ token: z.string(), user: userShape }),
     async handler(ctx, args) {
       const db = ctx.db<typeof schema>();
+      // Minimal salah satu kontak wajib diisi, supaya pemilik bisa mengirim
+      // info olimpiade terbaru ke pendaftar.
+      if (!args.whatsapp && !args.email) {
+        throw new Error("Isi minimal salah satu: Nomor WhatsApp atau Email, supaya kami bisa mengirim info olimpiade terbaru.");
+      }
       // Superadmin hanya boleh ada SATU di seluruh aplikasi (akun pemilik).
       if (args.role === "admin") {
         const admins = await db.select({ id: schema.users.id }).from(schema.users)
@@ -433,6 +440,7 @@ export const Actions = {
         name: args.name, username: args.username,
         passwordHash: await makePasswordRecord(args.password),
         role: args.role, organization: args.organization,
+        whatsapp: args.whatsapp, email: args.email,
       }).returning();
       const user = inserted[0];
       if (!user) throw new Error("Gagal membuat akun. Coba lagi ya.");
@@ -1058,6 +1066,8 @@ export const Actions = {
         username: z.string(),
         role: z.string(),
         organization: z.string(),
+        whatsapp: z.string(),
+        email: z.string(),
         created_at: z.string(),
       })),
       classes: z.array(z.object({
@@ -1134,6 +1144,8 @@ export const Actions = {
           username: u.username,
           role: u.role,
           organization: u.organization,
+          whatsapp: u.whatsapp ?? "",
+          email: u.email ?? "",
           created_at: u.createdAt.toISOString(),
         })),
         classes,

@@ -698,6 +698,8 @@ function AuthView(props: { onSuccess: (token: string, user: SessionUser) => void
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [organization, setOrganization] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
+  const [email, setEmail] = useState("");
   const [error, setError] = useState("");
 
   const login = useMutation({
@@ -712,6 +714,7 @@ function AuthView(props: { onSuccess: (token: string, user: SessionUser) => void
       const msg = e instanceof Error ? e.message : "Gagal membuat akun. Coba lagi ya.";
       setError(msg);
       if (msg.toLowerCase().includes("username")) focusField("auth-username");
+      else if (msg.toLowerCase().includes("whatsapp") || msg.toLowerCase().includes("email")) focusField("reg-whatsapp");
       else if (msg.toLowerCase().includes("nama")) focusField("reg-name");
     },
   });
@@ -727,7 +730,8 @@ function AuthView(props: { onSuccess: (token: string, user: SessionUser) => void
       if (!name.trim()) { setError("Isi nama lengkap dulu ya."); focusField("reg-name"); return; }
       if (username.trim().length < 3) { setError("Username minimal 3 karakter (huruf kecil, angka, titik, garis bawah)."); focusField("auth-username"); return; }
       if (password.length < 6) { setError("Kata sandi minimal 6 karakter."); focusField("auth-password"); return; }
-      register.mutate({ name: name.trim(), username: username.trim(), password, role, organization: organization.trim() });
+      if (!whatsapp.trim() && !email.trim()) { setError("Isi minimal salah satu: Nomor WhatsApp atau Email, supaya kami bisa mengirim info olimpiade terbaru."); focusField("reg-whatsapp"); return; }
+      register.mutate({ name: name.trim(), username: username.trim(), password, role, organization: organization.trim(), whatsapp: whatsapp.trim(), email: email.trim() });
     }
   };
 
@@ -784,6 +788,15 @@ function AuthView(props: { onSuccess: (token: string, user: SessionUser) => void
               <div>
                 <label htmlFor="reg-org" className="font-display text-sm font-bold">{role === "guru" ? "Sekolah / Kelas (opsional)" : role === "admin" ? "Organisasi (opsional)" : "Sekolah Anak (opsional)"}</label>
                 <input id="reg-org" {...FIELDS.register.organization} value={organization} onChange={(e) => setOrganization(e.target.value)} placeholder={role === "guru" ? "Contoh: SDN 1 Malang — Kelas 4" : role === "admin" ? "Contoh: Pemilik ZIQVA OLIM" : "Contoh: TK Islam Sabilillah"} className={inputCls} style={inputStyle} autoComplete="organization" />
+              </div>
+              <div>
+                <label htmlFor="reg-whatsapp" className="font-display text-sm font-bold">Nomor WhatsApp</label>
+                <input id="reg-whatsapp" {...FIELDS.register.whatsapp} type="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="08xxxxxxxxxx" className={inputCls} style={inputStyle} autoComplete="tel" />
+              </div>
+              <div>
+                <label htmlFor="reg-email" className="font-display text-sm font-bold">Email</label>
+                <input id="reg-email" {...FIELDS.register.email} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nama@email.com" className={inputCls} style={inputStyle} autoComplete="email" />
+                <p className="mt-1.5 text-xs leading-relaxed" style={{ color: "var(--dim)" }}>Minimal isi salah satu — untuk menerima info olimpiade terbaru. Tidak dibagikan ke siapa pun.</p>
               </div>
             </>
           )}
@@ -1395,6 +1408,14 @@ function adminRoleLabel(role: string) {
   return "👨‍👩‍👧 Orang Tua";
 }
 
+/** Ubah nomor WhatsApp lokal menjadi tautan wa.me internasional:
+    hanya angka, awalan 0 diganti 62. */
+function waChatUrl(raw: string): string {
+  let digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("0")) digits = `62${digits.slice(1)}`;
+  return `https://wa.me/${digits}`;
+}
+
 function AdminView(props: { token: string; user: SessionUser; onLogout: () => void }) {
   const queryClient = useQueryClient();
   const { token, user } = props;
@@ -1482,6 +1503,17 @@ function AdminView(props: { token: string; user: SessionUser; onLogout: () => vo
                       <div className="text-xs font-semibold" style={{ color: "var(--dim)" }}>
                         {adminRoleLabel(u.role)}{u.organization ? ` • ${u.organization}` : ""} • Daftar {new Date(u.created_at).toLocaleString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                       </div>
+                      {(u.whatsapp || u.email) && (
+                        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold">
+                          {u.whatsapp && (
+                            <a href={waChatUrl(u.whatsapp)} target="_blank" rel="noreferrer" aria-label={`Chat WhatsApp ${u.name}`}
+                              className="inline-flex min-h-[32px] items-center rounded-full px-3 py-1 font-bold text-white" style={{ background: "#1E7A46" }}>💬 Chat WA • {u.whatsapp}</a>
+                          )}
+                          {u.email && (
+                            <a href={`mailto:${u.email}`} aria-label={`Kirim email ke ${u.name}`} className="underline" style={{ color: "var(--accent)" }}>✉️ {u.email}</a>
+                          )}
+                        </div>
+                      )}
                     </div>
                     {isSelf ? (
                       <span className="rounded-full px-3 py-1.5 text-xs font-bold" style={{ background: "#FFF3DC", color: "#92600A" }}>Akun kamu</span>
