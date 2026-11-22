@@ -451,18 +451,38 @@ export const Actions = {
   }),
 
   login: defineAction({
-    description: "Logs in a teacher or parent account and returns a session token.",
+    description: "Logs in a teacher, parent, or admin account with a single identifier field: the account's username, registered WhatsApp number, or registered email, plus password.",
     request: z.object({
-      username: z.string().trim().toLowerCase().min(1).max(30),
+      identifier: z.string().trim().min(1).max(120),
       password: z.string().min(1).max(72),
     }),
     response: z.object({ token: z.string(), user: userShape }),
     async handler(ctx, args) {
       const db = ctx.db<typeof schema>();
-      const rows = await db.select().from(schema.users).where(eq(schema.users.username, args.username)).limit(1);
-      const user = rows[0];
+      const needle = args.identifier.trim();
+      const lower = needle.toLowerCase();
+      // Normalisasi nomor WA: hanya angka; awalan 62 dan 0 dianggap sama
+      // (62812… ≡ 0812…), supaya pengguna bebas mengetik format mana pun.
+      const canonWa = (v: string) => {
+        const d = v.replace(/\D/g, "");
+        return d.startsWith("62") ? `0${d.slice(2)}` : d;
+      };
+      const needleWa = canonWa(needle);
+      let user: UserRow | undefined;
+      const byUsername = await db.select().from(schema.users).where(eq(schema.users.username, lower)).limit(1);
+      user = byUsername[0];
+      if (!user) {
+        // Email tersimpan apa adanya saat daftar → bandingkan huruf kecil
+        // di kedua sisi; WA tersimpan apa adanya → bandingkan sesudah
+        // normalisasi. Tabel akun kecil, jadi pemindaian ini murah.
+        const all = await db.select().from(schema.users);
+        user = all.find((u) => u.email !== "" && u.email.trim().toLowerCase() === lower)
+          ?? (needleWa.length >= 9
+            ? all.find((u) => u.whatsapp !== "" && canonWa(u.whatsapp) === needleWa)
+            : undefined);
+      }
       if (!user || !(await checkPassword(args.password, user.passwordHash))) {
-        throw new Error("Username atau kata sandi salah. Periksa lagi ya.");
+        throw new Error("Data masuk atau kata sandi salah. Periksa lagi ya.");
       }
       const token = await createSession(ctx, user.id);
       return { token, user: toUser(user) };

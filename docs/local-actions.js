@@ -165,10 +165,27 @@
       return { token: token, user: toUser(user) };
     },
     async login(args) {
-      var user = await getOne("app_users", "username=eq." + enc(String(args.username).trim().toLowerCase()) + "&select=*");
-      if (!user) throw new Error("Username atau kata sandi salah. Periksa lagi ya.");
+      var identifier = String(args.identifier != null ? args.identifier : (args.username || "")).trim();
+      var user = await getOne("app_users", "username=eq." + enc(identifier.toLowerCase()) + "&select=*");
+      if (!user && identifier.indexOf("@") > -1) {
+        user = await getOne("app_users", "email=ilike." + enc(identifier) + "&select=*");
+      }
+      if (!user) {
+        var digits = identifier.replace(/\D/g, "");
+        if (digits.length >= 9) {
+          var variants = {};
+          variants[digits] = true;
+          if (digits.indexOf("62") === 0) variants["0" + digits.slice(2)] = true;
+          if (digits.indexOf("0") === 0) variants["62" + digits.slice(1)] = true;
+          var withWa = await getRows("app_users", "whatsapp=neq.&select=*");
+          for (var i = 0; i < withWa.length; i++) {
+            if (variants[String(withWa[i].whatsapp || "").replace(/\D/g, "")]) { user = withWa[i]; break; }
+          }
+        }
+      }
+      if (!user) throw new Error("Data masuk atau kata sandi salah. Periksa lagi ya.");
       var parts = String(user.password_record || "").split("$");
-      if ((await hashPw(args.password, parts[0] || "")) !== (parts[1] || "")) throw new Error("Username atau kata sandi salah. Periksa lagi ya.");
+      if ((await hashPw(args.password, parts[0] || "")) !== (parts[1] || "")) throw new Error("Data masuk atau kata sandi salah. Periksa lagi ya.");
       var token = await newSession(user.id);
       return { token: token, user: toUser(user) };
     },

@@ -25,6 +25,17 @@ type Mode = "ujian" | "latihan";
 type Role = "guru" | "orangtua" | "admin";
 type SessionUser = { id: number; name: string; username: string; role: string; organization: string };
 
+/** Label peran yang tampil di area profil & menu akun. */
+function roleLabel(role: string) {
+  return role === "admin" ? "Superadmin" : role === "guru" ? "Guru" : "Orang Tua";
+}
+/** Inisial untuk lingkaran avatar profil (maks. 2 huruf dari nama). */
+function initialsOf(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const ini = parts.slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
+  return ini || "?";
+}
+
 const TOKEN_KEY = "ziqva-olim-token";
 const DEVICE_KEY = "ziqva-olim-device";
 function getDeviceId() {
@@ -723,9 +734,9 @@ function AuthView(props: { onSuccess: (token: string, user: SessionUser) => void
   const submit = () => {
     setError("");
     if (tab === "login") {
-      if (!username.trim()) { setError("Isi username dulu ya."); focusField("auth-username"); return; }
+      if (!username.trim()) { setError("Isi username, nomor WhatsApp, atau email dulu ya."); focusField("auth-username"); return; }
       if (!password) { setError("Isi kata sandi dulu ya."); focusField("auth-password"); return; }
-      login.mutate({ username: username.trim(), password });
+      login.mutate({ identifier: username.trim(), password });
     } else {
       if (!name.trim()) { setError("Isi nama lengkap dulu ya."); focusField("reg-name"); return; }
       if (username.trim().length < 3) { setError("Username minimal 3 karakter (huruf kecil, angka, titik, garis bawah)."); focusField("auth-username"); return; }
@@ -801,10 +812,11 @@ function AuthView(props: { onSuccess: (token: string, user: SessionUser) => void
             </>
           )}
           <div>
-            <label htmlFor="auth-username" className="font-display text-sm font-bold">Username</label>
+            <label htmlFor="auth-username" className="font-display text-sm font-bold">{tab === "login" ? "Username / No. WhatsApp / Email" : "Username"}</label>
             {tab === "login"
-              ? <input id="auth-username" {...FIELDS.login.username} value={username} onChange={(e) => setUsername(e.target.value)} placeholder="username kamu" className={inputCls} style={inputStyle} autoComplete="username" />
+              ? <input id="auth-username" {...FIELDS.login.identifier} value={username} onChange={(e) => setUsername(e.target.value)} placeholder="username, 08xxxxxxxxxx, atau email" className={inputCls} style={inputStyle} autoComplete="username" />
               : <input id="auth-username" {...FIELDS.register.username} value={username} onChange={(e) => setUsername(e.target.value)} placeholder="huruf kecil, contoh: ibu_sari" className={inputCls} style={inputStyle} autoComplete="username" />}
+            {tab === "login" && <p className="mt-1.5 text-xs leading-relaxed" style={{ color: "var(--dim)" }}>Masuk bisa pakai salah satu: username, nomor WhatsApp, atau email yang dipakai saat daftar.</p>}
           </div>
           <div>
             <label htmlFor="auth-password" className="font-display text-sm font-bold">Kata Sandi</label>
@@ -2019,6 +2031,9 @@ export function App() {
   const [token, setToken] = useState<string>(() => { try { return localStorage.getItem(TOKEN_KEY) ?? ""; } catch { return ""; } });
   const me = useQuery({ queryKey: ["me", token], queryFn: () => api.me({ token }), enabled: token.length > 0 });
   const sessionUser: SessionUser | null = token && me.data ? me.data.user : null;
+  // Menu kecil di bawah avatar profil (kanan atas header).
+  const [profileOpen, setProfileOpen] = useState(false);
+  useEffect(() => { setProfileOpen(false); }, [view]);
 
   // Ajakan daftar: tab awal halaman Guru & Ortu + status kartu ajakan
   // Beranda yang sudah ditutup di perangkat ini.
@@ -2394,52 +2409,105 @@ export function App() {
   return (
     <div className="min-h-screen" style={{ background: "var(--bg)", color: "var(--text)" }}>
       <header className="sticky top-0 z-30 pt-safe" style={{ background: "var(--accent)" }}>
-        <div className="mx-auto flex max-w-5xl flex-col gap-2 px-4 py-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 sm:py-3">
-          <div className="flex items-center gap-2 sm:contents">
-          <button type="button" onClick={handleLogoClick} aria-label="Kembali ke Beranda" title="Kembali ke Beranda"
-            className="flex cursor-pointer items-center gap-2 rounded-2xl text-left transition hover:opacity-90">
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl text-xl" style={{ background: "var(--gold)" }} aria-hidden>🏆</span>
-            <span className="leading-none">
-              <span className="font-display block text-xl font-extrabold tracking-wide text-white">ZIQVA <span style={{ color: "var(--gold)" }}>OLIM</span></span>
-              <span className="block text-[11px] font-semibold text-white/70">Latihan Olimpiade TK – SMA</span>
+        <div className="mx-auto flex max-w-5xl flex-col gap-2 px-3 py-2.5 sm:px-4 sm:py-3">
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={handleLogoClick} aria-label="Kembali ke Beranda" title="Kembali ke Beranda"
+              className="flex min-w-0 cursor-pointer items-center gap-2 rounded-2xl text-left transition hover:opacity-90">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl text-lg sm:h-10 sm:w-10 sm:text-xl" style={{ background: "var(--gold)" }} aria-hidden>🏆</span>
+              <span className="leading-none">
+                <span className="font-display block text-lg font-extrabold tracking-wide whitespace-nowrap text-white sm:text-xl">ZIQVA <span style={{ color: "var(--gold)" }}>OLIM</span></span>
+                <span className="mt-0.5 hidden text-[11px] font-semibold text-white/70 min-[480px]:block">Latihan Olimpiade TK – SMA</span>
+              </span>
+            </button>
+            <span className="ml-1 hidden min-h-[32px] shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold text-white min-[560px]:flex"
+              style={{ background: "rgba(255,255,255,.15)" }} role="status"
+              aria-label={onlineCount != null ? `${onlineCount} pemakai sedang online sekarang` : "Menghitung pemakai yang sedang online"}>
+              <span className="online-dot inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: "#4ADE80" }} aria-hidden />
+              {onlineCount != null ? `${onlineCount} online` : "… online"}
             </span>
-          </button>
-          <span className="ml-auto flex min-h-[32px] shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold text-white sm:ml-0"
-            style={{ background: "rgba(255,255,255,.15)" }} role="status"
-            aria-label={onlineCount != null ? `${onlineCount} pemakai sedang online sekarang` : "Menghitung pemakai yang sedang online"}>
-            <span className="online-dot inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: "#4ADE80" }} aria-hidden />
-            {onlineCount != null ? `${onlineCount} online` : "… online"}
-          </span>
+            <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+              {/* Kontrol suara ringkas: ON/OFF + Tes Suara dalam satu kelompok kecil di kanan atas — tidak memakan baris sendiri. */}
+              <div className="flex items-center gap-0.5 rounded-full p-1" style={{ background: "rgba(255,255,255,.15)" }} role="group" aria-label="Pengaturan suara">
+                <button type="button" onClick={toggleSound} aria-pressed={soundOn}
+                  aria-label={soundOn ? "Suara sedang ON — ketuk untuk mematikan semua suara (bacaan soal dan efek klik)" : "Suara sedang OFF — ketuk untuk menyalakan suara"}
+                  title={soundOn ? "Suara ON — ketuk untuk mematikan" : "Suara OFF — ketuk untuk menyalakan"}
+                  className="font-display flex h-8 items-center gap-1 rounded-full px-2 text-[11px] font-bold text-white transition hover:bg-white/10">
+                  <span aria-hidden>{soundOn ? "🔊" : "🔇"}</span><span>{soundOn ? "ON" : "OFF"}</span>
+                </button>
+                <button type="button" onClick={handleTestSound} aria-label="Tes suara: putar nada tes dan kalimat percobaan, lalu tampilkan diagnosa suara" title="Tes Suara"
+                  className="font-display flex h-8 items-center gap-1 rounded-full px-2 text-[11px] font-bold text-white transition hover:bg-white/10">
+                  <span aria-hidden>🔊</span><span className="hidden sm:inline">Tes</span>
+                </button>
+              </div>
+              {/* Area profil kanan atas: avatar + menu akun bila sudah masuk; tombol Masuk / Daftar bila belum. */}
+              {sessionUser ? (
+                <div className="relative">
+                  <button type="button" onClick={() => setProfileOpen((o) => !o)} aria-haspopup="menu" aria-expanded={profileOpen}
+                    aria-label={`Menu profil ${sessionUser.name}, ${roleLabel(sessionUser.role)}`}
+                    className="flex items-center gap-2 rounded-full py-0.5 pr-0.5 transition hover:opacity-90 md:pr-2" style={{ background: "rgba(255,255,255,.15)" }}>
+                    <span className="font-display flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-extrabold" style={{ background: "var(--gold)", color: "#2B2440" }} aria-hidden>{initialsOf(sessionUser.name)}</span>
+                    <span className="hidden text-left leading-tight md:block">
+                      <span className="block max-w-[120px] truncate text-xs font-bold text-white">{sessionUser.name.split(" ")[0]}</span>
+                      <span className="block text-[10px] font-semibold text-white/70">{roleLabel(sessionUser.role)}</span>
+                    </span>
+                    <span className="hidden pr-1 text-[10px] text-white/80 md:block" aria-hidden>▾</span>
+                  </button>
+                  {profileOpen && (
+                    <>
+                      <button type="button" aria-label="Tutup menu profil" className="fixed inset-0 z-40 cursor-default" onClick={() => setProfileOpen(false)} />
+                      <div role="menu" aria-label="Menu akun" className="pop-in absolute top-[calc(100%+8px)] right-0 z-50 w-64 rounded-2xl p-2 shadow-xl" style={{ background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border)" }}>
+                        <div className="flex items-center gap-2.5 px-2 py-2">
+                          <span className="font-display flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-base font-extrabold" style={{ background: "var(--gold)", color: "#2B2440" }} aria-hidden>{initialsOf(sessionUser.name)}</span>
+                          <div className="min-w-0">
+                            <div className="truncate font-display font-bold">{sessionUser.name}</div>
+                            <div className="truncate text-xs font-semibold" style={{ color: "var(--dim)" }}>@{sessionUser.username} • {roleLabel(sessionUser.role)}</div>
+                            {sessionUser.organization && <div className="truncate text-xs" style={{ color: "var(--dim)" }}>{sessionUser.organization}</div>}
+                          </div>
+                        </div>
+                        <div className="my-1 border-t" style={{ borderColor: "var(--border)" }} />
+                        {sessionUser.role === "admin" && (
+                          <button type="button" role="menuitem" onClick={() => { setProfileOpen(false); setView("admin"); }} aria-label="Buka panel superadmin"
+                            className="font-display flex min-h-[44px] w-full items-center gap-2 rounded-xl px-3 text-left text-sm font-bold transition hover:opacity-80" style={{ background: "var(--surface2)" }}>🛡️ Panel Superadmin</button>
+                        )}
+                        <button type="button" role="menuitem" onClick={() => { setProfileOpen(false); setView("dashboard"); }} aria-label="Buka dashboard pantau"
+                          className="font-display mt-1 flex min-h-[44px] w-full items-center gap-2 rounded-xl px-3 text-left text-sm font-bold transition hover:opacity-80" style={{ background: "var(--surface2)" }}>👀 Dashboard Pantau</button>
+                        <button type="button" role="menuitem" onClick={() => { setProfileOpen(false); handleLogout(); }} aria-label="Keluar dari akun"
+                          className="font-display mt-1 flex min-h-[44px] w-full items-center gap-2 rounded-xl px-3 text-left text-sm font-bold text-red-600 transition hover:opacity-80" style={{ background: "#FAE7E9" }}>🚪 Keluar</button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <button type="button" onClick={openLogin} aria-label="Masuk atau daftar sebagai guru, orang tua, atau admin"
+                  className="font-display flex min-h-[40px] items-center gap-1.5 rounded-full px-3 text-xs font-extrabold whitespace-nowrap sm:px-4 sm:text-sm" style={{ background: "var(--gold)", color: "#2B2440" }}>
+                  🔑 <span className="hidden min-[420px]:inline">Masuk / Daftar</span><span className="min-[420px]:hidden">Masuk</span>
+                </button>
+              )}
+            </div>
           </div>
-          <nav className="grid grid-cols-4 gap-1.5 sm:ml-auto sm:flex sm:flex-wrap sm:gap-2" aria-label="Navigasi utama">
+          <nav className="flex flex-wrap gap-1.5 lg:flex-nowrap lg:gap-2" aria-label="Navigasi utama">
             <button type="button" onClick={() => setView("home")} aria-label="Ke beranda"
-              className="font-display flex min-h-[44px] items-center justify-center rounded-full px-1 py-1 text-center text-xs leading-tight font-bold sm:min-h-[40px] sm:px-4 sm:text-sm"
+              className="font-display flex min-h-[44px] flex-1 basis-[31%] items-center justify-center rounded-full px-2 py-1 text-center text-xs leading-tight font-bold sm:min-h-[40px] sm:px-3 sm:text-sm lg:flex-none lg:basis-auto lg:px-4"
               style={{ background: view === "home" ? "var(--gold)" : "rgba(255,255,255,.15)", color: view === "home" ? "#2B2440" : "#fff" }}>Beranda</button>
             <button type="button" onClick={() => setView("belajar")} aria-label="Buka perpustakaan belajar"
-              className="font-display flex min-h-[44px] items-center justify-center rounded-full px-1 py-1 text-center text-xs leading-tight font-bold sm:min-h-[40px] sm:px-4 sm:text-sm"
+              className="font-display flex min-h-[44px] flex-1 basis-[31%] items-center justify-center rounded-full px-2 py-1 text-center text-xs leading-tight font-bold sm:min-h-[40px] sm:px-3 sm:text-sm lg:flex-none lg:basis-auto lg:px-4"
               style={{ background: view === "belajar" ? "var(--gold)" : "rgba(255,255,255,.15)", color: view === "belajar" ? "#2B2440" : "#fff" }}>📚 Perpustakaan</button>
             <button type="button" onClick={() => setView("history")} aria-label="Lihat riwayat dan prestasiku"
-              className="font-display flex min-h-[44px] items-center justify-center rounded-full px-1 py-1 text-center text-xs leading-tight font-bold sm:min-h-[40px] sm:px-4 sm:text-sm"
+              className="font-display flex min-h-[44px] flex-1 basis-[31%] items-center justify-center rounded-full px-2 py-1 text-center text-xs leading-tight font-bold sm:min-h-[40px] sm:px-3 sm:text-sm lg:flex-none lg:basis-auto lg:px-4"
               style={{ background: view === "history" ? "var(--gold)" : "rgba(255,255,255,.15)", color: view === "history" ? "#2B2440" : "#fff" }}>🏅 Prestasiku</button>
             <button type="button" onClick={() => { stopSpeaking(); setView("ranking"); }} aria-label="Lihat papan peringkat per jenjang"
-              className="font-display flex min-h-[44px] items-center justify-center rounded-full px-1 py-1 text-center text-xs leading-tight font-bold sm:min-h-[40px] sm:px-4 sm:text-sm"
+              className="font-display flex min-h-[44px] flex-1 basis-[31%] items-center justify-center rounded-full px-2 py-1 text-center text-xs leading-tight font-bold sm:min-h-[40px] sm:px-3 sm:text-sm lg:flex-none lg:basis-auto lg:px-4"
               style={{ background: view === "ranking" ? "var(--gold)" : "rgba(255,255,255,.15)", color: view === "ranking" ? "#2B2440" : "#fff" }}>🏆 Peringkat</button>
             <button type="button" onClick={() => { if (sessionUser) setView("dashboard"); else openLogin(); }} aria-label={sessionUser ? "Ke dashboard pantau guru dan orang tua" : "Masuk sebagai guru atau orang tua"}
-              className="font-display flex min-h-[44px] items-center justify-center rounded-full px-1 py-1 text-center text-xs leading-tight font-bold sm:min-h-[40px] sm:px-4 sm:text-sm"
+              className="font-display flex min-h-[44px] flex-1 basis-[31%] items-center justify-center rounded-full px-2 py-1 text-center text-xs leading-tight font-bold sm:min-h-[40px] sm:px-3 sm:text-sm lg:flex-none lg:basis-auto lg:px-4"
               style={{ background: view === "dashboard" || view === "login" ? "var(--gold)" : "rgba(255,255,255,.15)", color: view === "dashboard" || view === "login" ? "#2B2440" : "#fff" }}>
               {sessionUser ? `👀 Pantau (${sessionUser.name.split(" ")[0]})` : "👨‍🏫 Guru & Ortu"}
             </button>
             {sessionUser?.role === "admin" && (
               <button type="button" onClick={() => setView("admin")} aria-label="Buka panel superadmin"
-                className="font-display flex min-h-[44px] items-center justify-center rounded-full px-1 py-1 text-center text-xs leading-tight font-bold sm:min-h-[40px] sm:px-4 sm:text-sm"
+                className="font-display flex min-h-[44px] flex-1 basis-[31%] items-center justify-center rounded-full px-2 py-1 text-center text-xs leading-tight font-bold sm:min-h-[40px] sm:px-3 sm:text-sm lg:flex-none lg:basis-auto lg:px-4"
                 style={{ background: view === "admin" ? "var(--gold)" : "rgba(255,255,255,.15)", color: view === "admin" ? "#2B2440" : "#fff" }}>🛡️ Panel Superadmin</button>
             )}
-            <button type="button" onClick={toggleSound} aria-label={soundOn ? "Matikan semua suara (bacaan soal dan efek klik)" : "Nyalakan suara"} aria-pressed={soundOn}
-              className="font-display flex min-h-[44px] items-center justify-center rounded-full px-1 py-1 text-center text-xs leading-tight font-bold sm:min-h-[40px] sm:px-3 sm:text-sm"
-              style={{ background: "rgba(255,255,255,.15)", color: "#fff" }}>{soundOn ? "🔊 Suara ON" : "🔇 Suara OFF"}</button>
-            <button type="button" onClick={handleTestSound} aria-label="Tes suara: putar nada tes dan kalimat percobaan, lalu tampilkan diagnosa suara"
-              className="font-display flex min-h-[44px] items-center justify-center rounded-full px-1 py-1 text-center text-xs leading-tight font-bold sm:min-h-[40px] sm:px-3 sm:text-sm"
-              style={{ background: "rgba(255,255,255,.15)", color: "#fff" }}>🔊 Tes Suara</button>
           </nav>
         </div>
       </header>
@@ -2608,7 +2676,7 @@ export function App() {
                 <button type="button" onClick={() => setShowWelcome(false)} className="font-display min-h-[44px] rounded-full px-3 text-sm font-bold text-white sm:min-h-[48px] sm:px-5 sm:text-base" style={{ background: "var(--accent)" }}>🚀 Ayo Mulai!</button>
                 <button type="button" onClick={() => { setShowWelcome(false); setView("belajar"); }} className="font-display min-h-[44px] rounded-full px-3 text-sm font-bold sm:min-h-[48px] sm:px-5 sm:text-base" style={{ background: "#fff", border: "2px solid var(--gold)", color: "#92600A" }}>📚 Jelajahi Perpustakaan</button>
                 <button type="button" onClick={() => {
-                    if (!soundOn) { setWelcomeMsg("Suara sedang OFF — nyalakan tombol 🔊 Suara ON di bagian atas halaman dulu, ya."); return; }
+                    if (!soundOn) { setWelcomeMsg("Suara sedang OFF — nyalakan tombol suara 🔊 ON di kanan atas halaman dulu, ya."); return; }
                     setWelcomeMsg("");
                     speakText("Selamat datang di ZIQVA OLIM! Ayo belajar dari dasar, kumpulkan bintang dan lencana, dan taklukkan soal olimpiade dari Level 1 sampai Level 5. Semangat, Pejuang Olimpiade!", "id-ID", { setSpeaking: setWelcomeSpeaking, onStatus: setWelcomeMsg });
                   }} aria-label="Dengarkan sambutan dengan suara"
