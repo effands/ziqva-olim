@@ -55,6 +55,10 @@ export const SUBJECTS: SubjectDef[] = [
   { id: "nalaria", name: "Matematika Nalaria", short: "NAL", color: "#B45309", bg: "#FEF3C7", school: ["umum", "madrasah", "kristen"], jenjang: ["TK", "SD", "SMP", "SMA"], competition: true },
   { id: "kanguru-matematika", name: "Kanguru Matematika", short: "KGM", color: "#0F766E", bg: "#CCFBF1", school: ["umum", "madrasah", "kristen"], jenjang: ["TK", "SD", "SMP", "SMA"], competition: true },
   { id: "kanguru-bahasa", name: "Kanguru Bahasa", short: "KGB", color: "#BE185D", bg: "#FCE7F3", school: ["umum", "madrasah", "kristen"], jenjang: ["TK", "SD", "SMP", "SMA"], competition: true },
+  { id: "seamo", name: "Matematika SEAMO Style", short: "SEA", color: "#2563EB", bg: "#DBEAFE", school: ["umum", "madrasah", "kristen"], jenjang: ["TK", "SD", "SMP", "SMA"], competition: true },
+  { id: "sasmo", name: "Matematika SASMO Style", short: "SAS", color: "#C2410C", bg: "#FFEDD5", school: ["umum", "madrasah", "kristen"], jenjang: ["TK", "SD", "SMP", "SMA"], competition: true },
+  { id: "amo", name: "Matematika AMO Style", short: "AMO", color: "#B91C1C", bg: "#FEE2E2", school: ["umum", "madrasah", "kristen"], jenjang: ["TK", "SD", "SMP", "SMA"], competition: true },
+  { id: "jso", name: "Sains JSO Style", short: "JSO", color: "#15803D", bg: "#DCFCE7", school: ["umum", "madrasah", "kristen"], jenjang: ["TK", "SD", "SMP", "SMA"], competition: true },
   { id: "sains", name: "IPA / Sains", short: "IPA", color: "#0E9F8A", bg: "#E0F5F0", school: "all", jenjang: ["TK", "SD", "SMP"] },
   { id: "biologi", name: "Biologi", short: "BIO", color: "#2F9E44", bg: "#E6F7EA", school: "all", jenjang: ["SMA"] },
   { id: "fisika", name: "Fisika", short: "FIS", color: "#1971C2", bg: "#E3F0FB", school: "all", jenjang: ["SMA"] },
@@ -576,6 +580,117 @@ if (BANK.SMA) {
     { q: "Makna kata “signifikan” pada kalimat “Kenaikan harga berdampak signifikan bagi warga” adalah …", options: ["Penting dan berpengaruh nyata", "Sedikit dan sepele", "Cepat sekali", "Mahal"], answer: 0, explain: "Signifikan = penting/berarti dan berdampak nyata." },
     { q: "Pasangan kata yang berantonim adalah …", options: ["abstrak – konkret", "abstrak – nyata samar", "sinonim – makna", "cepat – lekas"], answer: 0, explain: "Abstrak (tak berwujud) >< konkret (nyata berwujud)." },
     { q: "Kalimat rumpang logis: “Meskipun sudah belajar semalaman, Raka tetap … karena soal ujiannya jauh lebih sulit dari perkiraan.” Kata yang paling tepat adalah …", options: ["gagal", "berhasil gemilang", "santai saja", "terkenal"], answer: 0, explain: "Kata “meskipun” menuntut hasil yang berlawanan dengan usaha: gagal adalah yang logis." },
+  ];
+}
+
+/* ===== Paket Gaya Internasional — soal inti tertulis ORIGINAL buatan ZIQVA OLIM =====
+   Mengikuti CIRI KHAS topik, format, dan tingkat kesulitan lomba SEAMO / SASMO /
+   AMO / JSO — BUKAN soal resmi lomba tersebut dan bukan salinan past paper mana pun.
+   Semua soal ditulis sendiri dengan angka, nama, dan konteks acak; kunci dihitung manual.
+   Generator proseduralnya ada di generators.ts (seamoGens / sasmoGens / amoGens / jsoGens). */
+if (BANK.TK) {
+  BANK.TK["seamo"] = [
+    { q: "Pola gambar: 🔺 🔺 ⭕ 🔺 🔺 ⭕ 🔺 … Gambar berikutnya adalah …", emoji: "🔺", options: ["🔺 Segitiga", "⭕ Lingkaran", "⬛ Persegi"], answer: 0, explain: "Polanya berulang: segitiga, segitiga, lingkaran. Sesudah segitiga yang sendiri, berikutnya segitiga lagi." },
+    { q: "Rani punya ⭐⭐⭐⭐ bintang. Beni punya ⭐⭐ bintang. Siapa yang bintangnya PALING BANYAK?", emoji: "⭐", options: ["Rani", "Beni", "Sama banyak"], answer: 0, explain: "4 bintang lebih banyak dari 2 bintang, jadi Rani." },
+    { q: "Ada 3 burung di pohon 🐦🐦🐦. Datang 2 burung lagi 🐦🐦. Burung sekarang ada …", emoji: "🐦", options: ["4", "5", "6"], answer: 1, explain: "3 + 2 = 5 burung. Berpikir dulu: burungnya bertambah, bukan berkurang." },
+    { q: "Kelompok gambar yang BERBEDA sendiri (ada gambar lain di dalamnya) adalah …", emoji: "🍎", options: ["🍎🍎🍎🍎", "🍎🍎🍌🍎", "🍌🍌🍌🍌"], answer: 1, explain: "Kelompok kedua campur: ada pisang di antara apel. Kelompok lain seragam semua." },
+  ];
+  BANK.TK["sasmo"] = [
+    { q: "Sebanyak 6 permen dibagi rata kepada 2 anak. Setiap anak mendapat … permen", emoji: "🍬", options: ["2", "3", "4"], answer: 1, explain: "6 : 2 = 3. Berbagi rata artinya semua anak mendapat jumlah yang sama." },
+    { q: "Dita punya 4 pensil. Ibu memberi 1 pak berisi 2 pensil lagi. Pensil Dita sekarang ada …", emoji: "✏️", options: ["5", "6", "7"], answer: 1, explain: "4 + 2 = 6 pensil. Soal cerita sehari-hari: gabungkan yang lama dan yang baru." },
+    { q: "Sebuah kue dipotong menjadi 4 bagian sama besar. Satu bagian dimakan. Sisa kue ada … bagian", emoji: "🍰", options: ["2", "3", "4"], answer: 1, explain: "4 − 1 = 3 bagian kue." },
+    { q: "Hitung jari satu tanganmu! Ada … jari", emoji: "🖐️", options: ["4", "5", "10"], answer: 1, explain: "Satu tangan punya 5 jari. Dua tangan baru 10 jari." },
+  ];
+  BANK.TK["amo"] = [
+    { q: "Noah punya 3 bola baseball ⚾⚾⚾. Temannya memberi 2 bola lagi ⚾⚾. Bola Noah sekarang ada …", emoji: "⚾", options: ["4", "5", "6"], answer: 1, explain: "3 + 2 = 5 bola. Baseball adalah olahraga kesayangan anak-anak di Amerika." },
+    { q: "Bus sekolah mengantar 3 anak. Lalu 3 anak lagi naik di halte berikutnya. Anak di dalam bus sekarang ada …", emoji: "🚌", options: ["5", "6", "7"], answer: 1, explain: "3 + 3 = 6 anak." },
+    { q: "Satu permen harganya 1 koin dolar. Ben punya 5 koin dolar dan membeli 1 permen. Sisa koin Ben ada …", emoji: "🪙", options: ["3", "4", "5"], answer: 1, explain: "5 − 1 = 4 koin dolar." },
+    { q: "Ava melihat 4 daun musim gugur 🍂🍂🍂🍂, lalu menemukan 1 daun lagi 🍂. Daun Ava sekarang ada …", emoji: "🍂", options: ["4", "5", "6"], answer: 1, explain: "4 + 1 = 5 daun." },
+  ];
+  BANK.TK["jso"] = [
+    { q: "Tanaman tumbuh sehat bila diberi …", emoji: "🌱", options: ["Air dan cahaya matahari", "Mainan", "Batu besar"], answer: 0, explain: "Ilmuwan cilik tahu: tanaman butuh air dan cahaya matahari untuk tumbuh." },
+    { q: "Benda yang TENGGELAM bila dimasukkan ke air adalah …", emoji: "🪨", options: ["Batu kecil", "Daun", "Gabus"], answer: 0, explain: "Batu kecil tenggelam; daun dan gabus mengapung. Coba buktikan di baskom air!" },
+    { q: "Kita bisa melihat bayangan kita di lantai karena ada …", emoji: "🔦", options: ["Cahaya", "Suara", "Angin"], answer: 0, explain: "Bayangan terbentuk saat cahaya terhalang badan kita." },
+    { q: "Hewan yang hidup di air adalah …", emoji: "🐠", options: ["Ikan", "Ayam", "Kucing"], answer: 0, explain: "Ikan hidup di air dan bernapas dengan insang." },
+  ];
+}
+if (BANK.SD) {
+  BANK.SD["seamo"] = [
+    { q: "Pola bilangan: 5, 9, 17, 33, … Bilangan berikutnya adalah …", options: ["49", "57", "65", "66"], answer: 2, explain: "Selisihnya +4, +8, +16 — selalu dua kali lipat. Berikutnya +32 → 33 + 32 = 65." },
+    { q: "Umur Ani dua kali umur Budi. Umur Budi 6 tahun. Umur Caca 3 tahun lebih tua dari Budi. Yang PALING TUA adalah …", options: ["Ani (12 tahun)", "Budi (6 tahun)", "Caca (9 tahun)", "Sama tua"], answer: 0, explain: "Ani = 2 × 6 = 12 tahun, Caca = 6 + 3 = 9 tahun. Paling tua Ani." },
+    { q: "Read in English: A basket has 24 oranges. They are shared equally among 6 children. Each child gets … oranges", options: ["3", "4", "5", "6"], answer: 1, explain: "24 : 6 = 4 oranges for each child. (24 jeruk dibagi rata ke 6 anak, tiap anak 4.)" },
+    { q: "Bilangan yang BERBEDA sendiri karena BUKAN kelipatan 3 adalah …", options: ["9", "12", "15", "20"], answer: 3, explain: "9, 12, dan 15 habis dibagi 3. 20 bukan kelipatan 3." },
+    { q: "Pola gambar: ⭐⭐🌙 ⭐⭐🌙 ⭐⭐ … Gambar ke-8 adalah …", options: ["⭐ Bintang", "🌙 Bulan", "☀️ Matahari", "☁️ Awan"], answer: 0, explain: "Pola berulang tiap 3 gambar: bintang, bintang, bulan. Gambar ke-7 dan ke-8 adalah bintang." },
+  ];
+  BANK.SD["sasmo"] = [
+    { q: "Trik hitung cerdas: 1 + 2 + 3 + … + 10 = … (Pasangkan 1+10, 2+9, … masing-masing 11, ada 5 pasang)", options: ["45", "50", "55", "60"], answer: 2, explain: "5 pasang × 11 = 55. Trik pasangan ini dipakai matematikawan kecil Gauss!" },
+    { q: "Sebanyak 5 teman saling berjabat tangan. Setiap pasang berjabat tangan tepat 1 kali. Total jabat tangan ada …", options: ["5", "10", "15", "20"], answer: 1, explain: "Pasangan dari 5 orang: (5 × 4) : 2 = 10 jabat tangan." },
+    { q: "Pak A berisi 4 pensil seharga Rp8.000. Di toko lain, 1 pensil dijual Rp2.500. Harga per pensil yang LEBIH MURAH adalah …", options: ["Pak A (Rp2.000 per pensil)", "Toko lain (Rp2.500 per pensil)", "Sama saja", "Tidak bisa dibandingkan"], answer: 0, explain: "Pak A: 8.000 : 4 = Rp2.000 per pensil, lebih murah dari Rp2.500." },
+    { q: "Kelas mulai pukul 07.30. Pelajaran pertama 35 menit, istirahat 10 menit, pelajaran kedua 35 menit. Pelajaran kedua selesai pukul …", options: ["08.40", "08.50", "09.00", "08.30"], answer: 1, explain: "07.30 + 35 menit = 08.05; + 10 menit = 08.15; + 35 menit = 08.50." },
+    { q: "Sebanyak 23 siswa akan dibagi ke kelompok berisi 5 anak. Kelompok penuh yang terbentuk ada … dan sisanya … anak", options: ["4 kelompok, sisa 3", "5 kelompok, sisa 0", "4 kelompok, sisa 5", "3 kelompok, sisa 8"], answer: 0, explain: "23 : 5 = 4 sisa 3, karena 4 × 5 = 20 dan 23 − 20 = 3." },
+  ];
+  BANK.SD["amo"] = [
+    { q: "Seorang peternak di Texas mengumpulkan 3 lusin telur. (1 lusin = 12 butir) Telur seluruhnya ada … butir", options: ["15", "24", "36", "48"], answer: 2, explain: "3 × 12 = 36 butir telur. Di Amerika, telur juga sering dijual per lusin (dozen)." },
+    { q: "Tinggi sebuah pintu adalah 6 feet (kaki). (1 foot = 12 inches) Tinggi pintu itu sama dengan … inches", options: ["18", "60", "72", "120"], answer: 2, explain: "6 × 12 = 72 inches. Foot dan inch adalah satuan panjang yang dipakai di Amerika." },
+    { q: "Noah membayar dengan uang $10 untuk mainan seharga $7,25. Kembalian Noah adalah …", options: ["$2,75", "$3,75", "$2,25", "$3,25"], answer: 0, explain: "$10,00 − $7,25 = $2,75. Dolar ($) adalah mata uang Amerika; 1 dolar = 100 cents." },
+    { q: "Bus sekolah menempuh 12 mil pada pagi hari dan 9 mil pada sore hari. Pola ini berulang selama 2 hari. Total jarak yang ditempuh adalah … mil", options: ["21", "30", "42", "48"], answer: 2, explain: "Per hari 12 + 9 = 21 mil. Selama 2 hari: 21 × 2 = 42 mil." },
+    { q: "Emma membaca 4 halaman setiap hari. Setelah 2 minggu (14 hari), halaman yang dibaca Emma ada …", options: ["28", "42", "56", "70"], answer: 2, explain: "4 × 14 = 56 halaman." },
+  ];
+  BANK.SD["jso"] = [
+    { q: "Dua tanaman sejenis ditanam di pot yang sama besar. Tanaman A disiram setiap hari, tanaman B tidak disiram. Dalam percobaan ini, hal yang SENGAJA DIBEDAKAN adalah …", options: ["Pemberian air", "Jenis tanaman", "Ukuran pot", "Warna pot"], answer: 0, explain: "Percobaan yang baik hanya membedakan SATU hal: pemberian air. Yang lain dibuat sama." },
+    { q: "Benda yang MENGAPUNG di air adalah …", options: ["Gabus", "Batu", "Koin logam", "Sendok besi"], answer: 0, explain: "Gabus ringan dan mengapung; batu, koin, dan sendok besi tenggelam." },
+    { q: "Hasil pengamatan suhu: Senin 30°C, Selasa 28°C, Rabu 32°C, Kamis 31°C. Hari TERPANAS adalah …", options: ["Senin", "Selasa", "Rabu", "Kamis"], answer: 2, explain: "Suhu tertinggi 32°C terjadi pada hari Rabu. Ilmuwan selalu membaca data dengan teliti." },
+    { q: "Magnet akan menarik benda yang terbuat dari …", options: ["Besi", "Kayu", "Plastik", "Karet"], answer: 0, explain: "Magnet menarik logam besi (dan baja); kayu, plastik, dan karet tidak tertarik." },
+    { q: "Bayangan tubuh kita terlihat paling PANJANG pada …", options: ["Pagi hari", "Tengah hari tepat", "Dalam ruangan gelap", "Malam tanpa lampu"], answer: 0, explain: "Pagi hari matahari masih rendah, jadi bayangan memanjang. Tengah hari bayangan paling pendek." },
+  ];
+}
+if (BANK.SMP) {
+  BANK.SMP["seamo"] = [
+    { q: "Read in English: A school printed 240 worksheets and packed them equally into 8 classes. One class then used 12 worksheets. How many worksheets are left in that class?", options: ["18", "28", "30", "42"], answer: 0, explain: "240 : 8 = 30 worksheets per class; 30 − 12 = 18 left. (Tiap kelas 30 lembar; dipakai 12, sisa 18.)" },
+    { q: "Pola bilangan: 2, 3, 7, 16, 32, 57, … Suku berikutnya adalah …", options: ["82", "89", "93", "107"], answer: 2, explain: "Selisihnya 1, 4, 9, 16, 25 — bilangan kuadrat! Berikutnya +36 → 57 + 36 = 93." },
+    { q: "Dina lebih tinggi dari Eka. Eka lebih tinggi dari Fajar. Fajar lebih tinggi dari Gita. Yang PALING PENDEK adalah …", options: ["Dina", "Eka", "Fajar", "Gita"], answer: 3, explain: "Urutannya Dina > Eka > Fajar > Gita. Yang paling pendek Gita." },
+    { q: "Satu-satunya bilangan prima yang genap adalah …", options: ["0", "1", "2", "4"], answer: 2, explain: "2 adalah bilangan prima (hanya bisa dibagi 1 dan dirinya) dan satu-satunya yang genap; prima lain semuanya ganjil." },
+  ];
+  BANK.SMP["sasmo"] = [
+    { q: "Trik Gauss: 1 + 2 + 3 + … + 40 = …", options: ["780", "800", "820", "840"], answer: 2, explain: "Jumlah 1..n = n(n+1)/2 = 40 × 41 / 2 = 820." },
+    { q: "Hitung cerdas: 25 × 16 = … (Trik: 25 × 4 = 100, dan 16 = 4 × 4)", options: ["350", "400", "450", "500"], answer: 1, explain: "25 × 16 = 25 × 4 × 4 = 100 × 4 = 400." },
+    { q: "Toko A menjual tas Rp200.000 dengan diskon 30%. Toko B menjual tas yang sama Rp150.000 dengan diskon 10%. Harga akhir yang LEBIH MURAH ada di …", options: ["Toko A (Rp140.000)", "Toko B (Rp135.000)", "Sama murah", "Tidak bisa ditentukan"], answer: 1, explain: "Toko A: 200.000 × 70% = Rp140.000. Toko B: 150.000 × 90% = Rp135.000. Toko B lebih murah — jangan tertipu persen diskon yang besar!" },
+    { q: "Dalam sebuah foto kelas, 8 siswa saling berjabat tangan, setiap pasang tepat 1 kali. Total jabat tangan adalah …", options: ["16", "28", "36", "56"], answer: 1, explain: "(8 × 7) : 2 = 28 jabat tangan." },
+  ];
+  BANK.SMP["amo"] = [
+    { q: "Jarak dua kota adalah 50 mil. (1 mil ≈ 1,6 km) Jarak itu kira-kira sama dengan … km", options: ["50", "65", "80", "110"], answer: 2, explain: "50 × 1,6 = 80 km. Mil (mile) adalah satuan jarak utama di jalan-jalan Amerika." },
+    { q: "Sebuah tangki berisi 6 gallons air. (1 gallon = 4 quarts) Isi tangki itu sama dengan … quarts", options: ["10", "18", "24", "30"], answer: 2, explain: "6 × 4 = 24 quarts." },
+    { q: "Liam bekerja 5 jam dengan upah $9 per jam. Ia lalu membeli topi seharga $17. Sisa uang Liam adalah …", options: ["$26", "$28", "$32", "$45"], answer: 1, explain: "Upah = 5 × $9 = $45. Sisa = 45 − 17 = $28. Soal bertahap: hitung penghasilan dulu, baru kurangi belanja." },
+    { q: "Suhu udara di Chicago adalah 68°F. Berapa suhu itu dalam Celsius? (Rumus: C = (F − 32) × 5/9)", options: ["15°C", "20°C", "25°C", "36°C"], answer: 1, explain: "(68 − 32) × 5/9 = 36 × 5/9 = 20°C. Amerika memakai Fahrenheit, Indonesia memakai Celsius." },
+  ];
+  BANK.SMP["jso"] = [
+    { q: "Dalam percobaan pengaruh pupuk, dua tanaman sejenis diberi cahaya dan air yang sama; hanya pupuknya yang berbeda. Cahaya dan air dalam percobaan ini disebut …", options: ["Variabel kontrol (dibuat sama)", "Variabel bebas (yang diuji)", "Variabel terikat (hasil)", "Hipotesis"], answer: 0, explain: "Hal yang sengaja dibuat SAMA disebut variabel kontrol, agar hasil hanya dipengaruhi pupuk (variabel bebas)." },
+    { q: "Pengamatan kecambah: hari ke-1 tinggi 2 cm, hari ke-2 tinggi 5 cm, hari ke-3 tinggi 9 cm. Pertumbuhan dari hari ke-2 ke hari ke-3 adalah … cm", options: ["3", "4", "5", "7"], answer: 1, explain: "9 − 5 = 4 cm. Pertumbuhan adalah selisih dua pengukuran berurutan." },
+    { q: "Es di gelas A (ruang hangat) mencair dalam 10 menit, sedangkan es yang sama di gelas B (kulkas) mencair dalam 40 menit. Kesimpulan yang TEPAT adalah …", options: ["Suhu yang lebih tinggi membuat es lebih cepat mencair", "Es di kulkas lebih besar", "Gelas A lebih bagus", "Es selalu mencair dalam 10 menit"], answer: 0, explain: "Satu-satunya perbedaan adalah suhu tempat, jadi suhu itulah penyebab perbedaan waktu mencair." },
+    { q: "Peristiwa berikut yang merupakan perubahan FISIKA (tidak membentuk zat baru) adalah …", options: ["Es mencair menjadi air", "Kayu terbakar menjadi abu", "Besi berkarat", "Susu menjadi asam"], answer: 0, explain: "Es mencair hanya berubah wujud; airnya tetap H₂O. Terbakar, berkarat, dan menjadi asam membentuk zat baru (perubahan kimia)." },
+  ];
+}
+if (BANK.SMA) {
+  BANK.SMA["seamo"] = [
+    { q: "Read in English: The sum of three consecutive even numbers is 48. The largest of the three numbers is …", options: ["16", "18", "20", "22"], answer: 1, explain: "The numbers are 14, 16, and 18 (sum 48). The largest is 18. (Bilangan genap berurutan: 14, 16, 18.)" },
+    { q: "Pola bilangan: 1, 2, 6, 24, 120, … Suku berikutnya adalah …", options: ["240", "360", "600", "720"], answer: 3, explain: "Polanya ×2, ×3, ×4, ×5 — berikutnya ×6 → 120 × 6 = 720. (Ini pola faktorial!)" },
+    { q: "Premis: Semua peserta babak final adalah peraih skor 80 ke atas. Raka adalah peserta babak final. Kesimpulan yang PASTI benar adalah …", options: ["Skor Raka 80 ke atas", "Skor Raka tepat 100", "Raka juara pertama", "Raka peserta termuda"], answer: 0, explain: "Karena Raka peserta final dan semua peserta final berskor 80 ke atas, skor Raka pasti 80 ke atas. Pilihan lain tidak bisa dipastikan." },
+    { q: "Dalam sebuah deret, setiap suku diperoleh dengan mengali suku sebelumnya dengan 3 lalu menguranginya dengan 1: 2, 5, 14, 41, … Suku berikutnya adalah …", options: ["82", "122", "123", "125"], answer: 1, explain: "41 × 3 − 1 = 122. Periksa pola dari awal: 2×3−1=5, 5×3−1=14, 14×3−1=41." },
+  ];
+  BANK.SMA["sasmo"] = [
+    { q: "Trik Gauss: 1 + 2 + 3 + … + 100 = …", options: ["4.950", "5.000", "5.050", "5.100"], answer: 2, explain: "100 × 101 / 2 = 5.050. Pasangan 1+100, 2+99, … masing-masing 101, ada 50 pasang." },
+    { q: "Hitung cerdas: 999 × 37 = … (Trik: 999 = 1.000 − 1)", options: ["36.900", "36.963", "37.000", "37.963"], answer: 1, explain: "999 × 37 = 37.000 − 37 = 36.963." },
+    { q: "Sebuah ponsel seharga Rp2.400.000 dibeli dengan uang muka Rp400.000, sisanya dicicil 8 kali sama besar tanpa bunga. Besar cicilan per bulan adalah …", options: ["Rp200.000", "Rp250.000", "Rp300.000", "Rp340.000"], answer: 1, explain: "Sisa utang = 2.400.000 − 400.000 = Rp2.000.000. Cicilan = 2.000.000 : 8 = Rp250.000." },
+  ];
+  BANK.SMA["amo"] = [
+    { q: "Sebuah mobil melaju 60 mil per jam (mph) di jalan tol Amerika. (1 mil ≈ 1,6 km) Kecepatan itu kira-kira sama dengan … km/jam", options: ["76", "86", "96", "106"], answer: 2, explain: "60 × 1,6 = 96 km/jam." },
+    { q: "Perjalanan darat (road trip): sebuah keluarga berkendara 4 jam per hari dengan kecepatan rata-rata 50 mil/jam, selama 3 hari. Total jarak perjalanan mereka adalah … mil", options: ["350", "500", "600", "750"], answer: 2, explain: "Per hari 4 × 50 = 200 mil. Selama 3 hari: 200 × 3 = 600 mil. Kerjakan bertahap!" },
+    { q: "Prakiraan cuaca di New York: 104°F. Suhu itu dalam Celsius adalah … (C = (F − 32) × 5/9)", options: ["35°C", "40°C", "45°C", "72°C"], answer: 1, explain: "(104 − 32) × 5/9 = 72 × 5/9 = 40°C." },
+  ];
+  BANK.SMA["jso"] = [
+    { q: "Dalam percobaan obat pertumbuhan tanaman, kelompok KONTROL adalah kelompok yang …", options: ["Tidak diberi perlakuan, sebagai pembanding", "Diberi perlakuan paling banyak", "Tumbuh paling cepat", "Ditanam terakhir"], answer: 0, explain: "Kelompok kontrol tidak menerima perlakuan yang diuji, agar perbedaan hasil bisa dibandingkan secara adil." },
+    { q: "Data pertumbuhan kecambah per minggu: perlakuan A +6 cm, B +4 cm, C +9 cm, D +5 cm. Kesimpulan paling tepat dari data ini adalah …", options: ["Perlakuan C memberi pertumbuhan terbesar pada percobaan ini", "Perlakuan B selalu yang terbaik", "Semua perlakuan sama saja", "Data tidak bisa dibandingkan"], answer: 0, explain: "Angka terbesar adalah C (+9 cm). Kesimpulan ilmiah harus berdasarkan data, bukan tebakan." },
+    { q: "Pernyataan yang merupakan HIPOTESIS ilmiah (dapat diuji dengan percobaan) adalah …", options: ["Tanaman yang menerima cahaya lebih banyak akan tumbuh lebih cepat", "Tanaman hijau adalah tanaman tercantik", "Semua tanaman pasti suka musik", "Tanaman sebaiknya ditanam hari Senin"], answer: 0, explain: "Hipotesis harus bisa diuji dan diukur: cahaya dan kecepatan tumbuh keduanya dapat diamati dalam percobaan." },
   ];
 }
 

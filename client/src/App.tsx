@@ -4386,6 +4386,9 @@ export function App() {
                     )}
                     <div className="mt-2 font-display text-[15px] leading-tight font-bold">{s.name}</div>
                     <div className="mt-0.5 text-xs font-semibold" style={{ color: "var(--dim)" }}>{SESSION_SIZE} soal acak • Level 1–{un} terbuka{s.competition ? " • Kompetisi" : ""}</div>
+                    {["seamo", "sasmo", "amo", "jso"].includes(s.id) && (
+                      <div className="mt-0.5 text-[11px] leading-snug font-semibold" style={{ color: "var(--dim)" }}>Latihan original bergaya lomba — bukan soal resmi</div>
+                    )}
                   </button>
                 );
               })}

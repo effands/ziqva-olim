@@ -2302,6 +2302,511 @@ function kanguruBahasaGens(jenjang: JenjangId): LGen[] {
   return [alphaGen, syllableGen, hiddenGen, meaningContextGen, rumpangGen, patternWordGen, englishIntroGen, firstLetterGen];
 }
 
+/* ================================================================
+   PAKET GAYA INTERNASIONAL — ORIGINAL buatan ZIQVA OLIM.
+   Mengikuti CIRI KHAS topik, format, dan tingkat kesulitan lomba
+   SEAMO / SASMO / AMO / JSO. BUKAN soal resmi lomba tersebut dan
+   BUKAN salinan past paper mana pun: semua soal digenerasikan
+   sendiri dengan angka, nama, dan konteks acak; kunci jawaban
+   selalu DIHITUNG oleh kode dari parameter soalnya.
+   ================================================================ */
+const INTL_NAMES_EN = ["Emma", "Liam", "Olivia", "Noah", "Ava", "Mason", "Sophia", "Lucas", "Mia", "Ethan"] as const;
+
+/* ---------- SEAMO STYLE: penalaran logis, pola visual, cerita Inggris sederhana (jenjang atas) ---------- */
+function seamoGens(jenjang: JenjangId): LGen[] {
+  const four = jenjang !== "TK";
+  const visualPattern: LGen = () => {
+    const sets: readonly (readonly [string, string])[] = [["⭐", "🌙"], ["🔺", "⭕"], ["🍎", "🍌"], ["🔴", "🔵"], ["🌸", "🍀"]];
+    const pair = pick(sets);
+    const a = pair[0]; const b = pair[1];
+    const mode = ri(0, 1);
+    // Pola A A B berulang (mode 0) atau A B A B bergantian (mode 1)
+    const seqArr: string[] = [];
+    if (mode === 0) { for (let i = 0; i < 7; i++) seqArr.push(i % 3 === 2 ? b : a); }
+    else { for (let i = 0; i < 7; i++) seqArr.push(i % 2 === 0 ? a : b); }
+    const next = mode === 0 ? a : b;
+    const other = next === a ? b : a;
+    const extras = ["☀️", "⬛", "💧", "🍇"].filter((x) => x !== a && x !== b);
+    const third = extras[0] as string;
+    const fourthOpt = extras[1] as string;
+    return mkq(
+      `Pola gambar: ${seqArr.join(" ")} … Gambar berikutnya adalah …`,
+      next, [other, third, fourthOpt],
+      mode === 0
+        ? `Polanya berulang tiap 3 gambar: dua ${a} lalu satu ${b}. Sesudah rangkaian terakhir dimulai lagi, berikutnya ${next}.`
+        : `Polanya bergantian ${a} – ${b} – ${a} – ${b}. Sesudah ${seqArr[seqArr.length - 1]} berikutnya ${next}.`,
+      a, four,
+    );
+  };
+  const numberLogic: LGen = () => {
+    if (jenjang === "TK") {
+      const start = ri(1, 5);
+      const step = pick([1, 2]);
+      const seq = [0, 1, 2, 3].map((i) => start + i * step);
+      const ans = start + 4 * step;
+      return mkNum(`Pola bilangan: ${seq.join(", ")}, … Bilangan berikutnya adalah …`, ans, [ans - step, ans + step, ans + 1].filter((x) => x > 0 && x !== ans), `Setiap langkah bertambah ${step}: ${seq[3]} + ${step} = ${ans}.`, "🔢", four);
+    }
+    const mode = ri(0, 2);
+    if (mode === 0) {
+      // Selisih berlipat dua
+      const start = ri(2, 8);
+      const d0 = pick([2, 3, 4, 5]);
+      const seq = [start];
+      let d = d0;
+      for (let i = 0; i < 4; i++) { seq.push((seq[seq.length - 1] as number) + d); d *= 2; }
+      const ans = (seq[seq.length - 1] as number) + d;
+      return mkNum(`Pola bilangan: ${seq.join(", ")}, … Bilangan berikutnya adalah … (perhatikan selisihnya!)`, ans, [ans - d0, ans + d, ans - 2].filter((x) => x !== ans), `Selisihnya +${d0}, +${d0 * 2}, +${d0 * 4}, +${d0 * 8} — selalu dua kali lipat. Berikutnya +${d} → ${ans}.`, "🔢", four);
+    }
+    if (mode === 1) {
+      // Selisih bilangan kuadrat
+      const start = ri(1, 6);
+      const seq = [start];
+      for (let i = 1; i <= 4; i++) seq.push((seq[seq.length - 1] as number) + i * i);
+      const ans = (seq[seq.length - 1] as number) + 25;
+      return mkNum(`Pola bilangan: ${seq.join(", ")}, … Bilangan berikutnya adalah …`, ans, [ans - 9, ans + 11, ans + 25].filter((x) => x !== ans), `Selisihnya +1, +4, +9, +16 — bilangan kuadrat (1², 2², 3², 4²). Berikutnya +25 (5²) → ${ans}.`, "🔢", four);
+    }
+    // Aturan kali lalu tambah/kurang
+    const start = ri(2, 5);
+    const mul = pick([2, 3]);
+    const seq = [start];
+    for (let i = 0; i < 3; i++) seq.push((seq[seq.length - 1] as number) * mul - 1);
+    const ans = (seq[seq.length - 1] as number) * mul - 1;
+    return mkNum(`Setiap suku diperoleh dengan mengali suku sebelumnya dengan ${mul} lalu mengurangi 1: ${seq.join(", ")}, … Suku berikutnya adalah …`, ans, [ans + mul, ans + 1, ans - 2].filter((x) => x !== ans), `${seq[seq.length - 1]} × ${mul} − 1 = ${ans}. Periksa dari awal: ${seq[0]}×${mul}−1 = ${seq[1]}.`, "🔢", four);
+  };
+  const orderingLogic: LGen = () => {
+    const trio = sample(NAMES, 3);
+    const vals = shuffle([ri(5, 9), ri(10, 14), ri(15, 20)]);
+    // Urutkan: trio[0] paling besar, trio[1] tengah, trio[2] terkecil (berdasarkan vals yang diurutkan menurun)
+    const sorted = [...vals].sort((x, y) => y - x);
+    const [big, mid, small] = sorted as [number, number, number];
+    const topic = pick(["tinggi badan (cm di atas 100)", "umur (tahun)", "jumlah stiker"] as const);
+    const unit = topic.startsWith("tinggi") ? "" : topic.startsWith("umur") ? " tahun" : " stiker";
+    const shownVal = (v: number) => (topic.startsWith("tinggi") ? `${100 + v} cm` : `${v}${unit}`);
+    if (jenjang === "TK") {
+      return mkq(
+        `${trio[0]} punya ${big} balon 🎈, ${trio[1]} punya ${mid} balon, ${trio[2]} punya ${small} balon. Siapa yang balonnya PALING BANYAK?`,
+        trio[0] as string, [trio[1] as string, trio[2] as string],
+        `${big} adalah bilangan terbesar, jadi ${trio[0]} paling banyak. Penalaran SEAMO style: bandingkan semua angka dulu, baru simpulkan.`,
+        "🎈", four,
+      );
+    }
+    const askMax = Math.random() < 0.5;
+    const correct = askMax ? (trio[0] as string) : (trio[2] as string);
+    const correctVal = askMax ? big : small;
+    return mkq(
+      `Data: ${trio[0]} — ${shownVal(big)}; ${trio[1]} — ${shownVal(mid)}; ${trio[2]} — ${shownVal(small)}. Siapa yang PALING ${askMax ? "BESAR nilainya" : "KECIL nilainya"}?`,
+      `${correct} (${shownVal(correctVal)})`,
+      [...trio.filter((n) => n !== correct).map((n) => `${n} (${shownVal(n === trio[0] ? big : n === trio[1] ? mid : small)})`), "Semua nilainya sama besar"],
+      `Urutkan dulu nilainya: ${shownVal(big)} > ${shownVal(mid)} > ${shownVal(small)}. Yang paling ${askMax ? "besar" : "kecil"} adalah ${correct}.`,
+      "📊", four,
+    );
+  };
+  const oddOneLogic: LGen = () => {
+    if (jenjang === "TK") return emojiPictureGen(jenjang)(ri(1, 3));
+    const mode = ri(0, 2);
+    if (mode === 0) {
+      const k = pick([3, 4, 5, 6]);
+      const mults = [k * ri(2, 4), k * ri(5, 7), k * ri(8, 10)];
+      const odd = mults[0] as number + pick([1, 2]);
+      const all = shuffle([...mults, odd]);
+      return mkNum(`Bilangan yang BERBEDA sendiri karena BUKAN kelipatan ${k} adalah … (deret: ${all.join(", ")})`, odd, mults, `${mults.join(", ")} habis dibagi ${k}; ${odd} tidak habis dibagi ${k}.`, "🔍", four);
+    }
+    if (mode === 1) {
+      const evens = [ri(2, 8) * 2, ri(9, 14) * 2, ri(15, 20) * 2];
+      const odd = pick([7, 11, 13, 17, 19, 23, 27, 29].filter((x) => !evens.includes(x)));
+      const all = shuffle([...evens, odd]);
+      return mkNum(`Bilangan yang BERBEDA sendiri karena satu-satunya yang GANJIL adalah … (deret: ${all.join(", ")})`, odd, evens, `Bilangan lain semuanya genap; ${odd} adalah satu-satunya bilangan ganjil.`, "🔍", four);
+    }
+    const primes = sample([5, 7, 11, 13, 17, 19, 23, 29], 3);
+    const composite = pick([9, 15, 21, 25, 27, 33].filter((x) => !primes.includes(x)));
+    const all = shuffle([...primes, composite]);
+    return mkNum(`Bilangan yang BERBEDA sendiri karena BUKAN bilangan prima adalah … (deret: ${all.join(", ")})`, composite, primes, `${primes.join(", ")} adalah bilangan prima; ${composite} bisa dibagi bilangan lain selain 1 dan dirinya, jadi bukan prima.`, "🔍", four);
+  };
+  const englishStory: LGen = (level) => {
+    // Ciri khas SEAMO style: soal cerita Bahasa Inggris sederhana — khusus jenjang atas.
+    if (jenjang === "TK" || jenjang === "SD") return mathStoryGen(jenjang)(level);
+    const name = pick(INTL_NAMES_EN);
+    const mode = ri(0, 2);
+    if (mode === 0) {
+      const groups = pick([3, 4, 6, 8]);
+      const per = ri(4, 12);
+      const total = groups * per;
+      return mkNum(`Read in English: ${total} stickers are shared equally among ${groups} students. Each student gets … stickers`, per, [per - 1, per + 1, per + 2].filter((x) => x > 0 && x !== per), `${total} : ${groups} = ${per}. (Soal cerita Inggris: 'shared equally' artinya dibagi rata.)`, "🌏", four);
+    }
+    if (mode === 1) {
+      const a = ri(12, 30 + level * 5);
+      const b = ri(5, a - 3);
+      return mkNum(`Read in English: ${name} had ${a} marbles. ${name} gave ${b} marbles to a friend. How many marbles does ${name} have now?`, a - b, [a - b + 1, a - b - 1, a + b].filter((x) => x >= 0 && x !== a - b), `${a} − ${b} = ${a - b}. ('gave' = memberi, jadi jumlahnya berkurang.)`, "🌏", four);
+    }
+    const rows = ri(3, 6 + level);
+    const perRow = ri(4, 9);
+    const extra = ri(2, 10);
+    const total = rows * perRow + extra;
+    return mkNum(`Read in English: A hall has ${rows} rows with ${perRow} chairs in each row, plus ${extra} extra chairs. The total number of chairs is …`, total, [rows * perRow, total - perRow, total + perRow], `${rows} × ${perRow} = ${rows * perRow}; plus ${extra} extra = ${total}. (Kerjakan dua langkah: kali dulu, lalu tambah.)`, "🌏", four);
+  };
+  const twiceLogic: LGen = (level) => {
+    if (jenjang === "TK") return mathStoryGen(jenjang)(level);
+    const small = ri(4, 10 + level * 2);
+    const big = small * 2;
+    const third = small + ri(1, 6);
+    const a = pick(NAMES);
+    let b = pick(NAMES); if (b === a) b = "Rina";
+    let c = pick(NAMES); if (c === a || c === b) c = "Dewi";
+    const askMax = Math.random() < 0.5;
+    if (askMax) {
+      return mkq(
+        `Nilai ${b} adalah ${small}. Nilai ${a} adalah DUA KALI nilai ${b}. Nilai ${c} adalah ${third}. Siapa yang nilainya PALING BESAR?`,
+        a, [b, c, "Tidak bisa ditentukan"],
+        `Nilai ${a} = 2 × ${small} = ${big}, lebih besar dari ${third} (${c}) dan ${small} (${b}). Hitung dulu nilai tersembunyinya!`,
+        "🧠", four,
+      );
+    }
+    const sum = big + small + third;
+    return mkNum(`Nilai ${b} adalah ${small}. Nilai ${a} adalah dua kali nilai ${b} (${big}). Nilai ${c} adalah ${third}. Jumlah nilai ketiganya adalah …`, sum, [sum - small, sum + 2, big + third], `${small} + ${big} + ${third} = ${sum}.`, "🧠", four);
+  };
+  return [visualPattern, numberLogic, orderingLogic, oddOneLogic, englishStory, twiceLogic, emojiPictureGen(jenjang)];
+}
+
+/* ---------- SASMO STYLE: masalah praktis sehari-hari & trik hitung cerdas ---------- */
+function sasmoGens(jenjang: JenjangId): LGen[] {
+  const four = jenjang !== "TK";
+  const gaussTrick: LGen = () => {
+    if (jenjang === "TK") {
+      const a = ri(2, 6); const b = ri(2, 6);
+      return mkNum(`Hitung cepat dengan pasangan 10: ${a} + ${b} = …`, a + b, [a + b - 1, a + b + 1, 10].filter((x) => x > 0 && x !== a + b), `${a} + ${b} = ${a + b}.`, "⚡", four);
+    }
+    const n = pick(jenjang === "SMA" ? [50, 60, 80, 100] : jenjang === "SMP" ? [20, 30, 40, 50] : [10, 12, 20]);
+    const sum = (n * (n + 1)) / 2;
+    return mkNum(`Trik hitung cerdas (pasangan Gauss): 1 + 2 + 3 + … + ${n} = …`, sum, [sum - n, sum + n, (n * n) / 2].filter((x) => Number.isInteger(x) && x !== sum), `Pasangkan ujung dengan ujung: 1+${n}, 2+${n - 1}, … tiap pasang ${n + 1}, ada ${n / 2} pasang → ${n / 2} × ${n + 1} = ${fmt(sum)}. Rumus cepat: n(n+1)/2.`, "⚡", four);
+  };
+  const handshake: LGen = (level) => {
+    if (jenjang === "TK") {
+      const a = ri(2, 5);
+      return mkNum(`Di kelas ada ${a} anak. Setiap anak berjabat tangan dengan guru 1 kali. Total jabat tangan dengan guru ada …`, a, [a - 1, a + 1, a * 2].filter((x) => x > 0 && x !== a), `Tiap anak 1 jabat tangan, jadi ${a} anak = ${a} jabat tangan.`, "🤝", four);
+    }
+    const n = ri(4, 6 + level + (jenjang === "SMA" ? 4 : 0));
+    const total = (n * (n - 1)) / 2;
+    return mkNum(`Sebanyak ${n} orang saling berjabat tangan. Setiap pasang berjabat tangan tepat 1 kali. Total jabat tangan ada …`, total, [total - n + 1, n * (n - 1), total + n].filter((x) => x !== total), `Setiap orang berjabat dengan ${n - 1} orang lain, tetapi tiap jabat tangan terhitung 2 kali → (${n} × ${n - 1}) : 2 = ${total}.`, "🤝", four);
+  };
+  const unitPrice: LGen = (level) => {
+    if (jenjang === "TK") return mathStoryGen(jenjang)(level);
+    const qty = pick([2, 4, 5, 10]);
+    const perA = pick([1000, 1500, 2000, 2500, 3000]);
+    const packPrice = qty * perA;
+    const perB = perA + pick([250, 500, 750, 1000]);
+    const item = pick(["pensil", "penghapus", "permen", "stiker", "buku tulis"]);
+    return mkq(
+      `Pak berisi ${qty} ${item} harganya Rp${fmt(packPrice)}. Di toko sebelah, 1 ${item} dijual Rp${fmt(perB)}. Harga per ${item} yang LEBIH MURAH adalah …`,
+      `Pak isi ${qty} (Rp${fmt(perA)} per ${item})`,
+      [`Toko sebelah (Rp${fmt(perB)} per ${item})`, "Sama saja harganya", "Tidak bisa dibandingkan"],
+      `Pak: Rp${fmt(packPrice)} : ${qty} = Rp${fmt(perA)} per ${item}, lebih murah dari Rp${fmt(perB)}. Trik SASMO style: bandingkan selalu harga SATUANnya.`,
+      "🏷️", four,
+    );
+  };
+  const schedulePractical: LGen = () => {
+    if (jenjang === "TK") {
+      const start = ri(2, 6);
+      const dur = ri(1, 3);
+      return mkNum(`Sinta mulai bermain pukul ${start}.00 dan bermain selama ${dur} jam. Sinta selesai bermain pukul …`, start + dur, [start + dur - 1, start + dur + 1, start].filter((x) => x !== start + dur), `${start}.00 + ${dur} jam = pukul ${start + dur}.00.`, "🕐", four);
+    }
+    const startH = ri(7, 9);
+    const act = pick([25, 30, 35, 40, 45]);
+    const breakM = pick([5, 10, 15]);
+    const act2 = pick([25, 30, 35, 40]);
+    const totalMin = act + breakM + act2;
+    const endH = startH + Math.floor(totalMin / 60);
+    const endM = totalMin % 60;
+    const endStr = `${String(endH).padStart(2, "0")}.${String(endM).padStart(2, "0")}`;
+    const wrong1 = `${String(startH + Math.floor((totalMin - 10) / 60)).padStart(2, "0")}.${String((totalMin - 10) % 60).padStart(2, "0")}`;
+    const wrong2 = `${String(endH + 1).padStart(2, "0")}.${String(endM).padStart(2, "0")}`;
+    return mkq(
+      `Kegiatan mulai pukul ${String(startH).padStart(2, "0")}.00. Sesi pertama ${act} menit, istirahat ${breakM} menit, sesi kedua ${act2} menit. Kegiatan selesai pukul …`,
+      endStr, [wrong1, wrong2, `${String(startH).padStart(2, "0")}.${String(act % 60).padStart(2, "0")}`].filter((x) => x !== endStr),
+      `Total waktu = ${act} + ${breakM} + ${act2} = ${totalMin} menit = ${Math.floor(totalMin / 60)} jam ${totalMin % 60} menit. ${String(startH).padStart(2, "0")}.00 + ${totalMin} menit = ${endStr}.`,
+      "🕐", four,
+    );
+  };
+  const cleverMultiply: LGen = () => {
+    if (jenjang === "TK" || jenjang === "SD") {
+      const a = pick([2, 4, 5, 10]);
+      const b = ri(3, 9);
+      return mkNum(`Hitung cerdas: ${a} × ${b} = …`, a * b, [a * b - a, a * b + a, a * b + b].filter((x) => x !== a * b), `${a} × ${b} = ${a * b}. Untuk ×5, hitung ×10 lalu bagi 2; untuk ×4, kalikan 2 dua kali.`, "⚡", four);
+    }
+    const mode = ri(0, 1);
+    if (mode === 0) {
+      const b = ri(12, 49);
+      const ans = 999 * b;
+      return mkNum(`Hitung cerdas: 999 × ${b} = … (Trik: 999 = 1.000 − 1)`, ans, [b * 1000, ans - b, ans + 999], `999 × ${b} = ${fmt(b * 1000)} − ${fmt(b)} = ${fmt(ans)}.`, "⚡", four);
+    }
+    const b = pick([16, 24, 32, 48, 56, 64]);
+    const ans = 25 * b;
+    return mkNum(`Hitung cerdas: 25 × ${b} = … (Trik: 25 × 4 = 100)`, ans, [ans - 25, ans + 100, b * 20], `25 × ${b} = 25 × 4 × ${b / 4} = 100 × ${b / 4} = ${fmt(ans)}.`, "⚡", four);
+  };
+  const groupingPractical: LGen = (level) => {
+    const per = pick([4, 5, 6, 8, 10]);
+    const full = ri(3, 5 + level);
+    const rem = ri(1, per - 1);
+    const total = per * full + rem;
+    if (jenjang === "TK") {
+      const smallTotal = ri(4, 9);
+      const each = 2;
+      const p = Math.floor(smallTotal / each);
+      const r = smallTotal % each;
+      if (r === 0) return mkNum(`${smallTotal} biskuit dibagi rata ke 2 anak. Tiap anak mendapat … biskuit`, p, [p - 1, p + 1, smallTotal].filter((x) => x > 0 && x !== p), `${smallTotal} : 2 = ${p}.`, "🍪", four);
+      return mkq(`${smallTotal} biskuit dibagi rata ke 2 anak. Tiap anak mendapat … dan sisanya …`, `${p} biskuit, sisa ${r}`, [`${p} biskuit, sisa 0`, `${p + 1} biskuit, sisa ${r}`], `2 × ${p} = ${smallTotal - r}; sisa ${r}.`, "🍪", four);
+    }
+    return mkq(
+      `Sebanyak ${total} siswa akan dibagi menjadi kelompok berisi ${per} anak. Kelompok penuh yang terbentuk ada … dan sisanya … anak`,
+      `${full} kelompok, sisa ${rem}`,
+      [`${full} kelompok, sisa ${rem + 1}`, `${full + 1} kelompok, sisa ${rem}`, `${full - 1} kelompok, sisa ${rem + per}`],
+      `${total} : ${per} = ${full} sisa ${rem}, karena ${per} × ${full} = ${total - rem}. Sisa tidak boleh mencapai ${per} — kalau mencapai, bisa jadi satu kelompok lagi!`,
+      "👥", four,
+    );
+  };
+  const installment: LGen = (level) => {
+    if (jenjang !== "SMA" && jenjang !== "SMP") return mathStoryGen(jenjang)(level);
+    const months = pick([4, 6, 8, 10, 12]);
+    const perMonth = pick([100, 150, 200, 250, 300]) * 1000;
+    const down = pick([200, 300, 400, 500]) * 1000;
+    const price = down + months * perMonth;
+    return mkNum(`Sebuah barang seharga Rp${fmt(price)} dibeli dengan uang muka Rp${fmt(down)}, sisanya dicicil ${months} kali sama besar tanpa bunga. Cicilan per bulannya adalah …`, perMonth, [perMonth + 50000, Math.round(price / months), perMonth - 50000].filter((x) => x > 0 && x !== perMonth), `Sisa yang dicicil = ${fmt(price)} − ${fmt(down)} = Rp${fmt(price - down)}. Cicilan = ${fmt(price - down)} : ${months} = Rp${fmt(perMonth)}.`, "💳", four);
+  };
+  return [gaussTrick, handshake, unitPrice, schedulePractical, cleverMultiply, groupingPractical, installment, mathStoryGen(jenjang)];
+}
+
+/* ---------- AMO STYLE: soal cerita konteks Amerika (satuan & situasi khas), penalaran bertahap ---------- */
+const US_PLACES = ["New York", "Texas", "California", "Chicago", "Florida", "Ohio"] as const;
+function amoGens(jenjang: JenjangId): LGen[] {
+  const four = jenjang !== "TK";
+  const dozenGen: LGen = (level) => {
+    const dozens = jenjang === "TK" ? ri(1, 2) : ri(2, 4 + level);
+    const total = dozens * 12;
+    const item = pick(["telur", "donat", "mawar", "pensil"]);
+    if (jenjang === "TK") {
+      return mkNum(`Satu lusin (dozen) berisi 12 benda. ${dozens} lusin ${item} berisi … benda`, total, [total - 2, total + 2, dozens * 10].filter((x) => x > 0 && x !== total), `${dozens} × 12 = ${total}. Di Amerika, benda sering dijual per dozen (lusin).`, "🥚", four);
+    }
+    return mkNum(`Seorang peternak di ${pick(US_PLACES)} mengumpulkan ${dozens} dozen (lusin) ${item}. (1 dozen = 12) Jumlah seluruhnya adalah …`, total, [total - 12, total + 12, dozens * 10], `${dozens} × 12 = ${total}. 'Dozen' adalah kata Inggris untuk lusin.`, "🥚", four);
+  };
+  const feetInches: LGen = (level) => {
+    if (jenjang === "TK") {
+      const feet = ri(1, 3);
+      return mkNum(`Satu foot (kaki) sama dengan 12 inches. ${feet} feet sama dengan … inches`, feet * 12, [feet * 10, feet * 12 + 2, feet + 12].filter((x) => x !== feet * 12), `${feet} × 12 = ${feet * 12} inches. Foot dan inch adalah satuan panjang Amerika.`, "📏", four);
+    }
+    const mode = ri(0, 1);
+    if (mode === 0) {
+      const feet = ri(3, 8 + level);
+      return mkNum(`Tinggi sebuah papan adalah ${feet} feet. (1 foot = 12 inches) Tinggi papan itu sama dengan … inches`, feet * 12, [feet * 10, feet * 12 - 6, feet * 12 + 12], `${feet} × 12 = ${feet * 12} inches.`, "📏", four);
+    }
+    const yards = ri(2, 6 + level);
+    return mkNum(`Panjang sebuah taman adalah ${yards} yards. (1 yard = 3 feet) Panjang taman itu sama dengan … feet`, yards * 3, [yards * 2, yards + 3, yards * 12], `${yards} × 3 = ${yards * 3} feet. Urutan satuan Amerika: inch → foot → yard → mile.`, "📏", four);
+  };
+  const moneySteps: LGen = (level) => {
+    const name = pick(INTL_NAMES_EN);
+    if (jenjang === "TK") {
+      const have = ri(4, 9);
+      const spent = ri(1, have - 1);
+      return mkNum(`${name} punya ${have} koin dolar. Ia membeli permen seharga ${spent} koin dolar. Sisa koin ${name} ada …`, have - spent, [have - spent + 1, have - spent - 1, have].filter((x) => x >= 0 && x !== have - spent), `${have} − ${spent} = ${have - spent} koin. Dolar adalah mata uang Amerika.`, "🪙", four);
+    }
+    const price = pick([325, 450, 575, 625, 750, 825]) / 100;
+    const pay = 10;
+    const change = Math.round((pay - price) * 100) / 100;
+    const fmtUs = (v: number) => `$${v.toFixed(2).replace(".", ",")}`;
+    if (Math.random() < 0.5 && jenjang !== "SD") {
+      const hours = ri(3, 6 + level);
+      const wage = ri(7, 12);
+      const buy = ri(10, hours * wage - 5);
+      const left = hours * wage - buy;
+      return mkNum(`${name} bekerja ${hours} jam dengan upah $${wage} per jam di sebuah toko di ${pick(US_PLACES)}. Ia lalu membeli tas seharga $${buy}. Sisa uang ${name} adalah …`, left, [left + wage, hours * wage, left - 5].filter((x) => x >= 0 && x !== left), `Langkah 1: upah = ${hours} × $${wage} = $${hours * wage}. Langkah 2: sisa = ${hours * wage} − ${buy} = $${left}. Soal AMO style dikerjakan bertahap!`, "💵", four);
+    }
+    return mkq(
+      `${name} membayar dengan uang $10 untuk barang seharga ${fmtUs(price)}. Kembalian ${name} adalah …`,
+      fmtUs(change),
+      [fmtUs(Math.round((change + 1) * 100) / 100), fmtUs(Math.round((change - 0.5) * 100) / 100), fmtUs(price)],
+      `$10,00 − ${fmtUs(price)} = ${fmtUs(change)}. 1 dolar = 100 cents, jadi hitung sampai dua angka di belakang koma.`,
+      "💵", four,
+    );
+  };
+  const milesGen: LGen = (level) => {
+    if (jenjang === "TK") return mathStoryGen(jenjang)(level);
+    if (jenjang === "SD") {
+      const morning = ri(5, 15);
+      const afternoon = ri(4, 12);
+      const days = pick([2, 3]);
+      const total = (morning + afternoon) * days;
+      return mkNum(`Bus sekolah menempuh ${morning} mil pada pagi hari dan ${afternoon} mil pada sore hari. Pola ini berulang selama ${days} hari. Total jaraknya adalah … mil`, total, [morning + afternoon, total - morning, total + afternoon], `Per hari ${morning} + ${afternoon} = ${morning + afternoon} mil. Selama ${days} hari: ${morning + afternoon} × ${days} = ${total} mil.`, "🚌", four);
+    }
+    const miles = pick([20, 25, 40, 50, 60, 75]);
+    const km = Math.round(miles * 1.6);
+    return mkNum(`Jarak sebuah kota adalah ${miles} mil dari kota lain. (1 mil ≈ 1,6 km) Jarak itu kira-kira sama dengan … km`, km, [km - 10, km + 10, miles].filter((x) => x !== km), `${miles} × 1,6 = ${km} km. Mil (mile) adalah satuan jarak utama di Amerika.`, "🛣️", four);
+  };
+  const fahrenheitGen: LGen = () => {
+    if (jenjang === "TK" || jenjang === "SD") {
+      return mkq(
+        `Di Amerika, suhu diukur dengan Fahrenheit (°F). Air membeku pada 32°F. Dalam Celsius (°C), air membeku pada …`,
+        "0°C", ["10°C", "32°C", "100°C"],
+        `Air membeku pada 0°C = 32°F, dan mendidih pada 100°C = 212°F. Dua skala suhu yang berbeda untuk hal yang sama!`,
+        "🌡️", four,
+      );
+    }
+    const c = pick([10, 15, 20, 25, 30, 35, 40]);
+    const f = (c * 9) / 5 + 32;
+    return mkNum(`Suhu di ${pick(US_PLACES)} adalah ${f}°F. Suhu itu dalam Celsius adalah … (Rumus: C = (F − 32) × 5/9)`, c, [c - 5, c + 5, f - 32].filter((x) => x !== c), `(${f} − 32) × 5/9 = ${f - 32} × 5/9 = ${c}°C.`, "🌡️", four);
+  };
+  const roadTrip: LGen = (level) => {
+    if (jenjang === "TK") return mathStoryGen(jenjang)(level);
+    const hours = ri(2, 5);
+    const speed = pick([40, 50, 60]);
+    const days = ri(2, 3 + Math.min(2, level - 1));
+    const total = hours * speed * days;
+    return mkNum(`Road trip: sebuah keluarga berkendara ${hours} jam per hari dengan kecepatan rata-rata ${speed} mil/jam, selama ${days} hari. Total jarak perjalanan mereka adalah … mil`, total, [hours * speed, total - speed, total + hours * speed], `Langkah 1: per hari ${hours} × ${speed} = ${hours * speed} mil. Langkah 2: selama ${days} hari = ${hours * speed} × ${days} = ${fmt(total)} mil.`, "🚗", four);
+  };
+  const gallonGen: LGen = (level) => {
+    if (jenjang === "TK" || jenjang === "SD") return dozenGen(level);
+    const gallons = ri(2, 8 + level);
+    const quarts = gallons * 4;
+    return mkNum(`Sebuah tangki berisi ${gallons} gallons air. (1 gallon = 4 quarts) Isi tangki itu sama dengan … quarts`, quarts, [quarts - 4, quarts + 4, gallons * 2], `${gallons} × 4 = ${quarts} quarts. Gallon dan quart adalah satuan isi Amerika.`, "🛢️", four);
+  };
+  return [dozenGen, feetInches, moneySteps, milesGen, fahrenheitGen, roadTrip, gallonGen];
+}
+
+/* ---------- JSO STYLE: sains eksperimen sederhana, pengamatan & penalaran ilmiah ---------- */
+function jsoGens(jenjang: JenjangId): LGen[] {
+  const four = jenjang !== "TK";
+  const floatSink: LGen = () => {
+    const floaters = ["Gabus", "Daun kering", "Bola plastik berongga", "Potongan kayu ringan", "Spons kering"];
+    const sinkers = ["Batu kecil", "Koin logam", "Sendok besi", "Kunci besi", "Paku"];
+    const askFloat = Math.random() < 0.5;
+    if (askFloat) {
+      const correct = pick(floaters);
+      const ds = sample(sinkers, four ? 3 : 2);
+      return mkq(`Percobaan mengapung–tenggelam: benda yang MENGAPUNG di air adalah …`, correct, ds, `${correct} mengapung karena ringan dan/atau berongga berisi udara. Benda logam dan batu yang padat akan tenggelam. Ilmuwan cilik: tebak dulu, lalu buktikan!`, "🌊", four);
+    }
+    const correct = pick(sinkers);
+    const ds = sample(floaters, four ? 3 : 2);
+    return mkq(`Percobaan mengapung–tenggelam: benda yang TENGGELAM di air adalah …`, correct, ds, `${correct} tenggelam karena padat dan berat untuk ukurannya. Gabus, daun, dan bola berongga mengapung.`, "🌊", four);
+  };
+  const plantNeeds: LGen = () => {
+    if (jenjang === "TK") {
+      return mkq(`Agar tanaman tumbuh sehat, tanaman membutuhkan …`, "Air dan cahaya matahari", ["Mainan dan boneka", "Batu dan pasir saja"], `Tanaman memasak makanannya dengan cahaya matahari dan menyerap air lewat akar. Tanpa keduanya tanaman layu.`, "🌱", four);
+    }
+    const correct = pick(["Air yang cukup", "Cahaya matahari", "Udara (karbon dioksida)"]);
+    const ds = ["Musik yang keras", "Cahaya lampu warna-warni setiap jam", "Disimpan di lemari gelap", "Diberi minuman bersoda"].filter((x) => x !== correct);
+    return mkq(`Salah satu kebutuhan utama tanaman untuk tumbuh sehat adalah …`, correct, sample(ds, four ? 3 : 2), `Tanaman butuh air, cahaya matahari, dan udara untuk fotosintesis dan tumbuh. Pilihan lain tidak membantu pertumbuhan.`, "🌱", four);
+  };
+  const variableGen: LGen = (level) => {
+    if (jenjang === "TK") return plantNeeds(level);
+    const topics: readonly (readonly [string, string])[] = [
+      ["pemberian air", "disiram setiap hari vs tidak disiram"],
+      ["pupuk", "diberi pupuk vs tidak diberi pupuk"],
+      ["cahaya", "ditaruh di tempat terang vs tempat teduh"],
+      ["jenis tanah", "ditanam di tanah humus vs tanah berpasir"],
+    ];
+    const t = pick(topics);
+    return mkq(
+      `Dua tanaman sejenis ditanam pada pot dan tempat yang sama. Satu-satunya perbedaan: tanaman pertama ${t[1].split(" vs ")[0]}, tanaman kedua ${t[1].split(" vs ")[1]}. Dalam percobaan ini, hal yang SENGAJA DIBEDAKAN (variabel bebas) adalah …`,
+      `Perlakuan ${t[0]}`,
+      ["Jenis tanaman", "Ukuran pot", "Tempat meletakkan tanaman"],
+      `Percobaan yang adil hanya membedakan SATU hal — di sini ${t[0]}. Jenis tanaman, pot, dan tempat dibuat sama agar perbandingan adil (fair test).`,
+      "🧪", four,
+    );
+  };
+  const dataTable: LGen = () => {
+    const days = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat"];
+    const base = jenjang === "TK" ? ri(3, 6) : ri(24, 30);
+    // Nilai dibuat BERBEDA semua agar hari terpanas selalu tunggal.
+    const offsets = shuffle([0, 1, 2, 3, 4, 5, 6]).slice(0, days.length);
+    const temps = days.map((_, i) => base + (offsets[i] as number));
+    const maxTemp = Math.max(...temps);
+    const maxDay = days[temps.indexOf(maxTemp)] as string;
+    if (jenjang === "TK") {
+      const flowers = [ri(2, 5), ri(2, 5), ri(6, 9)];
+      const dayNames = ["Senin", "Selasa", "Rabu"];
+      const maxF = Math.max(...flowers);
+      const maxD = dayNames[flowers.indexOf(maxF)] as string;
+      return mkq(
+        `Pengamatan bunga yang mekar: Senin ${flowers[0]} bunga, Selasa ${flowers[1]} bunga, Rabu ${flowers[2]} bunga. Hari dengan bunga mekar PALING BANYAK adalah …`,
+        maxD, dayNames.filter((d) => d !== maxD),
+        `Bandingkan angkanya: ${flowers.join(", ")}. Yang terbesar ${maxF} pada hari ${maxD}. Ilmuwan selalu membaca data dengan teliti.`,
+        "🌸", four,
+      );
+    }
+    if (Math.random() < 0.5) {
+      const table = days.map((d, i) => `${d} ${temps[i]}°C`).join(", ");
+      return mkq(
+        `Hasil pengamatan suhu selama 5 hari: ${table}. Hari TERPANAS adalah …`,
+        `${maxDay} (${maxTemp}°C)`,
+        days.filter((d) => d !== maxDay).slice(0, four ? 3 : 2).map((d) => `${d} (${temps[days.indexOf(d)]}°C)`),
+        `Suhu tertinggi adalah ${maxTemp}°C pada hari ${maxDay}. Baca semua data dulu, baru simpulkan.`,
+        "🌡️", four,
+      );
+    }
+    const i1 = ri(0, 3);
+    const i2 = i1 + 1;
+    const diff = (temps[i2] as number) - (temps[i1] as number);
+    const table = days.map((d, i) => `${d} ${temps[i]}°C`).join(", ");
+    return mkNum(`Data suhu: ${table}. Selisih suhu hari ${days[i2]} dan hari ${days[i1]} adalah … °C`, Math.abs(diff), [Math.abs(diff) + 1, Math.abs(diff) + 2, Math.abs(diff) === 0 ? 1 : Math.abs(diff) - 1].filter((x) => x >= 0 && x !== Math.abs(diff)), `${temps[i2]} − ${temps[i1]} = ${diff}; selisih (selalu positif) = ${Math.abs(diff)}°C.`, "🌡️", four);
+  };
+  const growthMeasure: LGen = () => {
+    const h1 = ri(2, 6);
+    const h2 = h1 + ri(2, 6);
+    const h3 = h2 + ri(2, 7);
+    if (jenjang === "TK") {
+      return mkNum(`Kecambah kemarin tingginya ${h1} cm. Hari ini tingginya ${h2} cm. Kecambah bertambah tinggi … cm`, h2 - h1, [h2 - h1 + 1, h2, h1].filter((x) => x > 0 && x !== h2 - h1), `${h2} − ${h1} = ${h2 - h1} cm. Pertumbuhan diukur dari selisih dua pengukuran.`, "🌱", four);
+    }
+    const askLast = Math.random() < 0.5;
+    const diff = askLast ? h3 - h2 : h2 - h1;
+    const from = askLast ? "kedua ke hari ketiga" : "pertama ke hari kedua";
+    return mkNum(`Pengamatan kecambah: hari ke-1 tinggi ${h1} cm, hari ke-2 tinggi ${h2} cm, hari ke-3 tinggi ${h3} cm. Pertumbuhan dari hari ${from} adalah … cm`, diff, [diff + 1, diff + 2, h3].filter((x) => x > 0 && x !== diff), `Selisih tinggi dua hari berurutan: ${askLast ? `${h3} − ${h2}` : `${h2} − ${h1}`} = ${diff} cm.`, "🌱", four);
+  };
+  const magnetShadow: LGen = () => {
+    if (Math.random() < 0.5) {
+      return mkq(`Magnet akan menarik benda yang terbuat dari …`, "Besi", ["Kayu", "Plastik", "Karet"].slice(0, four ? 3 : 2), `Magnet menarik logam besi dan baja. Kayu, plastik, dan karet tidak tertarik magnet — buktikan dengan percobaan sederhana!`, "🧲", four);
+    }
+    return mkq(`Bayangan benda terlihat paling PANJANG pada …`, "Pagi hari", ["Tengah hari tepat", "Dalam ruangan gelap total", "Saat lampu dimatikan"].slice(0, four ? 3 : 2), `Pagi (dan sore) matahari masih rendah sehingga bayangan memanjang. Tengah hari matahari di atas kepala, bayangan paling pendek.`, "🔦", four);
+  };
+  const fairConclusion: LGen = () => {
+    if (jenjang === "TK" || jenjang === "SD") {
+      return mkq(`Es di tempat hangat mencair lebih cepat daripada es di kulkas. Kesimpulan yang tepat adalah …`, "Tempat hangat membuat es lebih cepat mencair", ["Es di kulkas lebih besar", "Semua es mencair dalam waktu yang sama", "Es tidak bisa mencair di kulkas"].slice(0, four ? 3 : 2), `Satu-satunya perbedaan adalah suhu tempatnya, jadi suhu itulah penyebabnya. Kesimpulan ilmiah berdasarkan bukti percobaan.`, "🧊", four);
+    }
+    const mode = ri(0, 1);
+    if (mode === 0) {
+      return mkq(
+        `Dalam percobaan pengaruh cahaya, tanaman di tempat terang tumbuh 9 cm, sedangkan tanaman sejenis di tempat gelap tumbuh 3 cm, dengan air dan tanah yang sama. Kesimpulan paling tepat adalah …`,
+        "Cahaya membantu tanaman tumbuh lebih cepat pada percobaan ini",
+        ["Tanaman di tempat gelap pasti mati", "Air tidak berpengaruh sama sekali", "Semua tanaman selalu tumbuh 9 cm"],
+        `Karena hanya cahaya yang berbeda (air & tanah sama), perbedaan pertumbuhan disebabkan cahaya. Kesimpulan tidak boleh melebihi data: 'pada percobaan ini'.`,
+        "🔬", four,
+      );
+    }
+    return mkq(
+      `Pernyataan yang merupakan HIPOTESIS ilmiah (dapat diuji dengan percobaan) adalah …`,
+      "Tanaman yang menerima cahaya lebih banyak akan tumbuh lebih cepat",
+      ["Tanaman hijau adalah tanaman tercantik", "Tanaman sebaiknya selalu ditanam hari Senin", "Semua tanaman pasti menyukai musik"],
+      `Hipotesis harus bisa DIUJI dan DIUKUR: cahaya dan kecepatan tumbuh keduanya dapat diamati dalam percobaan. Pilihan lain adalah pendapat atau tidak terukur.`,
+      "🔬", four,
+    );
+  };
+  const controlGroup: LGen = (level) => {
+    if (jenjang !== "SMA" && jenjang !== "SMP") return dataTable(level);
+    return mkq(
+      `Dalam percobaan obat pertumbuhan tanaman, kelompok KONTROL adalah kelompok yang …`,
+      "Tidak diberi perlakuan, sebagai pembanding",
+      ["Diberi perlakuan paling banyak", "Tumbuh paling cepat", "Ditanam paling akhir"],
+      `Kelompok kontrol tidak menerima perlakuan yang diuji. Tanpa pembanding, kita tidak tahu apakah perubahan disebabkan perlakuan atau hal lain.`,
+      "🧪", four,
+    );
+  };
+  const matterChange: LGen = () => {
+    if (jenjang === "TK") {
+      return mkq(`Es batu yang dibiarkan di meja lama-lama akan …`, "Mencair menjadi air", ["Menjadi lebih besar", "Menghilang tanpa sisa"].slice(0, four ? 3 : 2), `Es mencair karena suhu ruangan lebih hangat. Wujudnya berubah dari padat menjadi cair — percobaan mudah diamati di rumah!`, "🧊", four);
+    }
+    const physical = pick(["Es mencair menjadi air", "Kertas disobek menjadi dua", "Gula larut dalam air", "Air menguap menjadi uap"]);
+    const chemical = ["Kayu terbakar menjadi abu", "Besi berkarat", "Susu menjadi asam", "Telur digoreng hingga matang"];
+    return mkq(`Peristiwa yang merupakan perubahan FISIKA (tidak membentuk zat baru) adalah …`, physical, sample(chemical, four ? 3 : 2), `${physical} — hanya wujud/bentuknya yang berubah, zatnya tetap sama. Terbakar, berkarat, dan membusuk membentuk zat baru (perubahan kimia).`, "⚗️", four);
+  };
+  return [floatSink, plantNeeds, variableGen, dataTable, growthMeasure, magnetShadow, fairConclusion, controlGroup, matterChange, emojiPictureGen(jenjang)];
+}
+
 export const GENERATORS: Partial<Record<JenjangId, Record<string, LGen[]>>> = {
   TK: {
     inggris: [pairGenL({ pairs: TK_ENG_PAIRS, askA: (a) => `What is “${a}” in Indonesian? / “${a}” artinya …`, askB: (b) => `Bahasa Inggris dari “${b}” adalah …`, exA: (a, b) => `“${a}” artinya ${b}.`, exB: (a, b) => `“${a}” dalam Bahasa Inggris adalah ${b}.`, four: false }), tkEngArrange, tkCompare],
@@ -2309,6 +2814,10 @@ export const GENERATORS: Partial<Record<JenjangId, Record<string, LGen[]>>> = {
     nalaria: nalariaGens("TK"),
     "kanguru-matematika": kanguruMathGens("TK"),
     "kanguru-bahasa": kanguruBahasaGens("TK"),
+    seamo: seamoGens("TK"),
+    sasmo: sasmoGens("TK"),
+    amo: amoGens("TK"),
+    jso: jsoGens("TK"),
     sains: [pairGenL({ pairs: TK_SAINS_PAIRS, askA: (a) => `${a} hidup terutama di …`, askB: (b) => `Hewan yang hidup di ${b.toLowerCase()} adalah …`, exA: (a, b) => `${a} hidup di ${b.toLowerCase()}.`, exB: (a, b) => `Yang hidup di ${b.toLowerCase()} adalah ${a}.`, four: false }), factGenL(TK_SAINS_FACTS, false), emojiPictureGen("TK")],
     pai: [factGenL(TK_PAI_FACTS, false),
       pairGenL({ pairs: MALAIKAT, askA: (a) => `Tugas Malaikat ${a} adalah …`, askB: (b) => `Malaikat yang bertugas “${b.toLowerCase()}” adalah …`, exA: (a, b) => `${a}: ${b.toLowerCase()}.`, exB: (a, _b) => `Itu tugas Malaikat ${a}.`, four: false }),
@@ -2328,6 +2837,10 @@ export const GENERATORS: Partial<Record<JenjangId, Record<string, LGen[]>>> = {
     nalaria: nalariaGens("SD"),
     "kanguru-matematika": kanguruMathGens("SD"),
     "kanguru-bahasa": kanguruBahasaGens("SD"),
+    seamo: seamoGens("SD"),
+    sasmo: sasmoGens("SD"),
+    amo: amoGens("SD"),
+    jso: jsoGens("SD"),
     inggris: [
       pairGenL({ pairs: EN_VOCAB, askA: (a) => `“${a}” artinya …`, askB: (b) => `Bahasa Inggris dari “${b}” adalah …`, exA: (a, b) => `“${a}” artinya ${b}.`, exB: (a, b) => `“${a}” dalam Bahasa Inggris: ${b}.` }),
       pairGenL({ pairs: EN_OPPOSITES, askA: (a) => `The opposite of “${a}” is …`, askB: (b) => `Kata yang berlawanan arti dengan “${b}” adalah …`, exA: (a, b) => `${a} >< ${b}.`, exB: (a, b) => `Lawan kata ${b} adalah ${a}.` }),
@@ -2402,6 +2915,10 @@ export const GENERATORS: Partial<Record<JenjangId, Record<string, LGen[]>>> = {
     nalaria: nalariaGens("SMP"),
     "kanguru-matematika": kanguruMathGens("SMP"),
     "kanguru-bahasa": kanguruBahasaGens("SMP"),
+    seamo: seamoGens("SMP"),
+    sasmo: sasmoGens("SMP"),
+    amo: amoGens("SMP"),
+    jso: jsoGens("SMP"),
     inggris: [
       pairGenL({ pairs: EN_OPPOSITES, askA: (a) => `The synonym/antonym check — the opposite of “${a}” is …`, askB: (b) => `The word opposite in meaning to “${b}” is …`, exA: (a, b) => `${a} >< ${b}.`, exB: (a, b) => `Opposite of ${b}: ${a}.` }),
       pairGenL({ pairs: EN_PAST, askA: (a) => `The past tense (V2) of “${a}” is …`, askB: (b) => `“${b}” is the past tense of …`, exA: (a, b) => `${a} → ${b}.`, exB: (a, b) => `${b} ← ${a}.` }),
@@ -2478,6 +2995,10 @@ export const GENERATORS: Partial<Record<JenjangId, Record<string, LGen[]>>> = {
     nalaria: nalariaGens("SMA"),
     "kanguru-matematika": kanguruMathGens("SMA"),
     "kanguru-bahasa": kanguruBahasaGens("SMA"),
+    seamo: seamoGens("SMA"),
+    sasmo: sasmoGens("SMA"),
+    amo: amoGens("SMA"),
+    jso: jsoGens("SMA"),
     inggris: [
       factGenL([
         ["“Had I known about the traffic, I ___ earlier.”", "would have left", ["will leave", "would leave", "leave"], "Third conditional (inversi 'Had I…'): would have + V3."],

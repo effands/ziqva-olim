@@ -501,6 +501,83 @@ MATERIALS["kanguru-bahasa"] = {
   tips: ["Baca soal dengan suara keras — telinga sering menangkap kata yang janggal lebih cepat dari mata.", "Untuk urutan abjad, tulis huruf awal tiap kata di pinggir soal sebelum memilih.", "Kumpulkan kata Inggris barumu di buku kecil: satu kata sehari menjadi ratusan kata setahun."],
 };
 
+MATERIALS["seamo"] = {
+  title: "🌏 Paket Kompetisi — Matematika SEAMO Style: Penalaran Logis & Pola",
+  intro: "Latihan ORIGINAL buatan ZIQVA OLIM bergaya SEAMO (Southeast Asian Mathematical Olympiad) — ini latihan original bergaya lomba tersebut, BUKAN soal resmi SEAMO dan bukan salinan past paper mana pun. Yang diadopsi hanya ciri khasnya: penalaran logis, pola visual & gambar, dan soal cerita berbahasa Inggris sederhana di jenjang atas, dengan fokus berpikir kritis.",
+  focus: {
+    TK: "Pola gambar emoji berulang, membandingkan banyak benda, dan berpikir 'siapa paling banyak' dari cerita bergambar.",
+    SD: "Pola bilangan berselisih berlipat, logika perbandingan data, bilangan yang berbeda sendiri, dan cerita Inggris sangat sederhana.",
+    SMP: "Pola selisih kuadrat & aturan kali-tambah, logika urutan, dan soal cerita Bahasa Inggris sederhana dua langkah.",
+    SMA: "Penalaran logis formal (premis → kesimpulan pasti), pola faktorial & rekursif, dan cerita Inggris dengan bilangan berurutan.",
+  },
+  sections: [
+    { h: "1. Pola visual: cari aturan berulangnya", body: "Pola gambar selalu berulang dalam kelompok kecil: A-A-B (dua sama, satu beda) atau A-B-A-B (bergantian). Tandai akhir satu kelompok, lalu pola dimulai lagi persis sama." },
+    { h: "2. Pola bilangan: tulis selisihnya", body: "Tulis selisih antar suku di bawah barisan. Bila selisih berlipat dua (4, 8, 16, …) atau berupa kuadrat (1, 4, 9, 16, …), lanjutkan pola selisihnya dulu, baru tambahkan ke suku terakhir." },
+    { h: "3. Logika perbandingan", body: "Jangan menyimpulkan sebelum mengurutkan. Tulis semua nilai, urutkan dari terbesar, dan baca kembali yang ditanyakan: paling besar atau paling kecil? Nilai tersembunyi (misalnya 'dua kali lipat') harus dihitung dulu." },
+    { h: "4. Bilangan yang berbeda sendiri", body: "Uji setiap bilangan terhadap aturan kelompoknya: apakah habis dibagi 3/4/5? genap atau ganjil? prima atau bukan? Satu bilangan yang melanggar aturan adalah jawabannya." },
+    { h: "5. Cerita Bahasa Inggris sederhana", body: "Kata kunci: 'shared equally' = dibagi rata, 'gave' = memberi (berkurang), 'left / now' = sisa/sekarang, 'in each' = pada setiap. Terjemahkan kata kuncinya, matematikanya sama seperti soal Indonesia." },
+    { h: "6. Kesimpulan yang pasti (SMA)", body: "Dari premis 'semua A adalah B', hanya kesimpulan yang PASTI mengikuti premis yang boleh dipilih. Kesimpulan yang 'mungkin' atau berlebihan selalu salah dalam logika." },
+  ],
+  tips: ["Tulis selisih pola dan urutan data di kertas coretan — berpikir kritis itu terlihat dari coretannya.", "Untuk soal Inggris, lingkari kata kuncinya sebelum menghitung.", "Latihan ini original bergaya SEAMO untuk belajar — bukan soal resmi lomba, jadi fokuslah pada caranya berpikir."],
+};
+MATERIALS["sasmo"] = {
+  title: "🧮 Paket Kompetisi — Matematika SASMO Style: Masalah Praktis & Trik Cerdas",
+  intro: "Latihan ORIGINAL buatan ZIQVA OLIM bergaya SASMO (Singapore and Asian Schools Math Olympiad) — ini latihan original bergaya lomba tersebut, BUKAN soal resmi SASMO dan bukan salinan past paper mana pun. Yang diadopsi hanya ciri khasnya: pemecahan masalah praktis sehari-hari dan trik hitung cerdas yang membuat soal besar terasa ringan.",
+  focus: {
+    TK: "Cerita praktis sederhana: berbagi rata ke 2 anak, menggabungkan benda, dan pasangan angka yang berjumlah 10.",
+    SD: "Trik pasangan Gauss sampai 20, jabat tangan sederhana, harga satuan, jadwal kegiatan, dan pengelompokan dengan sisa.",
+    SMP: "Gauss sampai 50, trik ×25 dan ×999, perbandingan diskon dua toko, dan jabat tangan sampai 10 orang.",
+    SMA: "Gauss sampai 100, cicilan dengan uang muka, dan masalah praktis multi-langkah dengan angka besar.",
+  },
+  sections: [
+    { h: "1. Trik Gauss: jumlah 1 sampai n", body: "Pasangkan ujung dengan ujung: 1+n, 2+(n−1), … tiap pasang berjumlah n+1 dan ada n/2 pasang. Rumusnya n(n+1)/2. Contoh: 1..40 → 40×41/2 = 820." },
+    { h: "2. Pasangan & jabat tangan", body: "Banyak pasangan dari n orang = n(n−1)/2. Dibagi 2 karena pasangan A–B dan B–A adalah pasangan yang sama." },
+    { h: "3. Harga satuan selalu menang", body: "Untuk membandingkan tawaran, bagi harga dengan isinya sampai harga per SATU benda. Persen diskon besar bisa kalah oleh harga awal yang murah — hitung harga akhirnya." },
+    { h: "4. Jadwal: jumlahkan menitnya", body: "Ubah semua kegiatan dan istirahat menjadi menit, jumlahkan, lalu tambahkan ke jam mulai. Jangan menjumlah jam dan menit secara terpisah tanpa membawa sisa 60 menit." },
+    { h: "5. Pengelompokan & sisa", body: "Hasil bagi = kelompok penuh; sisa selalu lebih kecil dari besar kelompok. Bila sisa mencapai besar kelompok, itu artinya ada satu kelompok penuh lagi." },
+    { h: "6. Cicilan & uang muka", body: "Harga akhir yang dicicil = harga barang − uang muka. Cicilan per bulan = sisa itu dibagi banyaknya cicilan. Uang muka tidak ikut dibagi." },
+  ],
+  tips: ["Selalu tanyakan: 'apakah ada triknya?' sebelum menghitung panjang — soal gaya SASMO hampir selalu punya jalan pintas.", "Bandingkan harga dalam satuan yang sama (per benda, per bulan, per menit).", "Latihan ini original bergaya SASMO untuk belajar — bukan soal resmi lomba."],
+};
+MATERIALS["amo"] = {
+  title: "🗽 Paket Kompetisi — Matematika AMO Style: Cerita Amerika & Penalaran Bertahap",
+  intro: "Latihan ORIGINAL buatan ZIQVA OLIM bergaya AMO (American Mathematics Olympiad) — ini latihan original bergaya lomba tersebut, BUKAN soal resmi AMO dan bukan salinan past paper mana pun. Yang diadopsi hanya ciri khasnya: soal cerita dengan konteks dan satuan khas Amerika (dozen, feet, mil, dolar, Fahrenheit) dan penalaran bertahap satu langkah demi satu langkah.",
+  focus: {
+    TK: "Konteks Amerika sederhana: lusin (dozen) benda, koin dolar, bus sekolah, dan bola baseball — semua dengan angka kecil.",
+    SD: "Dozen & lusin, feet–inches, kembalian dolar, dan jarak bus sekolah dalam mil selama beberapa hari.",
+    SMP: "Konversi mil ke km, gallon–quarts, upah per jam bertahap, dan konversi Fahrenheit ke Celsius dengan rumus.",
+    SMA: "Road trip multi-hari, kecepatan mil/jam ke km/jam, dan soal suhu & satuan bertahap yang lebih panjang.",
+  },
+  sections: [
+    { h: "1. Dozen = lusin = 12", body: "Di Amerika, telur, donat, dan bunga dijual per dozen. 3 dozen = 3 × 12 = 36. Jangan tertukar dengan 10!" },
+    { h: "2. Tangga satuan panjang Amerika", body: "12 inches = 1 foot; 3 feet = 1 yard; 1 mil (mile) ≈ 1,6 km. Naik tangga berarti mengali, turun tangga berarti membagi." },
+    { h: "3. Uang dolar & cents", body: "1 dolar = 100 cents. Harga ditulis dua angka desimal: $7,25 artinya 7 dolar 25 cents. Kembalian = uang dibayar − harga, dihitung sejajar koma desimalnya." },
+    { h: "4. Satuan isi: gallon & quart", body: "1 gallon = 4 quarts. Tangki 6 gallons = 24 quarts. Satuan ini muncul di pompa bensin dan resep Amerika." },
+    { h: "5. Fahrenheit ↔ Celsius", body: "C = (F − 32) × 5/9. Ingat titik patokannya: air membeku 32°F = 0°C; air mendidih 212°F = 100°C. Kurangi 32 DULU, baru kali 5/9." },
+    { h: "6. Penalaran bertahap", body: "Soal gaya AMO jarang selesai satu langkah. Tulis Langkah 1 (hasil antara), Langkah 2 (memakai hasil itu), dan periksa kewajaran hasil akhir di setiap langkah." },
+  ],
+  tips: ["Tulis konversi satuannya di pinggir soal sebelum menghitung — kebanyakan kesalahan terjadi di satuannya.", "Kerjakan satu langkah, berhenti, periksa. Bertahap itu lebih cepat daripada mengulang dari awal.", "Latihan ini original bergaya AMO untuk belajar — bukan soal resmi lomba."],
+};
+MATERIALS["jso"] = {
+  title: "🔬 Paket Kompetisi — Sains JSO Style: Eksperimen & Penalaran Ilmiah",
+  intro: "Latihan ORIGINAL buatan ZIQVA OLIM bergaya JSO (Junior Science Olympiad) — ini latihan original bergaya lomba tersebut, BUKAN soal resmi JSO dan bukan salinan past paper mana pun. Yang diadopsi hanya ciri khasnya: sains eksperimen sederhana, pengamatan yang teliti, dan penalaran ilmiah untuk jenjang muda. Untuk TK–SD soalnya sangat dasar dan bergambar emoji.",
+  focus: {
+    TK: "Pengamatan paling dasar bergambar emoji: benda yang mengapung/tenggelam, kebutuhan tanaman, bayangan, dan hewan di habitatnya.",
+    SD: "Percobaan adil satu perbedaan, membaca tabel pengamatan sederhana, magnet, dan bayangan pagi vs tengah hari.",
+    SMP: "Variabel bebas & kontrol, selisih pertumbuhan, kesimpulan dari bukti, dan perubahan fisika vs kimia.",
+    SMA: "Kelompok kontrol, hipotesis yang dapat diuji, dan kesimpulan ilmiah yang tidak melebihi data.",
+  },
+  sections: [
+    { h: "1. Metode ilmuwan cilik", body: "Urutannya: bertanya → menebak (hipotesis) → menguji (eksperimen) → mengamati & mencatat → menyimpulkan. Lewati satu langkah, kesimpulanmu goyah." },
+    { h: "2. Percobaan yang adil (fair test)", body: "Hanya SATU hal yang dibedakan (variabel bebas). Semua hal lain — jenis tanaman, pot, air, tempat — dibuat sama (variabel kontrol). Tanpa itu, kita tidak tahu penyebab perbedaan hasil." },
+    { h: "3. Kelompok kontrol", body: "Kelompok kontrol tidak diberi perlakuan yang diuji. Ia adalah pembanding: bila kelompok perlakuan berubah dan kontrol tidak, perlakuanlah penyebabnya." },
+    { h: "4. Membaca data pengamatan", body: "Pertumbuhan = selisih dua pengukuran berurutan, bukan tinggi terakhir. Nilai terbesar/terkecil dibaca dari SELURUH data. Pastikan tidak ada nilai yang sama persis untuk pertanyaan 'yang paling …'." },
+    { h: "5. Hipotesis yang baik", body: "Hipotesis harus bisa diuji dan diukur: 'cahaya lebih banyak → tumbuh lebih cepat' bisa diuji. Pendapat tentang cantik/tidak cantik bukan hipotesis ilmiah." },
+    { h: "6. Kesimpulan dari bukti", body: "Kesimpulan hanya boleh menyatakan apa yang didukung data, pada percobaan itu. Kata 'selalu' dan 'pasti' hampir selalu membuat kesimpulan menjadi berlebihan." },
+  ],
+  tips: ["Tebak dulu sebelum membaca pilihan — ilmuwan pun mulai dari dugaan, lalu membuktikannya.", "Coba percobaan aslinya di rumah: baskom air untuk mengapung–tenggelam, dua pot kecambah untuk cahaya.", "Latihan ini original bergaya JSO untuk belajar — bukan soal resmi lomba."],
+};
+
 export function materialFor(subjectId: string): Material | null {
   return MATERIALS[subjectId] ?? null;
 }
