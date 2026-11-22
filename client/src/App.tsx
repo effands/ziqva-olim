@@ -1461,6 +1461,13 @@ function AdminView(props: { token: string; user: SessionUser; onLogout: () => vo
   const users = data?.users ?? [];
   const classes = data?.classes ?? [];
   const recentAttempts = data?.recent_attempts ?? [];
+  // Angka ringkasan dihitung LANGSUNG dari baris tabel yang tampil, supaya
+  // selalu sama dengan isi tabel & kartu statistik — tidak pernah 0 padahal
+  // tabelnya berisi data.
+  const adminCount = users.filter((u) => u.role === "admin").length;
+  const openClassCount = classes.filter((c) => c.status === "open").length;
+  const closedClassCount = classes.length - openClassCount;
+  const totalClassParticipants = classes.reduce((sum, c) => sum + c.participant_count, 0);
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 pb-10">
@@ -1514,13 +1521,23 @@ function AdminView(props: { token: string; user: SessionUser; onLogout: () => vo
         ))}
       </div>
       <p className="mt-2 text-center text-xs font-semibold" style={{ color: "var(--dim)" }}>
-        Total akun terdaftar: {t?.total_users ?? 0} (termasuk {t?.admin ?? 0} Superadmin) • Total Kelas Ujian: {t?.total_classes ?? 0} ({t?.open_classes ?? 0} aktif, {t?.closed_classes ?? 0} ditutup) • Total peserta kelas: {t?.class_participants ?? 0}
+        Total akun terdaftar: {users.length} (termasuk {adminCount} Superadmin) • Total Kelas Ujian: {classes.length} ({openClassCount} aktif, {closedClassCount} ditutup) • Total peserta kelas: {totalClassParticipants}
       </p>
       {dash.isPending && <p className="mt-3 text-center text-sm font-semibold" style={{ color: "var(--dim)" }} role="status">⏳ Memuat data superadmin…</p>}
 
       <h2 className="font-display mt-6 text-lg font-bold">👥 Akun Terdaftar ({users.length})</h2>
       <div className="mt-2 overflow-x-auto rounded-2xl" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-        <table className="w-full min-w-[880px] border-collapse text-left text-sm">
+        <table className="w-full min-w-[1120px] border-collapse text-left text-sm">
+          <colgroup>
+            <col style={{ width: "13%" }} />
+            <col style={{ width: "11%" }} />
+            <col style={{ width: "11%" }} />
+            <col style={{ width: "16%" }} />
+            <col style={{ width: "13%" }} />
+            <col style={{ width: "18%" }} />
+            <col style={{ width: "11%" }} />
+            <col style={{ width: "7%" }} />
+          </colgroup>
           <thead>
             <tr style={{ background: "var(--surface2)" }}>
               {["Nama", "Username", "Peran", "Organisasi", "WhatsApp", "Email", "Terdaftar", "Aksi"].map((h) => (
@@ -1541,13 +1558,13 @@ function AdminView(props: { token: string; user: SessionUser; onLogout: () => vo
                   <td className="px-3 py-3 font-display font-bold whitespace-nowrap">{u.name}</td>
                   <td className="px-3 py-3 whitespace-nowrap" style={{ color: "var(--dim)" }}>@{u.username}</td>
                   <td className="px-3 py-3 whitespace-nowrap">{adminRoleLabel(u.role)}</td>
-                  <td className="px-3 py-3">{u.organization || "—"}</td>
+                  <td className="px-3 py-3 whitespace-nowrap">{u.organization || "—"}</td>
                   <td className="px-3 py-3 whitespace-nowrap">
                     {u.whatsapp ? (
                       <a href={waChatUrl(u.whatsapp)} target="_blank" rel="noreferrer" aria-label={`Chat WhatsApp ${u.name}`} className="font-bold underline" style={{ color: "#1E7A46" }}>💬 {u.whatsapp}</a>
                     ) : "—"}
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-3 whitespace-nowrap">
                     {u.email ? (
                       <a href={`mailto:${u.email}`} aria-label={`Kirim email ke ${u.name}`} className="underline" style={{ color: "var(--accent)" }}>{u.email}</a>
                     ) : "—"}
@@ -1573,7 +1590,18 @@ function AdminView(props: { token: string; user: SessionUser; onLogout: () => vo
 
       <h2 className="font-display mt-6 text-lg font-bold">🏫 Semua Kelas Ujian ({classes.length})</h2>
       <div className="mt-2 overflow-x-auto rounded-2xl" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-        <table className="w-full min-w-[820px] border-collapse text-left text-sm">
+        <table className="w-full min-w-[980px] border-collapse text-left text-sm">
+          <colgroup>
+            <col style={{ width: "17%" }} />
+            <col style={{ width: "14%" }} />
+            <col style={{ width: "9%" }} />
+            <col style={{ width: "17%" }} />
+            <col style={{ width: "8%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "9%" }} />
+            <col style={{ width: "8%" }} />
+            <col style={{ width: "8%" }} />
+          </colgroup>
           <thead>
             <tr style={{ background: "var(--surface2)" }}>
               {["Nama Kelas", "Guru", "Jenjang", "Mapel", "Level", "Status", "Peserta", "Selesai", "Aksi"].map((h) => (
@@ -1591,7 +1619,7 @@ function AdminView(props: { token: string; user: SessionUser; onLogout: () => vo
                 <td className="px-3 py-3 font-display font-bold whitespace-nowrap">{c.class_name}</td>
                 <td className="px-3 py-3 whitespace-nowrap">{c.teacher_name}</td>
                 <td className="px-3 py-3 whitespace-nowrap">{c.jenjang}</td>
-                <td className="px-3 py-3">{c.subject_name}</td>
+                <td className="px-3 py-3 whitespace-nowrap">{c.subject_name}</td>
                 <td className="px-3 py-3 whitespace-nowrap">Level {c.level}</td>
                 <td className="px-3 py-3 whitespace-nowrap">{c.status === "open" ? "🟢 Aktif" : "🔴 Ditutup"}</td>
                 <td className="px-3 py-3 whitespace-nowrap">{c.participant_count} peserta</td>
@@ -1609,7 +1637,18 @@ function AdminView(props: { token: string; user: SessionUser; onLogout: () => vo
 
       <h2 className="font-display mt-6 text-lg font-bold">🕐 Aktivitas Nilai Terakhir (50 terbaru)</h2>
       <div className="mt-2 overflow-x-auto rounded-2xl" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-        <table className="w-full min-w-[820px] border-collapse text-left text-sm">
+        <table className="w-full min-w-[1020px] border-collapse text-left text-sm">
+          <colgroup>
+            <col style={{ width: "15%" }} />
+            <col style={{ width: "8%" }} />
+            <col style={{ width: "21%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "8%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "8%" }} />
+            <col style={{ width: "12%" }} />
+            <col style={{ width: "8%" }} />
+          </colgroup>
           <thead>
             <tr style={{ background: "var(--surface2)" }}>
               {["Peserta", "Jenjang", "Mapel", "Mode", "Skor", "Hasil", "Durasi", "Waktu", "Aksi"].map((h) => (
@@ -1626,7 +1665,7 @@ function AdminView(props: { token: string; user: SessionUser; onLogout: () => vo
               <tr key={a.id} style={{ borderTop: "1px solid var(--border)" }}>
                 <td className="px-3 py-3 font-display font-bold whitespace-nowrap">{a.student_name}</td>
                 <td className="px-3 py-3 whitespace-nowrap">{a.jenjang}</td>
-                <td className="px-3 py-3">{a.mapel}{a.class_name === "Ujian Sertifikat" ? <span className="font-display ml-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-extrabold whitespace-nowrap" style={{ background: "#FFF3DC", color: "#92600A", border: "1px solid var(--gold)" }}>🏆 Ujian Sertifikat</span> : a.class_name ? <span className="ml-1.5 text-xs font-semibold whitespace-nowrap" style={{ color: "var(--dim)" }}>🏫 {a.class_name}</span> : null}</td>
+                <td className="px-3 py-3 whitespace-nowrap">{a.mapel}{a.class_name === "Ujian Sertifikat" ? <span className="font-display ml-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-extrabold whitespace-nowrap" style={{ background: "#FFF3DC", color: "#92600A", border: "1px solid var(--gold)" }}>🏆 Ujian Sertifikat</span> : a.class_name ? <span className="ml-1.5 text-xs font-semibold whitespace-nowrap" style={{ color: "var(--dim)" }}>🏫 {a.class_name}</span> : null}</td>
                 <td className="px-3 py-3 whitespace-nowrap">{a.mode === "ujian" ? "🏆 Ujian" : "✏️ Latihan"}</td>
                 <td className="px-3 py-3 whitespace-nowrap">
                   <span className="font-display inline-flex min-w-[44px] items-center justify-center rounded-lg px-2 py-1 font-extrabold text-white" style={{ background: a.score >= 75 ? "#1E7A46" : a.score >= 60 ? "#D97706" : "#6E6785" }}>{a.score}</span>
