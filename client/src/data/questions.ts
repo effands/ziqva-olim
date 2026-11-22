@@ -31,6 +31,8 @@ export interface SubjectDef {
   bg: string;
   school: SchoolType[] | "all";
   jenjang: JenjangId[];
+  /** Paket Kompetisi: latihan gaya lomba (Nalaria / Kanguru) — ditandai lencana khusus di kartu mapel. */
+  competition?: boolean;
 }
 
 export const SCHOOL_TYPES: { id: SchoolType; name: string; desc: string }[] = [
@@ -50,6 +52,9 @@ export const JENJANG: { id: JenjangId; name: string; sub: string; ages: string; 
 export const SUBJECTS: SubjectDef[] = [
   { id: "inggris", name: "Bahasa Inggris", short: "ENG", color: "#E84393", bg: "#FDE7F3", school: "all", jenjang: ["TK", "SD", "SMP", "SMA"] },
   { id: "matematika", name: "Matematika", short: "MTK", color: "#1E2A78", bg: "#E6E9FA", school: "all", jenjang: ["TK", "SD", "SMP", "SMA"] },
+  { id: "nalaria", name: "Matematika Nalaria", short: "NAL", color: "#B45309", bg: "#FEF3C7", school: ["umum", "madrasah", "kristen"], jenjang: ["TK", "SD", "SMP", "SMA"], competition: true },
+  { id: "kanguru-matematika", name: "Kanguru Matematika", short: "KGM", color: "#0F766E", bg: "#CCFBF1", school: ["umum", "madrasah", "kristen"], jenjang: ["TK", "SD", "SMP", "SMA"], competition: true },
+  { id: "kanguru-bahasa", name: "Kanguru Bahasa", short: "KGB", color: "#BE185D", bg: "#FCE7F3", school: ["umum", "madrasah", "kristen"], jenjang: ["TK", "SD", "SMP", "SMA"], competition: true },
   { id: "sains", name: "IPA / Sains", short: "IPA", color: "#0E9F8A", bg: "#E0F5F0", school: "all", jenjang: ["TK", "SD", "SMP"] },
   { id: "biologi", name: "Biologi", short: "BIO", color: "#2F9E44", bg: "#E6F7EA", school: "all", jenjang: ["SMA"] },
   { id: "fisika", name: "Fisika", short: "FIS", color: "#1971C2", bg: "#E3F0FB", school: "all", jenjang: ["SMA"] },
@@ -489,6 +494,90 @@ export const BANK: Bank = {
     ],
   },
 };
+
+/* ===== Paket Kompetisi — soal inti tertulis ORIGINAL (gaya lomba, bukan salinan soal resmi) =====
+   Generator proseduralnya ada di generators.ts (nalariaGens / kanguruMathGens / kanguruBahasaGens). */
+if (BANK.TK) {
+  BANK.TK["nalaria"] = [
+    { q: "Dengar ceritanya: Sinta punya 🍓🍓🍓 stroberi, lalu Ibu memberi 🍓🍓 lagi. Stroberi Sinta sekarang ada …", emoji: "🍓", options: ["4", "5", "6"], answer: 1, explain: "3 + 2 = 5 stroberi. Soal nalaria selalu bercerita — hitung bendanya satu-satu." },
+    { q: "Ada 🐥🐥🐥🐥 anak ayam. Satu anak ayam masuk kandang. Yang masih di luar ada …", emoji: "🐥", options: ["2", "3", "4"], answer: 1, explain: "4 − 1 = 3 anak ayam." },
+    { q: "Pola gambar: ⭐ 🌙 ⭐ 🌙 ⭐ … Gambar berikutnya adalah …", emoji: "⭐", options: ["⭐", "🌙", "☀️"], answer: 1, explain: "Polanya bergantian bintang–bulan, jadi sesudah bintang adalah bulan." },
+    { q: "Bima punya 6 kelereng, Tita punya 4 kelereng. Siapa yang kelerengnya LEBIH BANYAK?", emoji: "🔮", options: ["Bima", "Tita", "Sama banyak"], answer: 0, explain: "6 lebih banyak dari 4, jadi Bima." },
+  ];
+  BANK.TK["kanguru-matematika"] = [
+    { q: "Hitung kaki-kakinya: 🐶 satu anjing punya berapa kaki?", emoji: "🐶", options: ["2", "4", "6"], answer: 1, explain: "Anjing berkaki 4." },
+    { q: "Pola: 🔴 🔵 🔴 🔵 🔴 … Berikutnya warna apa?", emoji: "🔴", options: ["🔴 Merah", "🔵 Biru", "🟢 Hijau"], answer: 1, explain: "Pola bergantian merah–biru, berikutnya biru." },
+    { q: "Gambar mana yang BERBEDA sendiri?", emoji: "🍎", options: ["🍎🍎🍎🍌", "🍎🍎🍎🍎", "🍌🍌🍌🍌"], answer: 0, explain: "Pilihan pertama campur: 3 apel + 1 pisang, yang lain seragam." },
+    { q: "Di antrean, Dita berdiri paling depan. Di belakang Dita ada Rara, lalu Eko. Siapa yang paling BELAKANG?", emoji: "🚶", options: ["Dita", "Rara", "Eko"], answer: 2, explain: "Urutan antrean: Dita – Rara – Eko. Paling belakang Eko." },
+  ];
+  BANK.TK["kanguru-bahasa"] = [
+    { q: "Kata apa yang bunyinya sama dengan “kaki” di akhir? “Sinta memakai … di kaki.”", emoji: "🧦", options: ["Kaos kaki", "Topi", "Baju"], answer: 0, explain: "Di kaki memakai kaos kaki — kata “kaki” ada di dalamnya." },
+    { q: "Lawan kata “besar” adalah …", emoji: "🐘", options: ["Kecil", "Tinggi", "Panjang"], answer: 0, explain: "Besar >< kecil." },
+    { q: "Huruf pertama kata “BOLA” adalah …", emoji: "⚽", options: ["B", "O", "L"], answer: 0, explain: "B-O-L-A, huruf pertamanya B." },
+    { q: "In English, “cat” artinya …", emoji: "🐱", options: ["Kucing", "Anjing", "Burung"], answer: 0, explain: "Cat = kucing dalam Bahasa Inggris." },
+  ];
+}
+if (BANK.SD) {
+  BANK.SD["nalaria"] = [
+    { q: "Nadia membeli 3 pensil @Rp2.000 dan 1 penghapus Rp3.000. Ia membayar dengan Rp10.000. Kembaliannya adalah …", options: ["Rp1.000", "Rp2.000", "Rp4.000", "Rp9.000"], answer: 0, explain: "Total = 3×2.000 + 3.000 = Rp9.000. Kembalian = 10.000 − 9.000 = Rp1.000." },
+    { q: "Sebanyak 27 permen dibagikan rata ke 4 anak. Setiap anak mendapat … permen dan sisanya …", options: ["6, sisa 3", "7, sisa 1", "6, sisa 1", "5, sisa 7"], answer: 0, explain: "27 : 4 = 6 sisa 3, karena 4×6=24 dan 27−24=3." },
+    { q: "Pola kursi di kelas: baris 1 ada 2 kursi, baris 2 ada 4, baris 3 ada 6. Baris ke-6 ada … kursi", options: ["10", "12", "14", "18"], answer: 1, explain: "Polanya bilangan genap: baris n ada 2×n kursi. Baris 6 → 12." },
+    { q: "Bus berangkat pukul 07.15 dan tiba pukul 09.45. Lama perjalanannya adalah …", options: ["2 jam 15 menit", "2 jam 30 menit", "3 jam 30 menit", "1 jam 30 menit"], answer: 1, explain: "07.15 → 09.15 = 2 jam, lalu +30 menit = 2 jam 30 menit." },
+    { q: "Di kotak ada bola merah dan biru. Jumlah semua bola 12. Bola biru ada 5. Bola merah ada …", options: ["5", "6", "7", "17"], answer: 2, explain: "12 − 5 = 7 bola merah. Baca cerita pelan-pelan dan pisahkan yang diketahui dari yang ditanyakan." },
+  ];
+  BANK.SD["kanguru-matematika"] = [
+    { q: "Pola angka: 1, 3, 6, 10, 15, … Angka berikutnya adalah …", options: ["18", "20", "21", "25"], answer: 2, explain: "Selisihnya +2, +3, +4, +5, berikutnya +6 → 15+6=21 (bilangan segitiga)." },
+    { q: "Kanguru melompat 3 meter tiap lompatan. Untuk menempuh 27 meter ia butuh … lompatan", options: ["7", "8", "9", "12"], answer: 2, explain: "27 : 3 = 9 lompatan." },
+    { q: "Di antrean tiket, Rian urutan ke-4 dari depan dan ke-3 dari belakang. Jumlah anak di antrean adalah …", options: ["5", "6", "7", "8"], answer: 1, explain: "4 + 3 − 1 = 6. Rian dihitung dua kali, kurangi 1." },
+    { q: "Selembar kertas dilipat jadi 2 satu kali, lalu digunting 1 lubang di tengah lipatan. Saat dibuka, lubangnya ada …", options: ["1", "2", "3", "4"], answer: 1, explain: "Satu lipatan menggandakan lubang: 1 lubang × 2 lapisan = 2 lubang." },
+    { q: "Umur Sinta 9 tahun. Umur kakaknya 5 tahun lebih tua. Jumlah umur mereka adalah … tahun", options: ["14", "19", "23", "28"], answer: 2, explain: "Kakak 9+5=14. Jumlah = 9+14 = 23 tahun." },
+  ];
+  BANK.SD["kanguru-bahasa"] = [
+    { q: "Urutan abjad yang BENAR untuk kata: apel, buku, ceri, duku adalah …", options: ["apel, buku, ceri, duku", "buku, apel, ceri, duku", "apel, ceri, buku, duku", "duku, ceri, buku, apel"], answer: 0, explain: "Huruf awal a < b < c < d, urutannya sudah benar." },
+    { q: "Kata “berlari” terdiri dari … suku kata", options: ["2", "3", "4", "1"], answer: 1, explain: "ber-la-ri = 3 suku kata." },
+    { q: "Kalimat rumpang: “Ibu pergi ke pasar untuk membeli … .” Yang paling logis adalah …", options: ["sayuran", "sepeda motor baru di toko mainan", "awan", "angka tujuh"], answer: 0, explain: "Di pasar orang membeli sayuran — pilihan lain tidak logis di pasar." },
+    { q: "Lawan kata “berani” dalam kalimat “Anak itu berani tampil di panggung” adalah …", options: ["takut", "kuat", "cepat", "pandai"], answer: 0, explain: "Berani >< takut." },
+    { q: "Huruf yang hilang: S _ P _ T U (alas kaki). Kata lengkapnya adalah …", options: ["SEPATU", "SAPITU", "SEPETU", "SUPATU"], answer: 0, explain: "S-E-P-A-T-U = SEPATU." },
+  ];
+}
+if (BANK.SMP) {
+  BANK.SMP["nalaria"] = [
+    { q: "Sebuah toko memberi diskon 20% untuk tas Rp250.000, lalu pembeli memakai voucher potongan Rp10.000. Yang dibayar adalah …", options: ["Rp180.000", "Rp190.000", "Rp200.000", "Rp220.000"], answer: 1, explain: "Diskon dulu: 250.000×80% = 200.000, lalu voucher: 200.000−10.000 = Rp190.000." },
+    { q: "Rata-rata nilai 5 siswa adalah 80. Empat siswa nilainya 75, 85, 90, 70. Nilai siswa kelima adalah …", options: ["75", "80", "85", "90"], answer: 1, explain: "Total = 5×80=400. Empat siswa = 320. Siswa kelima = 400−320 = 80." },
+    { q: "Dalam kelas, 18 siswa suka sepak bola, 12 suka basket, 5 suka keduanya, dan total siswa 30. Yang tidak suka keduanya adalah …", options: ["0", "5", "10", "25"], answer: 1, explain: "Suka minimal satu = 18+12−5 = 25. Tidak suka keduanya = 30−25 = 5. Hati-hati: 5 yang suka keduanya sudah termasuk di kedua kelompok." },
+    { q: "Motor melaju 60 km/jam. Jarak 90 km ditempuh dalam …", options: ["1 jam", "1,5 jam", "2 jam", "0,5 jam"], answer: 1, explain: "Waktu = jarak : kecepatan = 90 : 60 = 1,5 jam." },
+  ];
+  BANK.SMP["kanguru-matematika"] = [
+    { q: "Pola: 2, 6, 12, 20, 30, … Suku berikutnya adalah …", options: ["36", "40", "42", "44"], answer: 2, explain: "Selisih +4, +6, +8, +10, berikutnya +12 → 42. (Pola n(n+1).)" },
+    { q: "Lima tahun lalu umur Ayah 4 kali umur anaknya. Sekarang umur anak 12 tahun. Umur Ayah sekarang adalah …", options: ["33", "38", "43", "48"], answer: 0, explain: "Lima tahun lalu anak berumur 12−5 = 7 tahun, Ayah 4×7 = 28 tahun. Sekarang Ayah 28+5 = 33 tahun." },
+    { q: "Sebuah roda berputar 90° searah jarum jam dari arah utara. Sekarang ia menghadap ke …", options: ["Timur", "Selatan", "Barat", "Utara"], answer: 0, explain: "Putaran 90° searah jarum jam dari utara → timur." },
+    { q: "Kertas dilipat jadi 2 sebanyak dua kali, lalu dibuat 1 lubang. Saat dibuka penuh, lubangnya ada …", options: ["2", "3", "4", "8"], answer: 2, explain: "Dua lipatan = 4 lapisan, 1 lubang × 4 = 4 lubang." },
+  ];
+  BANK.SMP["kanguru-bahasa"] = [
+    { q: "Kata yang TIDAK sekelompok maknanya adalah: gembira, riang, ceria, cemas — yang berbeda adalah …", options: ["gembira", "riang", "ceria", "cemas"], answer: 3, explain: "Gembira, riang, ceria sama-sama senang; cemas berarti khawatir." },
+    { q: "Kalimat yang paling logis melengkapi: “Karena hujan turun sangat deras, maka …”", options: ["pertandingan ditunda sampai cuaca membaik", "kami memutuskan berenang lebih lama", "jemuran cepat kering", "sungai menjadi kering"], answer: 0, explain: "Akibat logis hujan deras adalah kegiatan luar ditunda." },
+    { q: "Urutan abjad kata-kata berikut yang benar: zebra, apel, mangga, buku adalah …", options: ["apel, buku, mangga, zebra", "buku, apel, mangga, zebra", "apel, mangga, buku, zebra", "zebra, mangga, buku, apel"], answer: 0, explain: "a < b < m < z." },
+    { q: "Pola kata: ABAB — “makan” mengikuti pola huruf M-A-K-A-N? Kata “ada” berpola …", options: ["ABA", "ABC", "AAB", "ABB"], answer: 0, explain: "a-d-a: huruf pertama dan ketiga sama → pola ABA." },
+  ];
+}
+if (BANK.SMA) {
+  BANK.SMA["nalaria"] = [
+    { q: "Campuran: 2 liter sirup berkadar gula 30% dicampur 3 liter air tanpa gula. Kadar gula campuran adalah …", options: ["12%", "15%", "18%", "30%"], answer: 0, explain: "Gula = 2×30% = 0,6 liter dalam 5 liter → 0,6/5 = 12%." },
+    { q: "Dua pekerja bersama menyelesaikan pekerjaan dalam 6 hari. Pekerja A sendiri butuh 10 hari. Pekerja B sendiri butuh … hari", options: ["12", "15", "16", "20"], answer: 1, explain: "1/B = 1/6 − 1/10 = 2/30 = 1/15 → B butuh 15 hari." },
+    { q: "Himpunan: dari 50 siswa, 28 ikut Pramuka, 25 ikut PMR, 12 ikut keduanya. Yang tidak ikut keduanya adalah …", options: ["3", "9", "15", "41"], answer: 1, explain: "Ikut minimal satu = 28+25−12 = 41. Tidak ikut = 50−41 = 9." },
+    { q: "Sebuah mobil berangkat pukul 08.00 dengan kecepatan 80 km/jam. Mobil kedua berangkat pukul 08.30 dari tempat sama dengan kecepatan 100 km/jam searah. Mobil kedua menyusul pada pukul …", options: ["09.30", "10.00", "10.30", "11.00"], answer: 2, explain: "Selisih jarak awal = 80 × 0,5 jam = 40 km. Kecepatan relatif = 100 − 80 = 20 km/jam, jadi tersusul dalam 40:20 = 2 jam setelah 08.30, yaitu pukul 10.30." },
+  ];
+  BANK.SMA["kanguru-matematika"] = [
+    { q: "Barisan: 3, 7, 13, 21, 31, … Suku berikutnya adalah …", options: ["39", "41", "43", "45"], answer: 2, explain: "Selisih +4, +6, +8, +10, berikutnya +12 → 43." },
+    { q: "Di sebuah barisan tempat duduk 7 orang, A duduk di tengah. B di sebelah kiri A, C di paling kanan. Posisi C dari kiri adalah ke-…", options: ["5", "6", "7", "4"], answer: 2, explain: "7 kursi, paling kanan adalah posisi ke-7 dari kiri." },
+    { q: "Sebuah kubus dicat seluruh permukaannya lalu dipotong menjadi 27 kubus kecil sama besar. Kubus kecil dengan tepat 2 sisi bercat ada …", options: ["8", "12", "6", "18"], answer: 1, explain: "Kubus kecil di tengah tiap rusuk: 12 rusuk × 1 = 12." },
+  ];
+  BANK.SMA["kanguru-bahasa"] = [
+    { q: "Makna kata “signifikan” pada kalimat “Kenaikan harga berdampak signifikan bagi warga” adalah …", options: ["Penting dan berpengaruh nyata", "Sedikit dan sepele", "Cepat sekali", "Mahal"], answer: 0, explain: "Signifikan = penting/berarti dan berdampak nyata." },
+    { q: "Pasangan kata yang berantonim adalah …", options: ["abstrak – konkret", "abstrak – nyata samar", "sinonim – makna", "cepat – lekas"], answer: 0, explain: "Abstrak (tak berwujud) >< konkret (nyata berwujud)." },
+    { q: "Kalimat rumpang logis: “Meskipun sudah belajar semalaman, Raka tetap … karena soal ujiannya jauh lebih sulit dari perkiraan.” Kata yang paling tepat adalah …", options: ["gagal", "berhasil gemilang", "santai saja", "terkenal"], answer: 0, explain: "Kata “meskipun” menuntut hasil yang berlawanan dengan usaha: gagal adalah yang logis." },
+  ];
+}
 
 /* ---------------- Level kesulitan & pembangun sesi ---------------- */
 export interface LevelDef {

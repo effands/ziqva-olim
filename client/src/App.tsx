@@ -3356,8 +3356,11 @@ export function App() {
                     className="rounded-2xl p-3.5 text-left transition"
                     style={{ background: active ? s.bg : "var(--surface)", border: `2px solid ${active ? s.color : "var(--border)"}` }}>
                     <span className="inline-flex h-9 min-w-9 items-center justify-center rounded-xl px-2 font-display text-xs font-extrabold text-white" style={{ background: s.color }}>{s.short}</span>
+                    {s.competition && (
+                      <span className="font-display ml-2 inline-flex items-center rounded-full px-2 py-1 align-top text-[11px] font-extrabold" style={{ background: "var(--gold)", color: "#2B2440" }} aria-label="Paket Kompetisi — latihan gaya lomba">🏆 Paket Kompetisi</span>
+                    )}
                     <div className="mt-2 font-display text-[15px] leading-tight font-bold">{s.name}</div>
-                    <div className="mt-0.5 text-xs font-semibold" style={{ color: "var(--dim)" }}>{SESSION_SIZE} soal acak • Level 1–{un} terbuka</div>
+                    <div className="mt-0.5 text-xs font-semibold" style={{ color: "var(--dim)" }}>{SESSION_SIZE} soal acak • Level 1–{un} terbuka{s.competition ? " • Kompetisi" : ""}</div>
                   </button>
                 );
               })}

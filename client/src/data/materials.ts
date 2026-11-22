@@ -443,6 +443,64 @@ MATERIALS.mandarin = {
   tips: ["Latih nada berpasangan: mā–má, mǎ–mà, sambil menggambar arah nada di udara.", "Tulis hanzi mengikuti urutan goresan: atas sebelum bawah, kiri sebelum kanan.", "Dengarkan soal Mandarin dengan tombol Dengarkan Soal, lalu ucapkan dengan nada yang sama."],
 };
 
+MATERIALS["nalaria"] = {
+  title: "🏆 Paket Kompetisi — Matematika Nalaria: Penalaran dari Cerita",
+  intro: "Paket Kompetisi gaya KMNR (Kompetisi Matematika Nalaria Realistik): soal cerita kontekstual yang menguji penalaran dan pemecahan masalah, bukan sekadar rumus. Semua soal di sini ORIGINAL buatan ZIQVA OLIM mengikuti gaya lombanya. Baca ceritanya baik-baik — matematikanya bersembunyi di dalam cerita!",
+  focus: {
+    TK: "Cerita lisan sangat sederhana berbasis gambar emoji: menambah, mengurangi, membandingkan banyak benda.",
+    SD: "Belanja & kembalian, berbagi dengan sisa, pola & urutan logis, lama perjalanan, dan perbandingan.",
+    SMP: "Diskon bertingkat, rata-rata jebakan, logika himpunan (yang suka keduanya), dan jarak–waktu–kecepatan.",
+    SMA: "Campuran berkadar, kerja bersama (laju pekerjaan), himpunan inklusi–eksklusi, dan soal susul-menyusul.",
+  },
+  sections: [
+    { h: "1. Cara membaca soal cerita", body: "Lingkari yang diketahui, garis bawahi yang ditanyakan. Banyak soal nalaria memberi angka pengganggu yang tidak dipakai — jangan panik, pilih hanya yang dibutuhkan." },
+    { h: "2. Belanja & kembalian", body: "Total = jumlah × harga satuan. Kembalian = uang dibayar − total. Bila ada diskon, hitung diskon DULU dari harga awal, baru kurangi voucher atau potongan lain." },
+    { h: "3. Berbagi & sisa", body: "Hasil bagi menunjukkan bagian tiap anak; sisa adalah yang tidak terbagi rata. Sisa TIDAK PERNAH lebih besar atau sama dengan pembagi — itu jebakan paling sering!" },
+    { h: "4. Jarak, waktu, kecepatan", body: "Jarak = kecepatan × waktu. Untuk susul-menyusul, pakai kecepatan relatif (selisih kecepatan) dan jarak awal di antara keduanya." },
+    { h: "5. Himpunan sederhana", body: "Yang ikut minimal satu kegiatan = A + B − keduanya (karena yang ikut keduanya terhitung dua kali). Yang tidak ikut = total − yang ikut minimal satu." },
+    { h: "6. Rata-rata jebakan", body: "Rata-rata bukan angka ajaib: jumlah total = rata-rata × banyak data. Nilai yang hilang = total seharusnya − jumlah yang sudah diketahui." },
+  ],
+  tips: ["Gambar cerita dengan coretan sederhana — soal nalaria yang digambar separuh selesai.", "Periksa kewajaran jawaban: kembalian tidak mungkin lebih besar dari uang yang dibayar.", "Kerjakan soal yang mudah dulu; soal nalaria memang dirancang bertingkat dari cerita ringan ke jebakan penalaran."],
+};
+MATERIALS["kanguru-matematika"] = {
+  title: "🏆 Paket Kompetisi — Kanguru Matematika: Teka-Teki Logika",
+  intro: "Paket Kompetisi gaya IKMC (International Kangaroo Mathematics Contest): teka-teki logika matematika yang seru dan menjebak — pola gambar & angka, bangun & bayangan, hitung benda dari petunjuk, teka-teki umur, antrean, arah & putaran, sampai lipat & potong kertas. Semua soal ORIGINAL buatan ZIQVA OLIM mengikuti gaya lombanya.",
+  focus: {
+    TK: "Soal visual emoji: menghitung gambar, mencari gambar yang berbeda, pola bergantian, dan urutan kegiatan.",
+    SD: "Pola bilangan segitiga, antrean dari depan & belakang, lipatan kertas 1–2 kali, dan teka-teki umur sederhana.",
+    SMP: "Putaran arah mata angin, roda & kaki dari petunjuk, pola selisih bertingkat, dan lipatan berlapis.",
+    SMA: "Kubus bercat yang dipotong-potong, pola dua tingkat, dan teka-teki posisi duduk yang lebih rumit.",
+  },
+  sections: [
+    { h: "1. Pola: tulis selisihnya", body: "Di bawah barisan, tulis selisih antar suku. Bila selisihnya sendiri berpola (+2, +3, +4, …), lanjutkan pola selisih itu dulu, baru tambahkan ke suku terakhir." },
+    { h: "2. Antrean & tempat duduk", body: "Jumlah orang = posisi dari depan + posisi dari belakang − 1. Orang yang sama terhitung dua kali, jadi kurangi 1. Gambar titik-titik antreannya bila ragu." },
+    { h: "3. Lipat & potong kertas", body: "Tiap lipatan menggandakan lapisan: 1 lipat = 2 lapisan, 2 lipat = 4, 3 lipat = 8. Lubang yang dibuat menembus semua lapisan akan muncul sebanyak jumlah lapisan saat dibuka." },
+    { h: "4. Arah & putaran", body: "Urutan kompas searah jarum jam: Utara → Timur → Selatan → Barat. Putaran 90° = satu langkah, 180° = dua langkah (berbalik), 270° = tiga langkah." },
+    { h: "5. Hitung dari petunjuk", body: "Roda sepeda 2, mobil 4; kaki ayam 2, kucing 4. Kalikan tiap kelompok dengan jumlah bendanya, lalu jumlahkan — jangan menebak dari gambar saja." },
+    { h: "6. Teka-teki umur", body: "Pindahkan semua orang ke waktu yang sama dulu (sekarang atau 'lima tahun lalu'), baru bandingkan. Selisih umur tidak pernah berubah sepanjang waktu!" },
+  ],
+  tips: ["Soal Kanguru menghargai keberanian mencoba: gambar, coret, dan uji pilihan satu per satu.", "Untuk jenjang kecil, bacakan soal keras-keras dan hitung gambarnya dengan jari.", "Bila semua pilihan terasa mirip, cari pilihan yang melanggar aturan soal (misalnya sisa lebih besar dari pembagi) dan coret duluan."],
+};
+MATERIALS["kanguru-bahasa"] = {
+  title: "🏆 Paket Kompetisi — Kanguru Bahasa: Teka-Teki Linguistik",
+  intro: "Paket Kompetisi gaya IKLC (International Kangaroo Linguistic Contest): teka-teki linguistik — pola & susunan kata, huruf/kata tersembunyi, makna & lawan kata dalam konteks cerita, urutan abjad, suku kata, dan kalimat rumpang logis, plus pengantar Bahasa Inggris sederhana untuk jenjang kecil. Semua soal ORIGINAL buatan ZIQVA OLIM mengikuti gaya lombanya.",
+  focus: {
+    TK: "Huruf pertama, lawan kata sederhana, pola kata berima, dan kata Inggris pertama (cat, dog, sun).",
+    SD: "Urutan abjad, suku kata, kata tersembunyi dari huruf acak, dan kalimat rumpang yang logis.",
+    SMP: "Pola huruf kata (ABA, ABAB), kelompok makna kata, dan akibat logis dalam kalimat sebab-akibat.",
+    SMA: "Makna kata serapan dalam konteks, antonim tingkat lanjut, dan rumpang dengan kata penghubung (meskipun, karena, agar).",
+  },
+  sections: [
+    { h: "1. Urutan abjad", body: "Bandingkan huruf pertama; bila sama, bandingkan huruf kedua, dan seterusnya. Contoh: bola < buku karena huruf kedua o < u." },
+    { h: "2. Suku kata", body: "Suku kata adalah satu bunyi tepukan: se-ko-lah (3), per-pus-ta-ka-an (5). Ucapkan kata itu perlahan sambil bertepuk untuk mengecek." },
+    { h: "3. Kata tersembunyi", body: "Gabungkan huruf yang sudah tampak dengan petunjuk maknanya: S _ P _ T U + 'alas kaki' = SEPATU. Petunjuk makna adalah kunci utamanya." },
+    { h: "4. Pola huruf kata", body: "Huruf yang sama diberi huruf pola yang sama, dari A: susu → A-B-A-B (ABAB), ada → ABA, buku → ABCB. Kesalahan umum: memberi huruf pola baru untuk huruf yang sudah muncul." },
+    { h: "5. Kalimat rumpang logis", body: "Baca kalimat LENGKAP dengan tiap pilihan satu per satu. Yang benar membuat cerita masuk akal; kata penghubung memberi petunjuk kuat: 'karena' butuh sebab, 'meskipun' butuh hasil yang berlawanan, 'agar' butuh tujuan." },
+    { h: "6. Makna dalam konteks", body: "Satu kata bisa bermakna berbeda di kalimat berbeda. Lawan kata dan persamaan kata selalu dipilih sesuai kalimat ceritanya, bukan hafalan lepas." },
+  ],
+  tips: ["Baca soal dengan suara keras — telinga sering menangkap kata yang janggal lebih cepat dari mata.", "Untuk urutan abjad, tulis huruf awal tiap kata di pinggir soal sebelum memilih.", "Kumpulkan kata Inggris barumu di buku kecil: satu kata sehari menjadi ratusan kata setahun."],
+};
+
 export function materialFor(subjectId: string): Material | null {
   return MATERIALS[subjectId] ?? null;
 }

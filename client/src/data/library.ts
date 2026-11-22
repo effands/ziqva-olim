@@ -601,10 +601,38 @@ const SEJARAH_MODULES: LibraryModule[] = [
   },
 ];
 
+/* ================= PAKET KOMPETISI (Nalaria, Kanguru Matematika, Kanguru Bahasa) ================= */
+const KOMPETISI_MODULES: LibraryModule[] = [
+  {
+    id: "komp-nalaria", subjects: ["nalaria"], jenjang: ALL, emoji: "🏆",
+    title: "Matematika Nalaria: Berpikir dari Cerita (Paket Kompetisi)",
+    keywords: ["membeli", "kembalian", "dibagikan rata", "sisa", "kecepatan", "jarak", "rata-rata nilai", "suka matematika", "suka keduanya", "tidak suka keduanya", "dicampur", "pekerja", "tabungan", "kebun", "resep", "loyang"],
+    concept: "Soal Nalaria (gaya KMNR) tidak menanyakan rumus secara langsung — ia menyembunyikan matematika di dalam cerita sehari-hari: belanja & kembalian, berbagi dengan sisa, jarak–waktu–kecepatan, perbandingan, pola, dan logika himpunan. Kuncinya: (1) lingkari yang DIKETAHUI, (2) garis bawahi yang DITANYAKAN, (3) gambar atau tulis ulang cerita dengan angka sederhana, (4) baru hitung. Jebakan khasnya: sisa pembagian yang lebih besar dari pembagi (tidak mungkin!), orang yang dihitung dua kali pada soal himpunan (yang suka keduanya), dan rata-rata yang harus dikembalikan ke jumlah total dulu (rata-rata × banyak anak). Untuk TK, soal dibacakan sebagai cerita lisan pendek dengan gambar emoji — hitung bendanya satu-satu dengan jari.",
+    example: "27 permen untuk 4 anak: jangan langsung membagi di kepala. Tulis 4 × 6 = 24, sisa 27 − 24 = 3. Jawaban lengkapnya '6 permen, sisa 3' — soal nalaria hampir selalu menanyakan sisa juga!",
+    summary: "Diketahui → ditanyakan → gambar/tulis → hitung. Waspadai sisa pembagian, hitung-ganda himpunan, dan rata-rata (kembalikan ke total).",
+  },
+  {
+    id: "komp-kanguru-math", subjects: ["kanguru-matematika"], jenjang: ALL, emoji: "🦘",
+    title: "Kanguru Matematika: Teka-Teki Logika yang Seru (Paket Kompetisi)",
+    keywords: ["antrean", "urutan ke-", "dilipat", "lubang", "lapisan", "menghadap", "berputar", "roda", "kaki", "pola", "bayangan", "kubus kecil", "bercat", "umur"],
+    concept: "Soal Kanguru Matematika (gaya IKMC) adalah teka-teki: pola gambar & angka, antrean dan tempat duduk, teka-teki umur, arah & putaran, lipat & gunting kertas, dan menghitung benda dari petunjuk (roda, kaki). Strategi juaranya adalah MENCOBA DENGAN GAMBAR: gambar antreannya, gambar lipatannya, tulis urutan kompasnya (Utara–Timur–Selatan–Barat). Rumus antrean yang wajib hafal: jumlah orang = urutan dari depan + urutan dari belakang − 1 (orangnya terhitung dua kali). Lipatan kertas: tiap lipatan menggandakan lapisan (1 lipat = 2, 2 lipat = 4, 3 lipat = 8), jadi lubang ikut berlipat ganda saat kertas dibuka. Untuk jenjang kecil, soalnya visual berbasis emoji: hitung gambarnya, cari yang berbeda, ikuti polanya.",
+    example: "Rian ke-4 dari depan dan ke-3 dari belakang. Gambar: ●●●R●● — totalnya 4 + 3 − 1 = 6 anak. Tanpa gambar, jebakan '7' sangat menggoda!",
+    summary: "Gambar dulu, hitung kemudian. Antrean: depan + belakang − 1. Lipatan: lapisan berlipat dua tiap lipatan.",
+  },
+  {
+    id: "komp-kanguru-bahasa", subjects: ["kanguru-bahasa"], jenjang: ALL, emoji: "📚",
+    title: "Kanguru Bahasa: Teka-Teki Kata & Logika Bahasa (Paket Kompetisi)",
+    keywords: ["urutan abjad", "suku kata", "tersembunyi", "petunjuknya", "rumpang", "logis", "pola huruf", "huruf pertama", "english", "artinya", "lawan kata", "persamaan kata"],
+    concept: "Soal Kanguru Bahasa (gaya IKLC) bermain dengan bahasa itu sendiri: urutan abjad (bandingkan huruf pertama, lalu huruf kedua bila sama), suku kata (tepuk tangan tiap potongan bunyi: se-ko-lah = 3), kata tersembunyi (gabungkan huruf yang tampak dengan petunjuk maknanya), pola huruf kata (huruf yang sama = huruf pola yang sama: susu = ABAB), serta kalimat rumpang yang harus LOGIS bila dibaca utuh — pilihan yang terdengar lucu hampir selalu salah. Makna & lawan kata selalu diuji DALAM konteks kalimat, jadi baca kalimat lengkapnya sebelum memilih. Untuk jenjang kecil ada pengantar Bahasa Inggris sederhana (cat = kucing, sun = matahari) dan teka-teki huruf pertama.",
+    example: "Urut abjad 'buku, apel, ceri': lihat huruf awalnya saja — a (apel) < b (buku) < c (ceri). Bila huruf pertama sama, misalnya 'buku' dan 'bola', bandingkan huruf kedua: o < u, jadi bola dulu baru buku.",
+    summary: "Abjad: bandingkan huruf demi huruf. Suku kata: tepuk tiap bunyi. Rumpang: baca utuh, pilih yang paling logis.",
+  },
+];
+
 export const LIBRARY_MODULES: LibraryModule[] = [
   ...SAINS_MODULES, ...BIO_MODULES, ...FIS_MODULES, ...KIM_MODULES,
   ...MATH_MODULES, ...ARAB_MODULES, ...ISLAM_MODULES, ...KRISTEN_MODULES,
-  ...LANG_MODULES, ...SOSIAL_MODULES, ...SEJARAH_MODULES,
+  ...LANG_MODULES, ...SOSIAL_MODULES, ...SEJARAH_MODULES, ...KOMPETISI_MODULES,
 ];
 
 const SUBJECT_ALIAS: Record<string, string> = {
