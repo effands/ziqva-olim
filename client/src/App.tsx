@@ -52,8 +52,13 @@ function fmtDur(sec: number) {
    Semua suara hanya berbunyi dari ketukan user (user gesture) — tidak ada
    autoplay. Pengaturan ON/OFF tersimpan di perangkat dan mematikan SEMUA
    suara (TTS + efek klik). */
-const SOUND_KEY = "ziqva-sound";
+const SOUND_KEY = "ziqva-sound-v2";
+const SOUND_KEY_LAMA = "ziqva-sound";
 function loadSoundOn(): boolean {
+  // Kunci penyimpanan BARU (v2): status OFF yang mungkin tersimpan tanpa
+  // disadari dari versi lama TIDAK terbawa — semua perangkat mulai dari ON
+  // pada versi ini. Setelah itu, pilihan user di kunci v2 yang berlaku, dan
+  // chip "Suara: ON/OFF" selalu menampilkan keadaan yang sesungguhnya.
   try { return localStorage.getItem(SOUND_KEY) !== "off"; } catch { return true; }
 }
 
@@ -88,14 +93,76 @@ if (typeof window !== "undefined" && "speechSynthesis" in window) {
 export interface SpeakOpts {
   setSpeaking: (b: boolean) => void;
   onStatus?: (msg: string) => void;
+  onStart?: () => void;
+}
+
+/* ---------- Pemilihan voice PALING NATURAL + parameter ramah anak ----------
+   Voice bawaan sebagian HP terdengar kaku seperti robot (monoton, nada
+   rendah) — tidak ramah untuk anak. Karena itu voice dipilih memakai skor:
+   voice Google (mis. "Google Bahasa Indonesia", "Google US English") dan
+   voice bertanda natural/neural/enhanced diprioritaskan; voice robotik
+   (eSpeak & suara novelty) dihindari selama ada alternatif yang lebih
+   natural. Pitch dibuat sedikit lebih tinggi & hangat (1,1 — tidak pernah
+   di bawah 1,0), rate sedikit lebih lambat (0,92–0,95) agar jelas dan mudah
+   diikuti anak. Teks panjang dipecah per kalimat dan diucapkan berurutan
+   supaya intonasinya hidup, bukan satu napas monoton. */
+function voiceScore(v: SpeechSynthesisVoice): number {
+  const n = v.name.toLowerCase();
+  let s = 0;
+  if (n.includes("google")) s += 100;
+  if (/natural|neural|enhanced|premium/.test(n)) s += 60;
+  if (/espeak|fred|albert|bad news|bubbles|cellos|deranged|hysterical|trinoids|whisper|zarvox|grandpa|grandma/.test(n)) s -= 120;
+  if (v.default) s += 5;
+  return s;
+}
+interface PickedVoice { voice?: SpeechSynthesisVoice; matched: boolean; natural: boolean }
+function pickVoice(lang: string): PickedVoice {
+  const voices = voiceCache;
+  if (!voices.length) return { matched: false, natural: false };
+  const norm = (s: string) => s.toLowerCase().replace("_", "-");
+  const target = norm(lang);
+  const prefix = target.split("-")[0] ?? target;
+  const exact = voices.filter((v) => norm(v.lang) === target);
+  const byPrefix = voices.filter((v) => norm(v.lang).startsWith(prefix));
+  const pool = exact.length ? exact : byPrefix;
+  if (!pool.length) {
+    const fb = voices.find((v) => v.default) ?? [...voices].sort((a, b) => voiceScore(b) - voiceScore(a))[0];
+    return { voice: fb, matched: false, natural: fb ? voiceScore(fb) >= 60 : false };
+  }
+  const best = [...pool].sort((a, b) => voiceScore(b) - voiceScore(a))[0];
+  return { voice: best, matched: true, natural: best ? voiceScore(best) >= 60 : false };
+}
+function rateForLang(lang: string): number {
+  const p = lang.toLowerCase().split("-")[0] ?? "";
+  return p === "ar" || p === "ko" || p === "ja" || p === "zh" || p === "jv" ? 0.92 : 0.95;
+}
+/** Pecah teks menjadi kalimat-kalimat pendek (maks ±160 karakter) agar
+    intonasi bacaan hidup — bukan satu napas monoton seperti robot. */
+function splitSentences(text: string): string[] {
+  const raw = text.match(/[^.!?…]+[.!?…]*\s*/g) ?? [text];
+  const chunks: string[] = [];
+  for (const piece of raw) {
+    let p = piece.trim();
+    if (!p) continue;
+    while (p.length > 160) {
+      const cut = p.lastIndexOf(" ", 160);
+      const idx = cut > 60 ? cut : 160;
+      chunks.push(p.slice(0, idx).trim());
+      p = p.slice(idx).trim();
+    }
+    if (p) chunks.push(p);
+  }
+  return chunks.length ? chunks : [text];
 }
 
 /**
- * Ucapkan teks dengan pola paling andal di HP:
- * - utterance dibuat & speak() dipanggil sinkron dari klik (tanpa await);
- * - voice dipilih eksplisit dari getVoices(): utamakan yang cocok bahasanya;
+ * Ucapkan teks dengan pola paling andal & paling ramah anak di HP:
+ * - utterance pertama dibuat & speak() dipanggil sinkron dari klik;
+ * - voice dipilih dengan pickVoice() (paling natural untuk bahasanya);
  *   bila voice bahasa tujuan TIDAK ada, pakai voice default perangkat dan
  *   JANGAN paksa u.lang ke bahasa itu (penyebab umum TTS bisu di Android);
+ * - teks dipecah per kalimat (splitSentences) dan diucapkan berurutan;
+ * - pitch 1,1 & rate 0,92–0,95 (rateForLang) agar hangat dan jelas;
  * - resume() dipanggil sebelum speak; cancel() hanya bila sedang berbicara,
  *   dan speak berikutnya diberi jeda kecil agar antrean tidak macet;
  * - bila TTS error, bunyi nada WebAudio singkat berbunyi sebagai indikator
@@ -109,50 +176,56 @@ function speakText(text: string, lang: string, opts: SpeakOpts): boolean {
     return false;
   }
   const synth = window.speechSynthesis;
+  // Bangunkan jalur WebAudio dalam gestur klik yang sama — di banyak HP,
+  // jalur audio yang belum pernah dibangunkan membuat SEMUA bunyi bisu.
+  ensureAudioCtx();
   const clean = text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, "").replace(/\s+/g, " ").trim();
   if (!clean) { setSpeaking(false); return true; }
   refreshVoices();
-  const voices = voiceCache;
-  const target = lang.toLowerCase().replace("_", "-");
-  const prefix = target.split("-")[0] ?? target;
-  let voice = voices.find((v) => v.lang.toLowerCase().replace("_", "-") === target)
-    ?? voices.find((v) => v.lang.toLowerCase().replace("_", "-").startsWith(prefix));
-  const matched = !!voice;
-  if (!voice) voice = voices.find((v) => v.default) ?? voices[0];
-  const u = new SpeechSynthesisUtterance(clean);
-  if (voice) {
-    u.voice = voice;
-    u.lang = voice.lang; // pakai bahasa voice yang benar-benar ada di perangkat
-  }
-  u.rate = 0.95;
-  u.pitch = 1;
+  const picked = pickVoice(lang);
+  const voice = picked.voice;
+  const chunks = splitSentences(clean);
   let started = false;
-  u.onstart = () => { started = true; setSpeaking(true); };
-  u.onend = () => setSpeaking(false);
-  u.onerror = (e) => {
-    setSpeaking(false);
-    if (e.error !== "canceled" && e.error !== "interrupted") {
-      sfxSelect(); // indikator bunyi: tombol bekerja walau TTS gagal
-      onStatus?.(`Suara bacaan gagal diputar di perangkat ini (${e.error}). Tombolnya bekerja — periksa volume media & mode senyap HP, lalu ketuk lagi.`);
+  let stopped = false;
+  let ci = 0;
+  const speakChunk = () => {
+    if (stopped) return;
+    if (ci >= chunks.length) { setSpeaking(false); return; }
+    const u = new SpeechSynthesisUtterance(chunks[ci]);
+    if (voice) {
+      u.voice = voice;
+      u.lang = voice.lang; // pakai bahasa voice yang benar-benar ada di perangkat
     }
-  };
-  const doSpeak = () => {
+    u.rate = rateForLang(lang);
+    u.pitch = 1.1; // sedikit lebih tinggi & hangat — ramah anak, tidak kaku
+    u.onstart = () => { if (ci === 0) { started = true; opts.onStart?.(); } setSpeaking(true); };
+    u.onend = () => { ci += 1; speakChunk(); };
+    u.onerror = (e) => {
+      if (e.error === "canceled" || e.error === "interrupted") { stopped = true; setSpeaking(false); return; }
+      stopped = true;
+      setSpeaking(false);
+      sfxSelect(); // indikator bunyi: tombol bekerja walau TTS gagal
+      onStatus?.(`Suara bacaan gagal diputar di perangkat ini (${e.error}). Ketuk tombol 🔊 Tes Suara untuk melihat diagnosa lengkapnya.`);
+    };
     try { synth.resume(); } catch { /* abaikan */ }
     try {
       synth.speak(u);
     } catch {
+      stopped = true;
       setSpeaking(false);
       sfxSelect();
-      onStatus?.("Suara bacaan gagal dimulai. Periksa volume media HP, lalu coba ketuk lagi.");
-      return;
+      onStatus?.("Suara bacaan gagal dimulai. Ketuk tombol 🔊 Tes Suara untuk melihat diagnosa lengkapnya.");
     }
-    setSpeaking(true);
-    window.setTimeout(() => {
-      if (!started) onStatus?.("Bacaan belum terdengar? Cek: volume media HP naik, mode senyap mati, dan suara Google TTS terpasang (Pengaturan › Aksesibilitas / Bahasa). Lalu ketuk Dengarkan Soal sekali lagi.");
-    }, 2600);
-    window.setTimeout(() => setSpeaking(false), Math.min(45000, 5000 + clean.length * 95));
   };
-  if (!matched && voices.length > 0 && prefix !== "id") {
+  const doSpeak = () => {
+    setSpeaking(true);
+    speakChunk();
+    window.setTimeout(() => {
+      if (!started && !stopped) onStatus?.("Bacaan belum juga mulai — mesin suara (TTS) di browser ini tampaknya tidak aktif. Ketuk tombol 🔊 Tes Suara untuk diagnosa lengkap, atau buka ZIQVA OLIM dengan Chrome dan pastikan Speech Services by Google aktif.");
+    }, 2800);
+    window.setTimeout(() => setSpeaking(false), Math.min(60000, 6000 + clean.length * 110));
+  };
+  if (!picked.matched && voiceCache.length > 0) {
     onStatus?.("Suara untuk bahasa soal ini belum terpasang di HP — memakai suara bawaan perangkat, jadi pelafalannya mungkin berbeda.");
   }
   if (synth.speaking || synth.pending) {
@@ -175,10 +248,17 @@ function ensureAudioCtx(): AudioContext | null {
       if (!AC) return null;
       audioCtx = new AC();
     }
-    if (audioCtx.state === "suspended") void audioCtx.resume();
+    // resume() dipanggil SINKRON di dalam handler klik yang sedang berjalan
+    // (bukan ditunda), setiap kali statusnya belum "running" — termasuk
+    // status "interrupted" di iOS. Context yang tidak pernah ter-resume di
+    // dalam gestur user adalah penyebab klasik SEMUA bunyi bisu total.
+    if (audioCtx.state !== "running") void audioCtx.resume();
     return audioCtx;
   } catch { return null; }
 }
+/** Bangunkan jalur audio di dalam klik ini juga: dipanggil di awal setiap
+    handler tombol suara/jawaban, bukan hanya pada ketukan pertama. */
+function unlockAudio() { ensureAudioCtx(); }
 function tone(freq: number, startIn: number, dur: number, peak = 0.12, type: OscillatorType = "sine") {
   const ctx = ensureAudioCtx();
   if (!ctx) return;
@@ -194,14 +274,77 @@ function tone(freq: number, startIn: number, dur: number, peak = 0.12, type: Osc
   osc.start(t0);
   osc.stop(t0 + dur + 0.05);
 }
-/** Bunyi pilih jawaban: pendek, ceria, aman untuk telinga anak. */
-function sfxSelect() { tone(740, 0, 0.09, 0.1, "triangle"); tone(988, 0.05, 0.1, 0.08, "triangle"); }
+/** Bunyi pilih jawaban: pendek, ceria, jelas terdengar, aman untuk anak. */
+function sfxSelect() { tone(740, 0, 0.09, 0.22, "triangle"); tone(988, 0.05, 0.1, 0.18, "triangle"); }
 /** Bunyi jawaban benar (Mode Latihan): nada naik ceria. */
-function sfxCorrect() { tone(523, 0, 0.11, 0.11); tone(659, 0.09, 0.11, 0.11); tone(784, 0.18, 0.16, 0.12); }
+function sfxCorrect() { tone(523, 0, 0.11, 0.2); tone(659, 0.09, 0.11, 0.2); tone(784, 0.18, 0.16, 0.22); }
 /** Bunyi jawaban salah (Mode Latihan): nada turun lembut, tidak menusuk. */
-function sfxWrong() { tone(330, 0, 0.16, 0.07); tone(262, 0.13, 0.22, 0.06); }
+function sfxWrong() { tone(330, 0, 0.16, 0.12); tone(262, 0.13, 0.22, 0.1); }
 /** Bunyi perayaan kecil (dapat lencana / naik level). */
-function sfxCelebrate() { tone(523, 0, 0.12, 0.1); tone(659, 0.1, 0.12, 0.1); tone(784, 0.2, 0.12, 0.1); tone(1047, 0.3, 0.22, 0.11); }
+function sfxCelebrate() { tone(523, 0, 0.12, 0.18); tone(659, 0.1, 0.12, 0.18); tone(784, 0.2, 0.12, 0.18); tone(1047, 0.3, 0.22, 0.2); }
+/** Nada tes: tiga nada naik dengan gain BESAR (0,4) — harus terdengar jelas
+    bila jalur bunyi perangkat terbuka. Sengaja tidak pelan. */
+function sfxTest() {
+  tone(659, 0, 0.22, 0.4, "triangle");
+  tone(880, 0.24, 0.22, 0.4, "triangle");
+  tone(1175, 0.48, 0.36, 0.42, "triangle");
+}
+
+/**
+ * Tes Suara menyeluruh — dipanggil SINKRON dari klik tombol "🔊 Tes Suara":
+ * 1) buat + resume AudioContext saat itu juga, lalu putar nada tes yang
+ *    jelas & cukup keras lewat WebAudio;
+ * 2) laporkan status AudioContext (running/suspended/…), jumlah voice TTS
+ *    di perangkat beserta daftar bahasanya, dan voice yang akan dipakai;
+ * 3) bacakan kalimat tes pendek lewat jalur TTS yang sama dengan
+ *    Dengarkan Soal, dan laporkan hasil persisnya (mulai / error apa).
+ * Semua hasil ditulis ke layar lewat onLines supaya user bisa membacanya
+ * dan melaporkannya — tidak ada lagi kegagalan yang diam-diam.
+ */
+function runSoundTest(opts: { onLines: (lines: string[]) => void; setSpeaking?: (b: boolean) => void }) {
+  const lines: string[] = [];
+  const push = (s: string) => { lines.push(s); opts.onLines([...lines]); };
+  push("🔍 Memeriksa jalur suara perangkat ini…");
+  const ctx = ensureAudioCtx();
+  if (!ctx) {
+    push("❌ Browser ini tidak mendukung WebAudio (AudioContext) — efek bunyi tidak bisa diputar di browser ini.");
+  } else {
+    push(`🎛️ AudioContext: status "${ctx.state}", sample rate ${ctx.sampleRate} Hz.`);
+    sfxTest();
+    window.setTimeout(() => {
+      push(ctx.state === "running"
+        ? "🎵 Nada tes diputar dengan AudioContext RUNNING — jalur bunyi perangkat terbuka, tiga nada naik tadi harusnya terdengar jelas."
+        : `⚠️ AudioContext masih "${ctx.state}" setelah nada tes — browser menahan jalur bunyi. Ketuk layar sekali, lalu ketuk Tes Suara lagi.`);
+    }, 650);
+  }
+  if (!("speechSynthesis" in window)) {
+    push("❌ Browser ini tidak mendukung suara bacaan (TTS). Coba buka ZIQVA OLIM dengan Chrome di Android atau Safari di iPhone, ya.");
+    return;
+  }
+  refreshVoices();
+  const vs = voiceCache;
+  const langs = [...new Set(vs.map((v) => v.lang))];
+  push(`🗣️ Suara bacaan (TTS) terpasang di perangkat: ${vs.length} suara. Bahasa yang tersedia: ${langs.length ? langs.join(", ") : "— (daftar masih kosong)"}.`);
+  if (vs.length === 0) {
+    push("⚠️ Daftar suara TTS kosong — mesin suara perangkat belum aktif. Di Android, pasang/aktifkan \"Speech Services by Google\" dari Play Store, lalu buka lagi halaman ini dan ketuk Tes Suara.");
+  }
+  const picked = pickVoice("id-ID");
+  if (picked.voice) {
+    push(`🎙️ Voice untuk Bahasa Indonesia: "${picked.voice.name}" (${picked.voice.lang})${picked.natural ? " — voice natural, bagus!" : ""}`);
+  }
+  if (vs.length > 0 && !vs.some((v) => voiceScore(v) >= 60)) {
+    push("💡 Perangkat ini hanya memiliki voice bawaan yang memang terdengar kaku seperti robot — itu sifat voice-nya, bukan kesalahan kamu. Agar suara jauh lebih natural dan ramah anak, pasang \"Speech Services by Google\" dari Play Store, lalu pilih suara \"Google Bahasa Indonesia\" di Pengaturan › Bahasa & masukan › Text-to-speech. Setelah itu buka lagi ZIQVA OLIM dan ketuk Tes Suara.");
+  }
+  let ttsStarted = false;
+  speakText("Halo! Ini tes suara ZIQVA OLIM. Satu, dua, tiga — suara berbunyi dengan jelas dan ramah!", "id-ID", {
+    setSpeaking: opts.setSpeaking ?? (() => { /* tanpa indikator visual */ }),
+    onStart: () => { ttsStarted = true; push("✅ Kalimat tes MULAI dibacakan — mesin TTS bekerja. Kalau kalimat tadi terdengar, tombol Dengarkan Soal juga akan berbunyi."); },
+    onStatus: (m) => push(`ℹ️ ${m}`),
+  });
+  window.setTimeout(() => {
+    if (!ttsStarted) push("⚠️ Kalimat tes belum mulai dibacakan setelah 3 detik — TTS tidak merespons di browser ini. Coba buka ZIQVA OLIM dengan Chrome (Android) / Safari (iPhone), dan pastikan Speech Services by Google aktif.");
+  }, 3000);
+}
 
 /* ---------------- REWARDS & LEVEL (tersimpan di perangkat) ---------------- */
 const REWARD_KEY = "ziqva-rewards-v1";
@@ -298,6 +441,7 @@ function QuizView(props: {
 
   const handleListen = () => {
     if (!current) return;
+    unlockAudio(); // bangunkan jalur audio sinkron di dalam klik ini
     if (!props.soundOn) {
       setTtsMsg("Suara sedang OFF. Ketuk tombol “Suara: OFF” di samping tombol Dengarkan Soal untuk menyalakannya.");
       return;
@@ -308,6 +452,16 @@ function QuizView(props: {
     }
     setTtsMsg("");
     speakText(`${current.q}. Pilihan: ${current.options.join(". ")}`, langForSubject(props.subjectId), { setSpeaking, onStatus: setTtsMsg });
+  };
+
+  const [testLines, setTestLines] = useState<string[]>([]);
+  const handleTestSound = () => {
+    // Tes suara sekaligus memastikan pengaturan suara aplikasi ON — bila
+    // masih OFF, nyalakan dulu dari klik ini supaya tesnya benar-benar bunyi.
+    if (!props.soundOn) props.onToggleSound();
+    unlockAudio();
+    setTestLines(["🔍 Memeriksa jalur suara perangkat ini…"]);
+    runSoundTest({ onLines: setTestLines, setSpeaking });
   };
 
   if (!current) return null;
@@ -368,9 +522,22 @@ function QuizView(props: {
             style={{ background: props.soundOn ? "#E2F4E9" : "#FAE7E9", color: props.soundOn ? "#1E7A46" : "#B02A37", border: `2px solid ${props.soundOn ? "#1E7A46" : "#B02A37"}` }}>
             {props.soundOn ? "🔊 Suara: ON" : "🔇 Suara: OFF"}
           </button>
+          <button type="button" onClick={handleTestSound} aria-label="Tes suara: putar nada tes dan kalimat percobaan, lalu tampilkan diagnosa suara"
+            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-bold"
+            style={{ background: "var(--surface2)", color: "var(--accent)", border: "2px solid var(--accent)" }}>
+            🔊 Tes Suara
+          </button>
         </div>
         {!props.soundOn && <p className="mt-2 text-xs font-bold" style={{ color: "#B02A37" }}>Suara sedang OFF — ketuk tombol “Suara: OFF” di atas untuk menyalakan, lalu Dengarkan Soal akan berbunyi.</p>}
         {ttsMsg && <p className="mt-2 rounded-xl px-3 py-2 text-xs font-bold" style={{ background: "#FBF0DA", color: "#92600A" }} role="status">{ttsMsg}</p>}
+        {testLines.length > 0 && (
+          <div className="mt-2 rounded-xl px-3 py-2 text-xs leading-relaxed font-semibold" style={{ background: "var(--surface2)", color: "var(--text)" }} role="status" aria-label="Hasil diagnosa suara">
+            <p className="font-display text-[13px] font-bold">🔍 Diagnosa Suara</p>
+            <ul className="mt-1 list-none space-y-0.5">
+              {testLines.map((l, i) => <li key={i}>{l}</li>)}
+            </ul>
+          </div>
+        )}
 
         <div className="mt-4 grid gap-2.5">
           {current.options.map((opt, oi) => {
@@ -950,6 +1117,20 @@ export function App() {
   const [sessionQ, setSessionQ] = useState<Question[]>([]);
   const [sessionLevel, setSessionLevel] = useState(1);
   const [soundOn, setSoundOn] = useState<boolean>(() => loadSoundOn());
+  const [testLines, setTestLines] = useState<string[]>([]);
+  const [showTestPanel, setShowTestPanel] = useState(false);
+  const handleTestSound = () => {
+    // Tes suara memastikan pengaturan suara aplikasi ON lebih dulu — bila
+    // masih OFF (mis. tersimpan dari sesi lama), nyalakan dari klik ini.
+    if (!soundOn) {
+      setSoundOn(true);
+      try { localStorage.setItem(SOUND_KEY, "on"); } catch { /* abaikan */ }
+    }
+    unlockAudio();
+    setShowTestPanel(true);
+    setTestLines(["🔍 Memeriksa jalur suara perangkat ini…"]);
+    runSoundTest({ onLines: setTestLines });
+  };
   const [rewards, setRewards] = useState<Rewards>(() => loadRewards());
   const [levelStore, setLevelStore] = useState<LevelStore>(() => loadLevels());
   const [newBadges, setNewBadges] = useState<string[]>([]);
@@ -1018,6 +1199,7 @@ export function App() {
       localStorage.removeItem(LEVEL_KEY);
       localStorage.removeItem(SEEN_KEY);
       localStorage.removeItem(SOUND_KEY);
+      localStorage.removeItem(SOUND_KEY_LAMA);
       localStorage.removeItem(TOKEN_KEY);
     } catch { /* abaikan */ }
     // Putar ID perangkat baru supaya riwayat lama benar-benar tidak terbawa.
@@ -1098,12 +1280,14 @@ export function App() {
     return () => window.clearTimeout(t);
   }, [showWelcome]);
 
-  // Hangatkan mesin suara pada ketukan pertama di mana pun: daftar voice TTS
-  // dimuat lebih awal dan AudioContext dibangunkan, supaya tombol Dengarkan
-  // Soal & efek klik langsung berbunyi saat diketuk (kebijakan audio HP).
+  // Hangatkan mesin suara pada SETIAP ketukan di mana pun (bukan hanya
+  // ketukan pertama): daftar voice TTS dimuat lebih awal dan AudioContext
+  // di-resume di dalam gestur itu juga, supaya tombol Dengarkan Soal & efek
+  // klik langsung berbunyi saat diketuk (kebijakan audio HP). Listener ini
+  // murah: resume() hanya benar-benar bekerja bila status belum "running".
   useEffect(() => {
-    const warm = () => { refreshVoices(); ensureAudioCtx(); };
-    window.addEventListener("pointerdown", warm, { once: true });
+    const warm = () => { refreshVoices(); unlockAudio(); };
+    window.addEventListener("pointerdown", warm);
     return () => window.removeEventListener("pointerdown", warm);
   }, []);
 
@@ -1112,6 +1296,7 @@ export function App() {
       const next = !prev;
       try { localStorage.setItem(SOUND_KEY, next ? "on" : "off"); } catch { /* abaikan */ }
       if (!next) { try { window.speechSynthesis?.cancel(); } catch { /* abaikan */ } }
+      else unlockAudio(); // menyalakan suara = bangunkan jalur audio dalam klik ini
       return next;
     });
   };
@@ -1238,9 +1423,27 @@ export function App() {
             <button type="button" onClick={toggleSound} aria-label={soundOn ? "Matikan semua suara (bacaan soal dan efek klik)" : "Nyalakan suara"} aria-pressed={soundOn}
               className="min-h-[40px] rounded-full px-3 font-display text-sm font-bold"
               style={{ background: "rgba(255,255,255,.15)", color: "#fff" }}>{soundOn ? "🔊 Suara ON" : "🔇 Suara OFF"}</button>
+            <button type="button" onClick={handleTestSound} aria-label="Tes suara: putar nada tes dan kalimat percobaan, lalu tampilkan diagnosa suara"
+              className="min-h-[40px] rounded-full px-3 font-display text-sm font-bold"
+              style={{ background: "rgba(255,255,255,.15)", color: "#fff" }}>🔊 Tes Suara</button>
           </nav>
         </div>
       </header>
+
+      {showTestPanel && (
+        <div className="mx-auto w-full max-w-5xl px-4">
+          <section className="pop-in mt-3 rounded-3xl p-4 shadow-sm sm:p-5" style={{ background: "var(--surface)", border: "2px solid var(--accent)" }} role="status" aria-label="Hasil diagnosa suara">
+            <div className="flex items-start gap-2">
+              <h2 className="font-display flex-1 text-base font-bold">🔍 Diagnosa Suara</h2>
+              <button type="button" onClick={() => setShowTestPanel(false)} aria-label="Tutup diagnosa suara" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold" style={{ background: "var(--surface2)" }}>✕</button>
+            </div>
+            <ul className="mt-1 list-none space-y-1 text-[13px] leading-relaxed font-semibold">
+              {testLines.map((l, i) => <li key={i}>{l}</li>)}
+            </ul>
+            <p className="mt-2 text-xs" style={{ color: "var(--dim)" }}>Bila nada tes dan kalimat tes tetap tidak terdengar, salin teks diagnosa di atas dan kirimkan ke kami — dari situ penyebab pastinya terlihat.</p>
+          </section>
+        </div>
+      )}
 
       {view === "login" && <AuthView onSuccess={handleAuthSuccess} />}
 
