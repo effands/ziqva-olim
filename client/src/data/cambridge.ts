@@ -16,8 +16,8 @@
 
 import type { JenjangId, Question } from "./questions";
 import {
-  bandCoordFor, bandGate, band01Now, beginBand, classifyGenL, endBand, factGenL, genLevelForCoord, mkq, pairGenL, pick, ri, sample, shuffle,
-  type Fact, type LGen,
+bandCoordFor, bandGate, band01Now, beginBand, classifyGenL, endBand, factGenL, genLevelForCoord, mkq, pairGenL, pick, ri, sample, shuffle,
+type Fact, type LGen,
 } from "./generators";
 import type { LibraryModule } from "./library";
 import type { Material } from "./materials";
@@ -629,7 +629,7 @@ const sdMixedEn: LGen = (level) => {
   const a = ri(3, 9 + level * 2);
   const b = ri(3, 9);
   const c = ri(2, 40);
-  return mkNumEn(`What is ${a} × ${b} + ${c}?`, a * b + c, [a * (b + c), a * b - c, a * b + c + 10], `Do the multiplication first: ${a}×${b}=${a * b}, then + ${c} = ${a * b + c}.`);
+  return mkNumEn(`What is ${a} × ${b} + ${c}?`, a * b + c, [a * (b + c), a * b - c, a * b + c + 10], `Step 1: multiplication is done before addition: ${a} × ${b} = ${a * b}. Step 2: add ${c}: ${a * b} + ${c} = ${a * b + c}.`);
 };
 const sdFractionEn: LGen = (level) => {
   if (level < 3) return null;
@@ -640,7 +640,7 @@ const sdFractionEn: LGen = (level) => {
   const g = gcd(sum, den);
   const ans = `${sum / g}/${den / g}`;
   const wrong = [`${sum}/${den}`, `${a + b + 1}/${den}`, `${sum}/${den + 1}`].filter((w) => w !== ans);
-  return mkq(`What is ${a}/${den} + ${b}/${den}?`, ans, wrong, `Same denominator: (${a}+${b})/${den} = ${sum}/${den}${g > 1 ? `, simplified to ${ans}` : ""}.`);
+  return mkq(`What is ${a}/${den} + ${b}/${den}?`, ans, wrong, `Step 1: the denominators are the same (${den}), so just add the numerators: ${a} + ${b} = ${sum}, giving ${sum}/${den}. ${g > 1 ? `Step 2: simplify by dividing top and bottom by ${g}: ${sum}/${den} = ${ans}.` : "That fraction is already in its simplest form."}`);
 };
 const sdFpbKpkEn: LGen = (level) => {
   if (level < 4) return null;
@@ -648,12 +648,22 @@ const sdFpbKpkEn: LGen = (level) => {
   const p = pick(pairs);
   const a = p[0];
   const b = p[1];
+  const fac = (n: number): number[] => {
+    const f: number[] = [];
+    for (let i = 1; i <= n; i++) if (n % i === 0) f.push(i);
+    return f;
+  };
   if (Math.random() < 0.5) {
     const v = gcd(a, b);
-    return mkNumEn(`The HCF (highest common factor) of ${a} and ${b} is …`, v, [v + 2, v * 2, Math.max(2, v - 2)], `The greatest common factor of ${a} and ${b} is ${v}.`);
+    return mkNumEn(`The HCF (highest common factor) of ${a} and ${b} is …`, v, [v + 2, v * 2, Math.max(2, v - 2)], `Step 1: list the factors — factors of ${a}: ${fac(a).join(", ")}; factors of ${b}: ${fac(b).join(", ")}. Step 2: the biggest factor they share is ${v}, so the HCF is ${v}.`);
   }
   const v = lcm(a, b);
-  return mkNumEn(`The LCM (lowest common multiple) of ${a} and ${b} is …`, v, [v + a, v * 2, v - b], `The lowest common multiple of ${a} and ${b} is ${v}.`);
+  const mults = (n: number, upto: number): number[] => {
+    const m: number[] = [];
+    for (let x = n; x <= upto; x += n) m.push(x);
+    return m;
+  };
+  return mkNumEn(`The LCM (lowest common multiple) of ${a} and ${b} is …`, v, [v + a, v * 2, v - b], `Step 1: list the multiples — multiples of ${a}: ${mults(a, v).join(", ")}; multiples of ${b}: ${mults(b, v).join(", ")}. Step 2: the smallest multiple they share is ${v}, so the LCM is ${v}.`);
 };
 const sdGeometryEn: LGen = (level) => {
   const kind = ri(0, 2);
@@ -680,7 +690,7 @@ const sdAverageEn: LGen = (level) => {
   const vals = Array.from({ length: n }, () => ri(4, 10) * 10 + pick([0, 5]));
   const avg = vals.reduce((s, v) => s + v, 0) / n;
   if (!Number.isInteger(avg)) return sdAverageEn(level);
-  return mkNumEn(`The average of the scores ${vals.join(", ")} is …`, avg, [avg - 5, avg + 5, avg + 10], `Total = ${vals.reduce((s, v) => s + v, 0)}, divided by ${n} = ${avg}.`);
+  return mkNumEn(`The average of the scores ${vals.join(", ")} is …`, avg, [avg - 5, avg + 5, avg + 10], `Step 1: add up all the scores: ${vals.join(" + ")} = ${vals.reduce((s, v) => s + v, 0)}. Step 2: divide by the number of scores (${n}): ${vals.reduce((s, v) => s + v, 0)} ÷ ${n} = ${avg}.`);
 };
 const sdSequenceEn: LGen = (level) => {
   const start = ri(2, 20);
@@ -696,12 +706,12 @@ const sdWordProblemEn: LGen = (level) => {
   const qty = ri(2, 6 + level * 2);
   const price = pick([500, 1000, 1500, 2000, 2500, 3000, 5000]) * (level >= 4 ? ri(1, 4) : 1);
   if (Math.random() < 0.5) {
-    return mkNumEn(`${name} buys ${qty} ${item} at Rp${enFmt(price)} each. The total to pay is …`, qty * price, [qty * price - price, qty * price + price, (qty + 1) * price], `${qty} × Rp${enFmt(price)} = Rp${enFmt(qty * price)}.`);
+    return mkNumEn(`${name} buys ${qty} ${item} at Rp${enFmt(price)} each. The total to pay is …`, qty * price, [qty * price - price, qty * price + price, (qty + 1) * price], `Step 1: total cost = number of items × price of each. Step 2: ${qty} × Rp${enFmt(price)} = Rp${enFmt(qty * price)}.`);
   }
   const money = pick([20000, 50000, 100000]);
   const total = qty * price;
   if (total >= money) return sdWordProblemEn(level);
-  return mkNumEn(`${name} buys ${qty} ${item} at Rp${enFmt(price)} each and pays with Rp${enFmt(money)}. The change is …`, money - total, [money - total + price, money - total - 1000, total], `Total shopping ${qty}×${enFmt(price)} = Rp${enFmt(total)}. Change = ${enFmt(money)} − ${enFmt(total)} = Rp${enFmt(money - total)}.`);
+  return mkNumEn(`${name} buys ${qty} ${item} at Rp${enFmt(price)} each and pays with Rp${enFmt(money)}. The change is …`, money - total, [money - total + price, money - total - 1000, total], `Step 1: total cost = ${qty} × ${enFmt(price)} = Rp${enFmt(total)}. Step 2: change = money paid − total cost = ${enFmt(money)} − ${enFmt(total)} = Rp${enFmt(money - total)}.`);
 };
 const sdRoundEn: LGen = (level) => {
   if (level < 2) return null;
@@ -719,7 +729,7 @@ const sdPercentEn: LGen = (level) => {
   const pct = pick([10, 20, 25, 50, 75]);
   const base = pick([100, 200, 240, 300, 400, 500, 600, 800, 1000]) * (level >= 5 ? ri(1, 3) : 1);
   const v = (pct * base) / 100;
-  return mkNumEn(`What is ${pct}% of ${enFmt(base)}?`, v, [v + base / 10, Math.max(1, v - base / 20), v * 2], `${pct}% × ${enFmt(base)} = ${enFmt(v)}.`);
+  return mkNumEn(`What is ${pct}% of ${enFmt(base)}?`, v, [v + base / 10, Math.max(1, v - base / 20), v * 2], `Step 1: percent means per hundred, so ${pct}% = ${pct}/100. Step 2: ${pct}/100 × ${enFmt(base)} = ${enFmt(v)}.`);
 };
 const sdClockEn: LGen = (level) => {
   if (level < 2) return null;
@@ -737,7 +747,7 @@ const sdClockEn: LGen = (level) => {
     `${String((eh + 1) % 24).padStart(2, "0")}.${String(em).padStart(2, "0")}`,
     `${String(eh).padStart(2, "0")}.${String((em + 15) % 60).padStart(2, "0")}`,
   ].filter((w) => w !== ans);
-  return mkq(`An activity starts at ${String(h).padStart(2, "0")}.${String(m).padStart(2, "0")} and lasts ${durH} hour(s)${durM ? ` ${durM} minutes` : ""}. The activity finishes at …`, ans, wrong, `${String(h).padStart(2, "0")}.${String(m).padStart(2, "0")} + ${durH} hour(s)${durM ? ` ${durM} minutes` : ""} = ${ans}.`);
+  return mkq(`An activity starts at ${String(h).padStart(2, "0")}.${String(m).padStart(2, "0")} and lasts ${durH} hour(s)${durM ? ` ${durM} minutes` : ""}. The activity finishes at …`, ans, wrong, `Step 1: add the hours first: ${String(h).padStart(2, "0")}.${String(m).padStart(2, "0")} + ${durH} hour(s). Step 2: ${durM ? `add the ${durM} minutes, giving ` : "the finish time is "}${ans}.`);
 };
 const sdUnitEn: LGen = (level) => {
   if (level < 2) return null;
@@ -791,7 +801,7 @@ const smpEquationEn: LGen = (level) => {
   const x = ri(2, 12);
   const b = ri(1, 15);
   const c = a * x + b;
-  return mkNumEn(`If ${a}x + ${b} = ${c}, then the value of x is …`, x, [x - 1, x + 1, x + 2], `${a}x = ${c} − ${b} = ${c - b}, so x = ${c - b} ÷ ${a} = ${x}.`);
+  return mkNumEn(`If ${a}x + ${b} = ${c}, then the value of x is …`, x, [x - 1, x + 1, x + 2], `Step 1: move +${b} to the right side as a subtraction: ${a}x = ${c} − ${b} = ${c - b}. Step 2: divide both sides by ${a}: x = ${c - b} ÷ ${a} = ${x}.`);
 };
 const smpNegOpsEn: LGen = (level) => {
   const a = ri(2, 6 + level * 2);
@@ -806,7 +816,7 @@ const smpSequenceEn: LGen = (level) => {
   const d = ri(2, 4 + level);
   const n = ri(6, 12);
   const un = a + (n - 1) * d;
-  return mkNumEn(`The ${n}th term of the arithmetic sequence ${a}, ${a + d}, ${a + 2 * d}, … is …`, un, [un - d, un + d, a + n * d], `Un = a + (n−1)d = ${a} + ${n - 1}×${d} = ${un}.`);
+  return mkNumEn(`The ${n}th term of the arithmetic sequence ${a}, ${a + d}, ${a + 2 * d}, … is …`, un, [un - d, un + d, a + n * d], `Step 1: the first term a = ${a} and the difference d = ${d}. Step 2: use Un = a + (n − 1)d: U${n} = ${a} + ${n - 1}×${d} = ${un}.`);
 };
 const smpGradientEn: LGen = (level) => {
   if (level < 3) return null;
@@ -816,7 +826,7 @@ const smpGradientEn: LGen = (level) => {
   const dx = ri(2, 5);
   const x2 = x1 + dx;
   const y2 = y1 + m * dx;
-  return mkNumEn(`The gradient of the line through the points (${x1}, ${y1}) and (${x2}, ${y2}) is …`, m, [m + 1, m === 1 ? m + 3 : m - 1, m + 2], `m = (y₂−y₁)/(x₂−x₁) = (${y2}−${y1})/(${x2}−${x1}) = ${m * dx}/${dx} = ${m}.`);
+  return mkNumEn(`The gradient of the line through the points (${x1}, ${y1}) and (${x2}, ${y2}) is …`, m, [m + 1, m === 1 ? m + 3 : m - 1, m + 2], `Step 1: gradient = change in y ÷ change in x: m = (y₂ − y₁) ÷ (x₂ − x₁). Step 2: m = (${y2} − ${y1}) ÷ (${x2} − ${x1}) = ${m * dx} ÷ ${dx} = ${m}.`);
 };
 const smpProbabilityEn: LGen = (level) => {
   if (level < 2) return null;
@@ -849,27 +859,27 @@ const smpScaleEn: LGen = (level) => {
   const scale = pick([100000, 200000, 250000, 500000, 1000000]);
   const cm = ri(2, 9);
   const km = (cm * scale) / 100000;
-  return mkNumEn(`A map has a scale of 1 : ${enFmt(scale)}. The distance between two places on the map is ${cm} cm. The real distance is … km`, km, [km / 2, km * 2, km + 5], `${cm} × ${enFmt(scale)} cm = ${enFmt(cm * scale)} cm = ${km} km.`);
+  return mkNumEn(`A map has a scale of 1 : ${enFmt(scale)}. The distance between two places on the map is ${cm} cm. The real distance is … km`, km, [km / 2, km * 2, km + 5], `Step 1: real distance = map distance × scale number = ${cm} × ${enFmt(scale)} cm = ${enFmt(cm * scale)} cm. Step 2: convert cm to km by dividing by 100,000: ${enFmt(cm * scale)} ÷ 100,000 = ${km} km.`);
 };
 const smpPhysicsEn: LGen = (level) => {
   const kind = ri(0, 2);
   if (kind === 0) {
     const m = ri(2, 4 + level * 2);
     const a = ri(2, 9);
-    return mkNumEn(`An object of mass ${m} kg is accelerated at ${a} m/s². The force acting on it is … N`, m * a, [m + a, m * a + m, m * a - a], `Newton's Second Law: F = m × a = ${m} × ${a} = ${m * a} N.`);
+    return mkNumEn(`An object of mass ${m} kg is accelerated at ${a} m/s². The force acting on it is … N`, m * a, [m + a, m * a + m, m * a - a], `Step 1: use Newton's Second Law: F = m × a (mass × acceleration). Step 2: F = ${m} × ${a} = ${m * a} N.`);
   }
   if (kind === 1) {
     const s = pick([60, 80, 100, 120, 150, 200, 240, 300]);
     const t = pick([2, 3, 4, 5, 6, 10]);
     const v = s / t;
     if (!Number.isInteger(v)) return smpPhysicsEn(level);
-    return mkNumEn(`A car travels ${s} m in ${t} seconds. Its average speed is … m/s`, v, [v + 2, v - 2, v * 2], `v = s ÷ t = ${s} ÷ ${t} = ${v} m/s.`);
+    return mkNumEn(`A car travels ${s} m in ${t} seconds. Its average speed is … m/s`, v, [v + 2, v - 2, v * 2], `Step 1: average speed v = distance ÷ time. Step 2: v = ${s} ÷ ${t} = ${v} m/s.`);
   }
   const m = ri(2, 20 + level * 10);
   const vol = pick([2, 4, 5, 10]);
   const rho = m / vol;
   if (!Number.isInteger(rho)) return smpPhysicsEn(level);
-  return mkNumEn(`An object has a mass of ${m} kg and a volume of ${vol} m³. Its density is … kg/m³`, rho, [rho + 1, rho * 2, Math.max(1, rho - 1)], `ρ = m ÷ V = ${m} ÷ ${vol} = ${rho} kg/m³.`);
+  return mkNumEn(`An object has a mass of ${m} kg and a volume of ${vol} m³. Its density is … kg/m³`, rho, [rho + 1, rho * 2, Math.max(1, rho - 1)], `Step 1: density ρ = mass ÷ volume. Step 2: ρ = ${m} ÷ ${vol} = ${rho} kg/m³.`);
 };
 const phGenEn: LGen = (level) => {
   if (level < 3) return null;
@@ -889,7 +899,7 @@ const smpDiscountEn: LGen = (level) => {
   const price = pick([50000, 80000, 100000, 120000, 150000, 200000, 250000, 400000]);
   const disc = pick([10, 20, 25, 30, 40, 50]);
   const pay = price - (price * disc) / 100;
-  return mkNumEn(`A bag costs Rp${enFmt(price)} and gets a ${disc}% discount. The price to pay is …`, pay, [price - disc * 1000, pay + price / 10, price], `Discount = ${disc}% × ${enFmt(price)} = Rp${enFmt((price * disc) / 100)}. Pay = ${enFmt(price)} − ${enFmt((price * disc) / 100)} = Rp${enFmt(pay)}.`);
+  return mkNumEn(`A bag costs Rp${enFmt(price)} and gets a ${disc}% discount. The price to pay is …`, pay, [price - disc * 1000, pay + price / 10, price], `Step 1: the discount amount = ${disc}% × ${enFmt(price)} = Rp${enFmt((price * disc) / 100)}. Step 2: price to pay = original price − discount = ${enFmt(price)} − ${enFmt((price * disc) / 100)} = Rp${enFmt(pay)}.`);
 };
 const smpProfitEn: LGen = (level) => {
   if (level < 3) return null;
@@ -897,7 +907,7 @@ const smpProfitEn: LGen = (level) => {
   const pct = pick([5, 10, 20, 25, 40, 50]);
   const profit = Math.random() < 0.6;
   const sell = profit ? buy + (buy * pct) / 100 : buy - (buy * pct) / 100;
-  return mkq(`A trader buys an item for Rp${enFmt(buy)} and sells it for Rp${enFmt(sell)}. The percentage of ${profit ? "profit" : "loss"} is …`, `${pct}%`, [`${pct - 5}%`, `${pct + 5}%`, `${pct * 2}%`].filter((w) => !w.startsWith("-") && w !== `${pct}%`), `${profit ? "Profit" : "Loss"} = Rp${enFmt(Math.abs(sell - buy))}; ${enFmt(Math.abs(sell - buy))} ÷ ${enFmt(buy)} × 100% = ${pct}%.`);
+  return mkq(`A trader buys an item for Rp${enFmt(buy)} and sells it for Rp${enFmt(sell)}. The percentage of ${profit ? "profit" : "loss"} is …`, `${pct}%`, [`${pct - 5}%`, `${pct + 5}%`, `${pct * 2}%`].filter((w) => !w.startsWith("-") && w !== `${pct}%`), `Step 1: the ${profit ? "profit" : "loss"} is the difference between selling and buying price = Rp${enFmt(Math.abs(sell - buy))}. Step 2: percentages are always compared to the BUYING price: ${enFmt(Math.abs(sell - buy))} ÷ ${enFmt(buy)} × 100% = ${pct}%.`);
 };
 const smpPythagEn: LGen = (level) => {
   if (level < 3) return null;
@@ -905,30 +915,30 @@ const smpPythagEn: LGen = (level) => {
   const t = pick(triples);
   const a = t[0]; const b = t[1]; const c = t[2];
   if (Math.random() < 0.5) {
-    return mkNumEn(`A right-angled triangle has perpendicular sides of ${a} cm and ${b} cm. The length of the hypotenuse is … cm`, c, [c - 1, c + 2, a + b], `c = √(${a}² + ${b}²) = √${a * a + b * b} = ${c} cm.`);
+    return mkNumEn(`A right-angled triangle has perpendicular sides of ${a} cm and ${b} cm. The length of the hypotenuse is … cm`, c, [c - 1, c + 2, a + b], `Step 1: use Pythagoras' theorem c² = a² + b² for the hypotenuse. Step 2: c = √(${a}² + ${b}²) = √${a * a + b * b} = ${c} cm.`);
   }
-  return mkNumEn(`A right-angled triangle has a hypotenuse of ${c} cm and one perpendicular side of ${a} cm. The other perpendicular side is … cm`, b, [b - 2, b + 1, c - a], `b = √(${c}² − ${a}²) = √${c * c - a * a} = ${b} cm.`);
+  return mkNumEn(`A right-angled triangle has a hypotenuse of ${c} cm and one perpendicular side of ${a} cm. The other perpendicular side is … cm`, b, [b - 2, b + 1, c - a], `Step 1: from Pythagoras, the other side satisfies b² = c² − a² (hypotenuse squared minus the known side squared). Step 2: b = √(${c}² − ${a}²) = √${c * c - a * a} = ${b} cm.`);
 };
 const smpCircleEn: LGen = (level) => {
   if (level < 2) return null;
   const r = pick([7, 14, 21, 28, 35]);
   if (Math.random() < 0.5) {
     const k = 2 * (22 / 7) * r;
-    return mkNumEn(`The circumference of a circle with radius ${r} cm (π = 22/7) is … cm`, k, [k - 14, k + 22, (22 / 7) * r], `C = 2πr = 2 × 22/7 × ${r} = ${k} cm.`);
+    return mkNumEn(`The circumference of a circle with radius ${r} cm (π = 22/7) is … cm`, k, [k - 14, k + 22, (22 / 7) * r], `Step 1: circumference C = 2πr. Step 2: C = 2 × 22/7 × ${r} = ${k} cm.`);
   }
   const area = (22 / 7) * r * r;
-  return mkNumEn(`The area of a circle with radius ${r} cm (π = 22/7) is … cm²`, area, [area - 154, 2 * (22 / 7) * r, area + 154], `A = πr² = 22/7 × ${r}² = ${enFmt(area)} cm².`);
+  return mkNumEn(`The area of a circle with radius ${r} cm (π = 22/7) is … cm²`, area, [area - 154, 2 * (22 / 7) * r, area + 154], `Step 1: area A = πr². Step 2: A = 22/7 × ${r}² = ${enFmt(area)} cm². (The value ${enFmt(2 * (22 / 7) * r)} is its circumference, not its area.)`);
 };
 const smpVolumeEn: LGen = (level) => {
   if (Math.random() < 0.5) {
     const s = ri(3, 8 + level * 2);
-    return mkNumEn(`The volume of a cube with edge ${s} cm is … cm³`, s * s * s, [s * s * 6, s * s, s * 12], `V = ${s}³ = ${enFmt(s * s * s)} cm³.`);
+    return mkNumEn(`The volume of a cube with edge ${s} cm is … cm³`, s * s * s, [s * s * 6, s * s, s * 12], `Step 1: volume of a cube V = edge × edge × edge. Step 2: V = ${s} × ${s} × ${s} = ${enFmt(s * s * s)} cm³. (The value 6 × ${s}² is its surface area, not its volume.)`);
   }
   const p = ri(4, 12 + level);
   const l = ri(3, 9);
   const t = ri(2, 8);
   const v = p * l * t;
-  return mkNumEn(`The volume of a cuboid measuring ${p} cm × ${l} cm × ${t} cm is … cm³`, v, [v + p * l, 2 * (p * l + p * t + l * t), v - t], `V = l×w×h = ${p}×${l}×${t} = ${enFmt(v)} cm³.`);
+  return mkNumEn(`The volume of a cuboid measuring ${p} cm × ${l} cm × ${t} cm is … cm³`, v, [v + p * l, 2 * (p * l + p * t + l * t), v - t], `Step 1: volume of a cuboid V = length × width × height. Step 2: V = ${p} × ${l} × ${t} = ${enFmt(v)} cm³.`);
 };
 const smpAnglesEn: LGen = (_level) => {
   const x = ri(15, 80);
@@ -944,7 +954,7 @@ const smpTwoVarEn: LGen = (level) => {
   const y = ri(2, x - 1);
   const s = x + y;
   const d = x - y;
-  return mkNumEn(`If x + y = ${s} and x − y = ${d}, then the value of x is …`, x, [y, x + 1, s - x + 2], `Add the two equations: 2x = ${s} + ${d} = ${s + d} → x = ${x}. (y = ${y})`);
+  return mkNumEn(`If x + y = ${s} and x − y = ${d}, then the value of x is …`, x, [y, x + 1, s - x + 2], `Step 1: add the two equations so y disappears: (x + y) + (x − y) = ${s} + ${d}, giving 2x = ${s + d}. Step 2: x = ${s + d} ÷ 2 = ${x}. (Check: y = ${s} − ${x} = ${y}.)`);
 };
 
 /* ---------- SMA ---------- */
@@ -955,20 +965,20 @@ const smaDerivativeEn: LGen = (level) => {
   if (level >= 4 && Math.random() < 0.5) {
     const x0 = ri(1, 4);
     const val = 2 * a * x0 + b;
-    return mkNumEn(`If f(x) = ${a}x² + ${b}x + ${c}, then f'(${x0}) is …`, val, [val - b, val + 2, 2 * a + b], `f'(x) = ${2 * a}x + ${b}; f'(${x0}) = ${2 * a}×${x0} + ${b} = ${val}.`);
+    return mkNumEn(`If f(x) = ${a}x² + ${b}x + ${c}, then f'(${x0}) is …`, val, [val - b, val + 2, 2 * a + b], `Step 1: differentiate: f'(x) = ${2 * a}x + ${b}. Step 2: substitute x = ${x0}: f'(${x0}) = ${2 * a}×${x0} + ${b} = ${val}.`);
   }
-  return mkq(`If f(x) = ${a}x² − ${b}x + ${c}, then f'(x) is …`, `${2 * a}x − ${b}`, [`${a}x − ${b}`, `${2 * a}x + ${c}`, `${2 * a}x − ${b + 1}`], `Derivative: d/dx(${a}x²)=${2 * a}x, d/dx(−${b}x)=−${b}, constant→0.`);
+  return mkq(`If f(x) = ${a}x² − ${b}x + ${c}, then f'(x) is …`, `${2 * a}x − ${b}`, [`${a}x − ${b}`, `${2 * a}x + ${c}`, `${2 * a}x − ${b + 1}`], `Step 1: differentiate term by term — the derivative of ${a}x² is ${2 * a}x, of −${b}x is −${b}, and the constant ${c} becomes 0. Step 2: combine: f'(x) = ${2 * a}x − ${b}.`);
 };
 const smaLimitEn: LGen = () => {
   const a = ri(2, 9);
-  return mkNumEn(`The value of lim (x→${a}) (x² − ${a * a})/(x − ${a}) is …`, 2 * a, [a, 2 * a - 1, a * a], `(x²−${a * a}) = (x−${a})(x+${a}); simplify → x+${a}; x=${a} → ${2 * a}.`);
+  return mkNumEn(`The value of lim (x→${a}) (x² − ${a * a})/(x − ${a}) is …`, 2 * a, [a, 2 * a - 1, a * a], `Step 1: direct substitution gives 0/0, so factorise the top: x² − ${a * a} = (x − ${a})(x + ${a}). Step 2: cancel the common factor (x − ${a}), leaving (x + ${a}). Step 3: substitute x = ${a}: ${a} + ${a} = ${2 * a}.`);
 };
 const smaLogEn: LGen = (_level) => {
   const base = pick([2, 3, 5, 10]);
   const e1 = ri(1, 3);
   const e2 = ri(1, 3);
   const sum = e1 + e2;
-  return mkNumEn(`The value of ${base}log ${base ** e1} + ${base}log ${base ** e2} is …`, sum, [sum - 1, sum + 1, e1 * e2], `${base}log ${base ** e1} = ${e1} and ${base}log ${base ** e2} = ${e2}; the total is ${sum}.`);
+  return mkNumEn(`The value of ${base}log ${base ** e1} + ${base}log ${base ** e2} is …`, sum, [sum - 1, sum + 1, e1 * e2], `Step 1: ${base}log ${base ** e1} = ${e1} because ${base}^${e1} = ${base ** e1}. Step 2: ${base}log ${base ** e2} = ${e2} because ${base}^${e2} = ${base ** e2}. Step 3: add them: ${e1} + ${e2} = ${sum}.`);
 };
 const smaSeriesEn: LGen = (level) => {
   const a = ri(2, 12);
@@ -977,16 +987,16 @@ const smaSeriesEn: LGen = (level) => {
   const un = a + (n - 1) * d;
   if (level >= 3 && Math.random() < 0.5) {
     const sn = (n / 2) * (a + un);
-    return mkNumEn(`The sum of the first ${n} terms of the arithmetic series ${a}, ${a + d}, ${a + 2 * d}, … is …`, sn, [sn - d * n, un * n, sn + a * n], `Un = ${a}+${n - 1}×${d} = ${un}; Sn = n/2 × (a+Un) = ${n}/2 × ${a + un} = ${sn}.`);
+    return mkNumEn(`The sum of the first ${n} terms of the arithmetic series ${a}, ${a + d}, ${a + 2 * d}, … is …`, sn, [sn - d * n, un * n, sn + a * n], `Step 1: find the last term first: Un = ${a} + ${n - 1}×${d} = ${un}. Step 2: use Sn = n/2 × (a + Un) = ${n}/2 × (${a} + ${un}) = ${sn}.`);
   }
-  return mkNumEn(`The ${n}th term of the arithmetic sequence ${a}, ${a + d}, ${a + 2 * d}, … is …`, un, [un - d, un + d, a + n * d], `Un = a + (n−1)d = ${a} + ${n - 1}×${d} = ${un}.`);
+  return mkNumEn(`The ${n}th term of the arithmetic sequence ${a}, ${a + d}, ${a + 2 * d}, … is …`, un, [un - d, un + d, a + n * d], `Step 1: the first term a = ${a} and the difference d = ${d}. Step 2: use Un = a + (n − 1)d: U${n} = ${a} + ${n - 1}×${d} = ${un}.`);
 };
 const smaCombinationEn: LGen = (level) => {
   if (level < 3) return null;
   const n = ri(6, 10);
   const r = pick([2, 3]);
   const comb = r === 2 ? (n * (n - 1)) / 2 : (n * (n - 1) * (n - 2)) / 6;
-  return mkNumEn(`From ${n} students, ${r} committee members are chosen (order does not matter). The number of ways to choose is …`, comb, [comb - n, n * (n - 1), comb + n], `Combination C(${n},${r}) = ${comb} ways.`);
+  return mkNumEn(`From ${n} students, ${r} committee members are chosen (order does not matter). The number of ways to choose is …`, comb, [comb - n, n * (n - 1), comb + n], `Step 1: because order does not matter, use combinations C(${n}, ${r}) = ${n}! ÷ (${r}! × ${n - r}!). Step 2: the result is ${comb} ways. (If order mattered, we would use permutations instead.)`);
 };
 const smaQuadraticEn: LGen = () => {
   const r1 = pick([-9, -7, -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 6, 8]);
@@ -998,9 +1008,9 @@ const smaQuadraticEn: LGen = () => {
   const cTerm = prod === 0 ? "" : prod > 0 ? ` + ${prod}` : ` − ${-prod}`;
   const eq = `x²${bTerm}${cTerm} = 0`;
   const mode = ri(0, 2);
-  if (mode === 0) return mkNumEn(`The sum of the roots of the quadratic equation ${eq} is …`, sum, [sum - 2, sum + 2, prod], `The factors are (x − (${r1}))(x − (${r2})), the roots are ${r1} and ${r2}; their sum is ${r1} + ${r2} = ${sum}.`);
-  if (mode === 1) return mkNumEn(`The product of the roots of the quadratic equation ${eq} is …`, prod, [prod - r1, prod + r2, sum], `The roots are ${r1} and ${r2}; their product is ${r1} × ${r2} = ${prod} (= c/a).`);
-  return mkNumEn(`If ${r1} and ${r2} are the roots of a quadratic equation, then the value of (${r1})² + (${r2})² is …`, r1 * r1 + r2 * r2, [sum * sum, prod * 2, r1 * r1 + r2 * r2 + 2], `(${r1})² + (${r2})² = ${r1 * r1} + ${r2 * r2} = ${r1 * r1 + r2 * r2}.`);
+  if (mode === 0) return mkNumEn(`The sum of the roots of the quadratic equation ${eq} is …`, sum, [sum - 2, sum + 2, prod], `Step 1: factorise the equation as (x − (${r1}))(x − (${r2})) = 0, so the roots are ${r1} and ${r2}. Step 2: sum of roots = ${r1} + ${r2} = ${sum} (also equal to −b/a).`);
+  if (mode === 1) return mkNumEn(`The product of the roots of the quadratic equation ${eq} is …`, prod, [prod - r1, prod + r2, sum], `Step 1: the roots are ${r1} and ${r2} (from the factors (x − (${r1}))(x − (${r2})) = 0). Step 2: product of roots = ${r1} × ${r2} = ${prod} (also equal to c/a).`);
+  return mkNumEn(`If ${r1} and ${r2} are the roots of a quadratic equation, then the value of (${r1})² + (${r2})² is …`, r1 * r1 + r2 * r2, [sum * sum, prod * 2, r1 * r1 + r2 * r2 + 2], `Step 1: square each root: (${r1})² = ${r1 * r1} and (${r2})² = ${r2 * r2}. Step 2: add them: ${r1 * r1} + ${r2 * r2} = ${r1 * r1 + r2 * r2}. (Not (${r1} + ${r2})² — that gives ${sum * sum} because it also contains 2 × the product of the roots.)`);
 };
 const smaGeomSeriesEn: LGen = (level) => {
   const a = ri(1, 6);
@@ -1009,15 +1019,15 @@ const smaGeomSeriesEn: LGen = (level) => {
   const un = a * r ** (n - 1);
   if (level >= 4 && Math.random() < 0.5) {
     const sn = (a * (r ** n - 1)) / (r - 1);
-    return mkNumEn(`The sum of the first ${n} terms of the geometric series ${a}, ${a * r}, ${a * r * r}, … is …`, sn, [sn - un, un * n, sn + a], `Sn = a(rⁿ−1)/(r−1) = ${a}×(${r ** n}−1)/${r - 1} = ${enFmt(sn)}.`);
+    return mkNumEn(`The sum of the first ${n} terms of the geometric series ${a}, ${a * r}, ${a * r * r}, … is …`, sn, [sn - un, un * n, sn + a], `Step 1: the series has ratio r = ${r}; use Sn = a(rⁿ − 1) ÷ (r − 1). Step 2: Sn = ${a}×(${r ** n} − 1) ÷ ${r - 1} = ${enFmt(sn)}.`);
   }
-  return mkNumEn(`The ${n}th term of the geometric sequence ${a}, ${a * r}, ${a * r * r}, … is …`, un, [a * r ** (n - 2), un + a, un * r], `Un = a·rⁿ⁻¹ = ${a}×${r}^${n - 1} = ${enFmt(un)}.`);
+  return mkNumEn(`The ${n}th term of the geometric sequence ${a}, ${a * r}, ${a * r * r}, … is …`, un, [a * r ** (n - 2), un + a, un * r], `Step 1: the sequence has ratio r = ${r} and first term a = ${a}. Step 2: Un = a × rⁿ⁻¹ = ${a} × ${r}^${n - 1} = ${enFmt(un)}.`);
 };
 const smaDetEn: LGen = (level) => {
   if (level < 2) return null;
   const a = ri(1, 6); const b = ri(1, 6); const c = ri(1, 6); const d = ri(1, 6);
   const det = a * d - b * c;
-  return mkNumEn(`The determinant of the matrix [[${a}, ${b}], [${c}, ${d}]] is …`, det, [a * d + b * c, det + b, det - c], `det = ${a}×${d} − ${b}×${c} = ${a * d} − ${b * c} = ${det}.`);
+  return mkNumEn(`The determinant of the matrix [[${a}, ${b}], [${c}, ${d}]] is …`, det, [a * d + b * c, det + b, det - c], `Step 1: for a 2×2 matrix, det = (main diagonal) − (other diagonal): det = ${a}×${d} − ${b}×${c}. Step 2: det = ${a * d} − ${b * c} = ${det}.`);
 };
 const smaPermEn: LGen = (level) => {
   if (level < 3) return null;
@@ -1037,12 +1047,12 @@ const smaPhysicsEn: LGen = (level) => {
     const v0 = ri(2, 15);
     const a = ri(1, 4);
     const t = ri(2, 6);
-    return mkNumEn(`A car moves with an initial velocity of ${v0} m/s and an acceleration of ${a} m/s² for ${t} s. Its final velocity is … m/s`, v0 + a * t, [v0 + a * t - a, v0 * a, v0 + t], `v = v₀ + at = ${v0} + ${a}×${t} = ${v0 + a * t} m/s.`);
+    return mkNumEn(`A car moves with an initial velocity of ${v0} m/s and an acceleration of ${a} m/s² for ${t} s. Its final velocity is … m/s`, v0 + a * t, [v0 + a * t - a, v0 * a, v0 + t], `Step 1: use the equation of motion v = v₀ + at. Step 2: v = ${v0} + ${a}×${t} = ${v0 + a * t} m/s.`);
   }
   if (kind === 1) {
     const m = pick([1, 2, 4, 5]);
     const v = ri(3, 6 + level);
-    return mkNumEn(`The kinetic energy of an object of mass ${m} kg moving at ${v} m/s is … J`, 0.5 * m * v * v, [m * v, 0.5 * m * v, m * v * v], `Ek = ½mv² = ½×${m}×${v}² = ${0.5 * m * v * v} J.`);
+    return mkNumEn(`The kinetic energy of an object of mass ${m} kg moving at ${v} m/s is … J`, 0.5 * m * v * v, [m * v, 0.5 * m * v, m * v * v], `Step 1: kinetic energy Ek = ½ × m × v². Step 2: Ek = ½ × ${m} × ${v}² = ${0.5 * m * v * v} J.`);
   }
   if (kind === 2) {
     const r1 = pick([2, 3, 4, 6]);
@@ -1050,17 +1060,17 @@ const smaPhysicsEn: LGen = (level) => {
     if (r1 === r2) return smaPhysicsEn(level);
     const rp = (r1 * r2) / (r1 + r2);
     if (!Number.isInteger(rp)) return smaPhysicsEn(level);
-    return mkNumEn(`Resistors of ${r1} Ω and ${r2} Ω are connected in parallel. Their equivalent resistance is … Ω`, rp, [r1 + r2, rp + 1, Math.max(1, rp - 1)], `1/R = 1/${r1} + 1/${r2} → R = ${rp} Ω.`);
+    return mkNumEn(`Resistors of ${r1} Ω and ${r2} Ω are connected in parallel. Their equivalent resistance is … Ω`, rp, [r1 + r2, rp + 1, Math.max(1, rp - 1)], `Step 1: for a parallel circuit, 1/R = 1/R₁ + 1/R₂ = 1/${r1} + 1/${r2}. Step 2: R = (${r1} × ${r2}) ÷ (${r1} + ${r2}) = ${rp} Ω. A parallel resistance is always smaller than the smallest resistor — simply adding them (${r1 + r2} Ω) is for a series circuit.`);
   }
   const lam = ri(2, 8);
   const f = ri(5, 40) * 10;
-  return mkNumEn(`A wave with wavelength ${lam} m and frequency ${f} Hz has a wave speed of … m/s`, lam * f, [lam + f, lam * f / 2, f], `v = λ × f = ${lam} × ${f} = ${lam * f} m/s.`);
+  return mkNumEn(`A wave with wavelength ${lam} m and frequency ${f} Hz has a wave speed of … m/s`, lam * f, [lam + f, lam * f / 2, f], `Step 1: wave speed v = λ × f (wavelength × frequency). Step 2: v = ${lam} × ${f} = ${lam * f} m/s.`);
 };
 const smaChemistryPhEn: LGen = (level) => {
   if (level < 2) return null;
   const n = ri(1, Math.min(6, level + 2));
-  if (Math.random() < 0.5) return mkNumEn(`The pH of a 10⁻${n} M HCl solution (0.${"0".repeat(Math.max(0, n - 1))}1 M) is …`, n, [n + 1, n === 1 ? n + 2 : n - 1, 14 - n], `HCl is a strong acid: [H⁺] = 10⁻${n} → pH = ${n}.`);
-  return mkNumEn(`The pH of a 10⁻${n} M NaOH solution is …`, 14 - n, [n, 14 - n - 1, 14 - n + 1], `NaOH is a strong base: pOH = ${n}, pH = 14 − ${n} = ${14 - n}.`);
+  if (Math.random() < 0.5) return mkNumEn(`The pH of a 10⁻${n} M HCl solution (0.${"0".repeat(Math.max(0, n - 1))}1 M) is …`, n, [n + 1, n === 1 ? n + 2 : n - 1, 14 - n], `Step 1: HCl is a strong acid that ionises completely, so [H⁺] = 10⁻${n} M. Step 2: pH = −log [H⁺] = ${n}.`);
+  return mkNumEn(`The pH of a 10⁻${n} M NaOH solution is …`, 14 - n, [n, 14 - n - 1, 14 - n + 1], `Step 1: NaOH is a strong base, so [OH⁻] = 10⁻${n} M and pOH = ${n}. Step 2: pH = 14 − pOH = 14 − ${n} = ${14 - n}.`);
 };
 const smaGeneticsEn: LGen = (level) => {
   if (level < 2) return null;
@@ -1424,11 +1434,438 @@ const engVocabGensEn = (jenjang: JenjangId): LGen[] => {
 };
 
 /* ================= REGISTRY GENERATOR — Bahasa Inggris ================= */
+// ---------- Detailed stems + step-by-step explanations (EN mirror) ----------
+const mkq3En = (q: string, correct: string, wrong: string[], explain: string): Question => {
+  const options = shuffle([correct, ...wrong]);
+  return { q, options, answer: options.indexOf(correct), explain };
+};
+
+const fmtDecEn = (n: number): string => {
+  if (Number.isInteger(n)) return enFmt(n);
+  return n.toFixed(2).replace(/\.?0+$/, "").replace(".", ",");
+};
+
+const tkStoryDetailEn: LGen = () => {
+  const mode = ri(0, 3);
+  if (mode === 0) {
+    const start = ri(3, 6);
+    const got = ri(2, 4);
+    const total = start + got;
+    const it = pick([
+      { e: "🐶", w: "puppies", place: "in the yard" },
+      { e: "🐱", w: "kittens", place: "in the box" },
+      { e: "🦆", w: "ducklings", place: "in the pond" },
+      { e: "🐥", w: "chicks", place: "near their mother" },
+    ] as const);
+    return mkq3En(`There are ${start} ${it.w} ${it.e} ${it.place}. Then ${got} more ${it.w} come. How many ${it.w} are there now?`, `${total}`, [`${total - 1}`, `${total + 1}`], `Count them all together: ${start} + ${got} = ${total}.`);
+  }
+  if (mode === 1) {
+    const total = ri(6, 10);
+    const gone = ri(2, 4);
+    const left = total - gone;
+    const it = pick([
+      { e: "🍓", w: "strawberries", act: "Mom eats" },
+      { e: "🍌", w: "bananas", act: "Brother takes" },
+      { e: "🍪", w: "cookies", act: "Sister eats" },
+    ] as const);
+    return mkq3En(`There are ${total} ${it.w} ${it.e} on the plate. ${it.act} ${gone} of them. How many ${it.w} are left?`, `${left}`, [`${left - 1}`, `${left + 1}`], `${total} − ${gone} = ${left}. The ${it.w} become fewer because some were taken.`);
+  }
+  if (mode === 2) {
+    const a = ri(2, 6);
+    const b = a + ri(1, 4);
+    const it = pick([
+      { e: "🎈", w: "balloons", n1: "Rani", n2: "Bima" },
+      { e: "🖍️", w: "crayons", n1: "Sari", n2: "Dedi" },
+      { e: "🍎", w: "apples", n1: "Nina", n2: "Rudi" },
+    ] as const);
+    return mkq3En(`${it.n1} has ${a} ${it.w} ${it.e} and ${it.n2} has ${b} ${it.w} ${it.e}. Who has MORE ${it.w}?`, it.n2, [it.n1, "The same"], `${b} is more than ${a}, so ${it.n2} has more.`);
+  }
+  const n = ri(3, 8);
+  const it = pick([
+    { e: "🐜", w: "ants" },
+    { e: "🐝", w: "bees" },
+    { e: "🦋", w: "butterflies" },
+  ] as const);
+  return mkq3En(`Look at the picture: ${it.e.repeat(n)} How many ${it.w} are there? Count them!`, `${n}`, [`${n - 1}`, `${n + 1}`], `Count one by one: there are ${n} ${it.w}.`);
+};
+
+const TK_SCI_STORY_FACTS_EN: readonly Fact[] = [
+  ["It is raining this morning 🌧️. What do we use so we do not get wet?", "An umbrella", ["Sunglasses", "A birthday hat"], "An umbrella keeps the rain off us."],
+  ["The flower in the pot is watered every day 💧🌷. What happens to the flower?", "It grows fresh and healthy", ["It turns into a stone", "It disappears"], "Plants need water to grow fresh and healthy."],
+  ["A chick has just hatched from its egg 🐣. What does the chick need so it can grow big?", "Food and water", ["A toy car", "A pair of shoes"], "Living things need food and water to grow."],
+  ["At night the sky is dark 🌙. What shines in the night sky?", "The moon and stars", ["The rainbow", "The bright sun"], "At night we can see the moon and the twinkling stars."],
+  ["A fish lives in the water 🐟. Where does a bird live and fly?", "In the sky", ["Under the ground", "At the bottom of the sea"], "Birds fly in the sky; fish swim in the water."],
+  ["The ice cube is left under the sun 🧊☀️. What happens to the ice cube?", "It melts into water", ["It becomes bigger", "It turns into stone"], "The sun's heat melts ice into water."],
+];
+
+const sdShopDetailEn: LGen = () => {
+  const mode = ri(0, 3);
+  const name = pick(NAMES_EN);
+  if (mode === 0) {
+    const price = pick([2000, 2500, 3000, 4000, 5000, 6000, 7500]);
+    const qty = ri(3, 9);
+    const total = price * qty;
+    const money = pick([20000, 50000, 100000].filter((m) => m > total));
+    if (money === undefined) return null;
+    const change = money - total;
+    const item = pick(["notebooks", "pencils", "rulers", "snack packs", "story books"]);
+    return mkNumEn(`📖 ${name} buys ${qty} ${item} at Rp${enFmt(price)} each and pays with Rp${enFmt(money)}. The change is …`, change, [change + price, Math.max(1000, change - 1000), total], `Step 1: total cost = ${qty} × Rp${enFmt(price)} = Rp${enFmt(total)}. Step 2: change = money paid − total cost = Rp${enFmt(money)} − Rp${enFmt(total)} = Rp${enFmt(change)}.`);
+  }
+  if (mode === 1) {
+    const dozenPrice = pick([18000, 24000, 30000, 36000, 48000, 60000]);
+    const unit = dozenPrice / 12;
+    return mkNumEn(`One dozen eggs costs Rp${enFmt(dozenPrice)}. The price of one egg is …`, unit, [unit + 500, dozenPrice / 10, unit * 2], `Step 1: one dozen = 12 eggs. Step 2: unit price = total price ÷ number of items = ${enFmt(dozenPrice)} ÷ 12 = Rp${enFmt(unit)}.`);
+  }
+  if (mode === 2) {
+    const speed = pick([30, 40, 50, 60, 80]);
+    const time = ri(2, 5);
+    const dist = speed * time;
+    return mkNumEn(`A bus travels at a steady speed of ${speed} km/hour for ${time} hours. The distance it covers is … km`, dist, [dist - speed, speed + time, dist + speed], `Step 1: distance = speed × time. Step 2: ${speed} × ${time} = ${dist} km.`);
+  }
+  const dist = pick([60, 90, 120, 150, 240]);
+  const speed = pick([30, 40, 50, 60].filter((s) => dist % s === 0));
+  if (speed === undefined) return null;
+  const time = dist / speed;
+  return mkNumEn(`${name} cycles ${dist} km at a speed of ${speed} km/hour. The trip takes … hours`, time, [time + 1, Math.max(1, time - 1), time * 2], `Step 1: time = distance ÷ speed. Step 2: ${dist} ÷ ${speed} = ${time} hours.`);
+};
+
+const sdDataDetailEn: LGen = () => {
+  const mode = ri(0, 2);
+  if (mode === 0) {
+    const names = ["Andi", "Budi", "Citra", "Dewi", "Eko"];
+    const base = ri(5, 8) * 10;
+    const scores = names.map(() => base + pick([-10, 0, 0, 10, 10, 20]));
+    const maxI = scores.indexOf(Math.max(...scores));
+    const topName = names[maxI] ?? "Andi";
+    const topScore = scores[maxI] ?? 0;
+    const others = names.filter((_, i) => i !== maxI);
+    return mkq(`Test scores: ${names.map((n, i) => `${n} ${scores[i] ?? 0}`).join(", ")}. Who got the HIGHEST score?`, topName, others.slice(0, 3), `Step 1: compare all the scores: ${scores.join(", ")}. Step 2: the biggest number is ${topScore}, which belongs to ${topName}.`);
+  }
+  if (mode === 1) {
+    const days = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+    const vals = days.map(() => ri(2, 9));
+    const total = vals.reduce((s, v) => s + v, 0);
+    return mkNumEn(`Books borrowed from the library — ${days.map((d, i) => `${d}: ${vals[i] ?? 0}`).join(", ")}. The total number of books borrowed in 5 days is …`, total, [total - 3, total + 4, total + 10], `Step 1: add up each day: ${vals.join(" + ")}. Step 2: the total is ${total} books.`);
+  }
+  const fruits: readonly (readonly [string, string])[] = [["🍎", "apples"], ["🍊", "oranges"], ["🍌", "bananas"], ["🍇", "grapes"]];
+  const counts = fruits.map(() => ri(2, 8));
+  const maxI = counts.indexOf(Math.max(...counts));
+  const top = fruits[maxI];
+  if (top === undefined) return null;
+  const others = fruits.filter((_, i) => i !== maxI).map((f) => f[1]);
+  return mkq(`Fruit in a basket: ${fruits.map((f, i) => `${f[0]}×${counts[i] ?? 0}`).join("  ")}. Which fruit is there the MOST of?`, top[1], others, `Step 1: read the count of each fruit: ${fruits.map((f, i) => `${f[1]} ${counts[i] ?? 0}`).join(", ")}. Step 2: the biggest count is ${counts[maxI] ?? 0}, so there are the most ${top[1]}.`);
+};
+
+const sdRatioDetailEn: LGen = () => {
+  const mode = ri(0, 2);
+  if (mode === 0) {
+    const k = ri(2, 6);
+    const per = pick([2, 3, 4, 5]);
+    const need = per * k;
+    const totalParts = k;
+    return mkNumEn(`To make ${totalParts} glasses of juice, we need ${need} oranges (the recipe scales evenly). How many oranges are needed for 1 glass?`, per, [per + 1, need, Math.max(1, per - 1)], `Step 1: the recipe scales evenly, so divide the oranges by the number of glasses. Step 2: ${need} ÷ ${totalParts} = ${per} oranges per glass.`);
+  }
+  if (mode === 1) {
+    const scale = pick([100, 200, 500, 1000]);
+    const cm = ri(2, 9);
+    const real = cm * scale;
+    return mkNumEn(`A floor plan uses a scale of 1 : ${scale}. A room is ${cm} cm long on the plan. Its real length is … cm`, real, [real / 2, cm * 100, real + scale], `Step 1: real length = length on plan × scale number. Step 2: ${cm} × ${scale} = ${enFmt(real)} cm${real >= 100 ? ` = ${fmtDecEn(real / 100)} m` : ""}.`);
+  }
+  const a = ri(2, 5);
+  const b = a + ri(1, 4);
+  const k = ri(2, 5);
+  return mkNumEn(`The ratio of red marbles to blue marbles is ${a} : ${b}. If there are ${a * k} red marbles, the number of blue marbles is …`, b * k, [a * k, b * k + a, (a + b) * k], `Step 1: red marbles ${a * k} come from ${a} × ${k}, so every part of the ratio is multiplied by ${k}. Step 2: blue marbles = ${b} × ${k} = ${b * k}.`);
+};
+
+const sdTrueStmtEn: LGen = () => {
+  const kind = ri(0, 3);
+  if (kind === 0) {
+    const den = pick([3, 4, 5, 6, 8]);
+    const num = ri(1, den - 1);
+    const g = gcd(num * 2, den * 2);
+    const canSimplify = g > 1;
+    const correct = `${num * 2}/${den * 2} is equal to ${num}/${den}`;
+    const wrongs = [
+      `${num}/${den} is bigger than ${num + 1}/${den}`,
+      `1/${den} is bigger than 1/${den - 1 > 0 ? den - 1 : den + 1}`,
+      `${den}/${den} is smaller than ${num}/${den}`,
+    ];
+    return mkq("Which statement about fractions is TRUE?", correct, wrongs, `Step 1: ${num * 2}/${den * 2} can be simplified${canSimplify ? ` by dividing top and bottom by ${g}` : ""} and gives ${num}/${den}, so they are equal. Step 2: the other statements are false — with the same denominator the bigger numerator wins, and with the same numerator the SMALLER denominator is the bigger fraction.`);
+  }
+  if (kind === 1) {
+    return mkq("Which statement about a SQUARE is TRUE?", "All four sides are the same length", ["It has 3 sides", "Only two sides are the same length", "It has no corners"], `A square has 4 sides, all the same length, and 4 right-angle corners. A shape with 3 sides is a triangle.`);
+  }
+  if (kind === 2) {
+    const n = ri(12, 60);
+    return mkq(`Which statement about the number ${n} is TRUE?`, n % 2 === 0 ? `${n} is an even number` : `${n} is an odd number`, n % 2 === 0 ? [`${n} is an odd number`, `${n} is bigger than ${n + 10}`, `${n} ends in an odd digit`] : [`${n} is an even number`, `${n} is smaller than ${n - 5}`, `${n} ends in an even digit`], `Step 1: even numbers end in 0, 2, 4, 6, or 8; odd numbers end in 1, 3, 5, 7, or 9. Step 2: ${n} ends in ${n % 10}, so it is ${n % 2 === 0 ? "even" : "odd"}.`);
+  }
+  const kg = ri(2, 9);
+  return mkq("Which unit statement is TRUE?", `${kg} kg = ${enFmt(kg * 1000)} grams`, [`${kg} kg = ${kg * 100} grams`, `1 hour = 100 minutes`, `1 m = 10 cm`], `Step 1: 1 kg = 1,000 grams, so ${kg} kg = ${enFmt(kg * 1000)} grams. Step 2: the others are wrong: 1 hour = 60 minutes and 1 m = 100 cm.`);
+};
+
+const sdScienceDetailEn: LGen = () => {
+  const mode = ri(0, 4);
+  if (mode === 0) {
+    const start = ri(2, 5);
+    const grow = pick([1, 2, 3]);
+    const heights: number[] = [];
+    for (let d = 0; d <= 6; d += 2) heights.push(start + grow * d);
+    const last = heights[heights.length - 1] ?? start;
+    const table = heights.map((h, i) => `day ${i * 2}: ${h} cm`).join(", ");
+    return mkNumEn(`A bean plant is measured every 2 days — ${table}. On day 6 the plant is … cm tall`, last, [last - grow, last + grow, start], `Step 1: look at the pattern — the height grows by ${grow * 2} cm every 2 days. Step 2: the last measurement in the table is ${last} cm.`);
+  }
+  if (mode === 1) {
+    const t0 = pick([28, 30, 32]);
+    const drop = pick([2, 3]);
+    const series = [0, 1, 2, 3].map((i) => t0 - drop * i);
+    return mkq(`A glass of warm water is left on the table. Its temperature is measured every 10 minutes: ${series.map((t) => `${t}°C`).join(", ")}. The best conclusion is …`, "The water slowly gets colder because its heat moves into the air", ["The water gets hotter by itself", "The temperature stays exactly the same", "The water freezes after 30 minutes"], `Step 1: read the data — the temperature drops by ${drop}°C every 10 minutes. Step 2: warm objects release heat to the cooler air around them, so the water cools down.`);
+  }
+  if (mode === 2) {
+    const it = pick([
+      { setup: "Two pots of bean plants: pot A is watered every day, pot B is never watered. Both get the same sunlight.", q: "In this experiment, what is being tested (the thing that is changed on purpose)?", a: "The amount of water", w: ["The sunlight", "The type of pot", "The colour of the leaves"], ex: "The only thing made different is the water. Sunlight and pots are kept the same so the test is fair — the changed thing is called the variable being tested." },
+      { setup: "Two glasses of water: glass A is placed in the sun, glass B in the shade. After 3 hours, glass A has less water.", q: "Why does glass A have less water?", a: "The sun's heat makes the water evaporate faster", w: ["The glass drinks the water", "The shade adds water to glass B", "The water turns into sand"], ex: "Heat speeds up evaporation: water changes into vapour and escapes into the air. That is why the sunny glass empties faster." },
+      { setup: "A torch is shone at a ball. A shadow appears on the wall behind the ball.", q: "What happens to the shadow if the ball is moved CLOSER to the torch?", a: "The shadow gets bigger", w: ["The shadow gets smaller", "The shadow disappears", "The shadow changes colour"], ex: "Light travels in straight lines and the ball blocks it. The closer the ball is to the light, the more light it blocks, so the shadow grows bigger." },
+    ] as const);
+    return mkq(`${it.setup} ${it.q}`, it.a, [...it.w], it.ex);
+  }
+  if (mode === 3) {
+    const it = pick([
+      { q: "A puddle on the road is gone by midday on a hot day. Where did the water go?", a: "It evaporated into the air as water vapour", w: ["It sank into the sun", "It turned into soil", "It was blown away as dust"], ex: "The sun's heat changes liquid water into water vapour (evaporation), so the puddle dries up." },
+      { q: "On a cold morning, tiny water drops appear on the OUTSIDE of a glass of iced tea. Where do the drops come from?", a: "Water vapour in the air turns back into liquid on the cold glass", w: ["The tea leaks through the glass", "The ice jumps out of the glass", "The glass makes its own water"], ex: "This is condensation: water vapour in the air touches the cold glass, cools down, and changes back into liquid drops." },
+      { q: "A caterpillar changes into a chrysalis, then comes out as a butterfly. This life cycle is called …", a: "Metamorphosis", w: ["Photosynthesis", "Evaporation", "Pollination"], ex: "Metamorphosis is the big change of body form during an animal's life: egg → caterpillar → chrysalis → butterfly." },
+    ] as const);
+    return mkq(it.q, it.a, [...it.w], it.ex);
+  }
+  const it = pick([
+    { q: "Which activity keeps our river water clean?", a: "Throwing rubbish into the rubbish bin, not the river", w: ["Pouring used cooking oil into the river", "Washing motorcycles in the river", "Throwing plastic bags into the ditch"], ex: "Rubbish and oil pollute river water and harm the fish. Waste belongs in the bin so the water stays clean." },
+    { q: "A farmer plants trees on a bare hillside. What good effect will the trees have?", a: "Their roots hold the soil so it does not wash away easily", w: ["The hill becomes hotter", "Rain never falls there again", "The soil disappears faster"], ex: "Tree roots grip the soil, and the leaves slow down rain. This prevents erosion and landslides." },
+    { q: "Which of these is a way to SAVE electricity at home?", a: "Turning off the lamp when leaving the room", w: ["Leaving the TV on all night", "Opening the fridge again and again", "Turning on all the lamps in the daytime"], ex: "Using electricity only when needed saves energy and money. Lamps and TVs left on waste electricity." },
+  ] as const);
+  return mkq(it.q, it.a, [...it.w], it.ex);
+};
+
+const smpMultiStepEn: LGen = () => {
+  const mode = ri(0, 3);
+  if (mode === 0) {
+    const price = pick([40000, 50000, 60000, 80000, 100000, 120000]);
+    const disc = pick([10, 20, 25, 30]);
+    const extra = pick([5000, 10000, 15000]);
+    const afterDisc = price - (price * disc) / 100;
+    const pay = afterDisc - extra;
+    return mkNumEn(`A jacket costs Rp${enFmt(price)}. The shop gives a ${disc}% discount, and at the till there is a further Rp${enFmt(extra)} off. The final price paid is …`, pay, [afterDisc, pay + extra, price - extra], `Step 1: the discount is ${disc}% × ${enFmt(price)} = Rp${enFmt((price * disc) / 100)}, so the price becomes Rp${enFmt(afterDisc)}. Step 2: subtract the till voucher: ${enFmt(afterDisc)} − ${enFmt(extra)} = Rp${enFmt(pay)}.`);
+  }
+  if (mode === 1) {
+    const pairs: readonly (readonly [number, number])[] = [[6, 3], [8, 8], [10, 10], [12, 4], [12, 6], [4, 4], [6, 6]];
+    const pr = pick(pairs);
+    const aDays = pr[0];
+    const bDays = pr[1];
+    const days = (aDays * bDays) / (aDays + bDays);
+    return mkNumEn(`Painter A can finish a house in ${aDays} days, painter B in ${bDays} days. Working together, they finish in … days`, days, [days + 1, aDays + bDays, Math.max(1, days - 1)], `Step 1: in one day A does 1/${aDays} of the work and B does 1/${bDays}, so together they do ${(aDays + bDays) / (aDays * bDays)} of the work per day. Step 2: time = 1 ÷ that rate = ${aDays * bDays} ÷ ${aDays + bDays} = ${days} days.`);
+  }
+  if (mode === 2) {
+    const c1 = pick([2000, 3000, 5000]);
+    const n1 = ri(2, 6);
+    const c2 = pick([1000, 2000, 4000]);
+    const n2 = ri(2, 6);
+    const total = c1 * n1 + c2 * n2;
+    const money = pick([50000, 100000].filter((m) => m > total));
+    if (money === undefined) return null;
+    return mkNumEn(`Rina buys ${n1} books at Rp${enFmt(c1)} each and ${n2} pens at Rp${enFmt(c2)} each. She pays with Rp${enFmt(money)}. Her change is …`, money - total, [money - c1 * n1, total, money - total + c2], `Step 1: books cost ${n1} × ${enFmt(c1)} = Rp${enFmt(c1 * n1)} and pens cost ${n2} × ${enFmt(c2)} = Rp${enFmt(c2 * n2)}, so the total is Rp${enFmt(total)}. Step 2: change = ${enFmt(money)} − ${enFmt(total)} = Rp${enFmt(money - total)}.`);
+  }
+  const v = pick([40, 50, 60]);
+  const t1 = ri(2, 4);
+  const stop = pick([15, 30]);
+  const t2 = ri(1, 3);
+  const dist = v * (t1 + t2);
+  return mkNumEn(`A car travels at ${v} km/h for ${t1} hours, stops for ${stop} minutes, then continues at the same speed for ${t2} more hours. The total distance travelled is … km`, dist, [dist - v, v * (t1 + t2) + stop, dist + v], `Step 1: a stopped car covers no distance, so only moving time counts: ${t1} + ${t2} = ${t1 + t2} hours. Step 2: distance = ${v} × ${t1 + t2} = ${dist} km.`);
+};
+
+const smpDataDetailEn: LGen = () => {
+  const mode = ri(0, 2);
+  const n = pick([5, 7]);
+  const vals: number[] = [];
+  for (let i = 0; i < n; i++) vals.push(ri(4, 10));
+  const sorted = [...vals].sort((a, b) => a - b);
+  if (mode === 0) {
+    const med = sorted[Math.floor(n / 2)] ?? 0;
+    return mkNumEn(`Data: ${vals.join(", ")}. The MEDIAN of this data is …`, med, [sorted[0] ?? 0, sorted[n - 1] ?? 0, Math.round(vals.reduce((s, v) => s + v, 0) / n)], `Step 1: sort the data first: ${sorted.join(", ")}. Step 2: with ${n} values, the median is the middle (${Math.floor(n / 2) + 1}th) value = ${med}. The mean is a different measure — do not mix them up.`);
+  }
+  if (mode === 1) {
+    const freq = new Map<number, number>();
+    for (const v of vals) freq.set(v, (freq.get(v) ?? 0) + 1);
+    let modeVal = vals[0] ?? 0;
+    let best = 0;
+    for (const [v, c] of freq) if (c > best) { best = c; modeVal = v; }
+    if (best < 2) return null;
+    const others = [...new Set(vals)].filter((v) => v !== modeVal);
+    if (others.length < 3) return null;
+    return mkNumEn(`Data: ${vals.join(", ")}. The MODE of this data is …`, modeVal, others.slice(0, 3), `Step 1: count how often each value appears: ${[...freq.entries()].map(([v, c]) => `${v} appears ${c}×`).join(", ")}. Step 2: the most frequent value is ${modeVal} (${best} times), so the mode is ${modeVal}.`);
+  }
+  const sum = vals.reduce((s, v) => s + v, 0);
+  if (sum % n !== 0) return null;
+  const mean = sum / n;
+  const target = mean + pick([2, 4, 5]);
+  const need = target * (n + 1) - sum;
+  return mkNumEn(`The mean of ${n} numbers is ${mean}. If one more number is added, the new mean becomes ${target}. The added number is …`, need, [need - mean, target, need + n], `Step 1: the total of the first ${n} numbers is ${n} × ${mean} = ${sum}. Step 2: the new total must be ${n + 1} × ${target} = ${target * (n + 1)}. Step 3: the added number = ${target * (n + 1)} − ${sum} = ${need}.`);
+};
+
+const smpScienceDetailEn: LGen = () => {
+  const mode = ri(0, 3);
+  if (mode === 0) {
+    const it = pick([
+      { setup: "Experiment: two identical plants — plant A is watered daily, plant B is watered every three days. Both get the same light and soil. After 2 weeks A is 15 cm tall and B is 9 cm.", q: "What is the independent variable (the one thing changed on purpose) in this experiment?", a: "How often the plants are watered", w: ["The height of the plants", "The sunlight", "The type of soil"], ex: "The watering schedule is the thing deliberately changed (independent variable). Height is what is measured (dependent variable); light and soil are kept the same (controlled) so the comparison is fair." },
+      { setup: "A student drops a steel ball and a feather inside a tube with no air (a vacuum). Both reach the bottom at the SAME time.", q: "What does this experiment prove?", a: "Without air resistance, all objects fall with the same acceleration", w: ["Heavy objects always fall faster", "Feathers are as heavy as steel", "Gravity does not work in a tube"], ex: "On Earth the feather is slowed by air resistance. Remove the air, and gravity accelerates everything equally — the steel ball and the feather land together." },
+      { setup: "Three identical candles burn inside jars of different sizes: small, medium, and large. The candle in the small jar goes out first, then the medium one, and the large one lasts longest.", q: "The best conclusion is …", a: "Burning needs oxygen; a bigger jar holds more oxygen so the candle burns longer", w: ["Big jars make stronger fire", "Candles stop burning because they get tired", "The small jar has no air at all"], ex: "A flame uses up the oxygen in the jar. The bigger the jar, the more oxygen it stores, so the candle survives longer. When the oxygen runs out, the flame dies." },
+    ] as const);
+    return mkq(`${it.setup} ${it.q}`, it.a, [...it.w], it.ex);
+  }
+  if (mode === 1) {
+    const v = pick([6, 9, 12, 24]);
+    const r = pick([2, 3, 4, 6].filter((x) => v % x === 0));
+    if (r === undefined) return null;
+    const i = v / r;
+    return mkNumEn(`A lamp with resistance ${r} Ω is connected to a ${v} V battery. Using Ohm's law, the current flowing is … A`, i, [v * r, i + 1, Math.max(1, i - 1)], `Step 1: Ohm's law: I = V ÷ R (current = voltage ÷ resistance). Step 2: I = ${v} ÷ ${r} = ${i} A.`);
+  }
+  if (mode === 2) {
+    const s = pick([100, 120, 150, 200, 240, 300]);
+    const t = pick([5, 10, 12, 15, 20, 25, 30].filter((x) => s % x === 0));
+    if (t === undefined) return null;
+    const v = s / t;
+    return mkNumEn(`A cyclist covers ${s} m in ${t} seconds at a steady speed. Her average speed is … m/s`, v, [v + 2, Math.max(1, v - 2), s * t / 100], `Step 1: average speed v = distance ÷ time. Step 2: v = ${s} ÷ ${t} = ${v} m/s.`);
+  }
+  const it = pick([
+    { q: "Why does the Moon shine at night even though it is not a star?", a: "It reflects sunlight towards the Earth", w: ["It makes its own light", "It reflects city lights", "It stores light from the morning"], ex: "The Moon has no light of its own. Its surface reflects sunlight, and that reflected light is what we see at night." },
+    { q: "A plant's leaves are covered with thick black plastic for a week. The plant becomes weak and pale. Why?", a: "Without light it cannot photosynthesise, so it cannot make food", w: ["The plastic makes the leaves heavier", "The plant is sleeping", "The roots stop drinking because of the plastic"], ex: "Photosynthesis needs light. Block the light and the plant cannot produce food (sugar), so it weakens — even though its roots still get water." },
+    { q: "Why do we feel cooler when sweat evaporates from our skin?", a: "Evaporation takes heat away from the skin", w: ["Sweat is colder than ice", "Sweat blocks the sunlight", "The wind pushes the heat back"], ex: "To evaporate, sweat needs heat energy, and it takes that heat from the skin. Losing heat makes the body feel cooler — this is how sweating controls body temperature." },
+  ] as const);
+  return mkq(it.q, it.a, [...it.w], it.ex);
+};
+
+const smaFunctionDetailEn: LGen = () => {
+  const mode = ri(0, 2);
+  if (mode === 0) {
+    const a = ri(1, 4);
+    const b = ri(1, 6);
+    const x0 = ri(1, 5);
+    const sub = ri(1, 4);
+    const gx = x0 * x0 - sub;
+    const val = a * gx + b;
+    return mkNumEn(`Given f(x) = ${a}x + ${b} and g(x) = x² − ${sub}. The value of (f ∘ g)(${x0}) is …`, val, [val - a, val + b, a * x0 + b], `Step 1: work from the inside out: g(${x0}) = ${x0}² − ${sub} = ${gx}. Step 2: put that result into f: f(${gx}) = ${a}×${gx} + ${b} = ${val}.`);
+  }
+  if (mode === 1) {
+    const a = ri(2, 5);
+    const b = ri(1, 6);
+    const x0 = ri(2, 7);
+    const y = a * x0 + b;
+    return mkNumEn(`If f(x) = ${a}x + ${b}, then the value of f⁻¹(${y}) (the inverse function at ${y}) is …`, x0, [x0 + 1, Math.max(0, x0 - 1), y * a + b], `Step 1: the inverse undoes f — find x so that ${a}x + ${b} = ${y}. Step 2: ${a}x = ${y} − ${b} = ${y - b}, so x = ${x0}.`);
+  }
+  const a = ri(1, 3);
+  const xv = ri(1, 4);
+  const min = ri(1, 9) - a * 0;
+  return mkNumEn(`The minimum value of the quadratic function f(x) = ${a}(x − ${xv})² + ${min} is …`, min, [min + a, xv, Math.max(0, min - a)], `Step 1: in vertex form a(x − h)² + k, the squared part is never negative, so the smallest value happens when (x − ${xv})² = 0. Step 2: at x = ${xv} the value is exactly k = ${min}.`);
+};
+
+const smaTrigDetailEn: LGen = () => {
+  const mode = ri(0, 2);
+  if (mode === 0) {
+    const t = pick([
+      { h: 10, ang: 45, ans: 10 },
+      { h: 20, ang: 45, ans: 20 },
+      { h: 30, ang: 45, ans: 30 },
+    ] as const);
+    return mkNumEn(`From a point ${t.h} m away from the foot of a flagpole, the top of the pole is seen at an elevation angle of ${t.ang}°. The height of the pole is … m`, t.ans, [t.ans + 5, Math.max(5, t.ans - 5), t.ans * 2], `Step 1: tan(angle) = opposite ÷ adjacent = height ÷ distance. Step 2: tan 45° = 1, so height = ${t.h} × 1 = ${t.ans} m.`);
+  }
+  if (mode === 1) {
+    const hyp = pick([10, 13, 20, 25]);
+    const pair = hyp === 13 ? { opp: 5, adj: 12 } : hyp === 25 ? { opp: 7, adj: 24 } : hyp === 10 ? { opp: 6, adj: 8 } : { opp: 12, adj: 16 };
+    return mkq(`In a right triangle, the side opposite angle A is ${pair.opp} cm, the adjacent side is ${pair.adj} cm, and the hypotenuse is ${hyp} cm. The value of sin A is …`, `${pair.opp}/${hyp}`, [`${pair.adj}/${hyp}`, `${pair.opp}/${pair.adj}`, `${hyp}/${pair.opp}`], `Step 1: sin = opposite ÷ hypotenuse. Step 2: sin A = ${pair.opp}/${hyp}. (Adjacent ÷ hypotenuse would be cos A, and opposite ÷ adjacent would be tan A.)`);
+  }
+  const deg = pick([30, 45, 60, 90, 180]);
+  const ans = deg === 30 || deg === 60 ? "1/2" : deg === 45 ? "√2/2" : deg === 90 ? "1" : "0";
+  const val = deg === 30 ? "sin 30°" : deg === 60 ? "cos 60°" : deg === 45 ? "sin 45°" : deg === 90 ? "sin 90°" : "sin 180°";
+  const wrongs = ["1/2", "√2/2", "√3/2", "1", "0"].filter((w) => w !== ans).slice(0, 3);
+  return mkq(`The value of ${val} is …`, ans, wrongs, `Use the special-angle table: sin 30° = 1/2, sin 45° = √2/2, sin 60° = √3/2, sin 90° = 1, sin 180° = 0, and cos 60° = 1/2. So ${val} = ${ans}.`);
+};
+
+const smaProbStatDetailEn: LGen = () => {
+  const mode = ri(0, 2);
+  if (mode === 0) {
+    const red = ri(2, 5);
+    const blue = ri(2, 5);
+    const total = red + blue;
+    const g = gcd(red, total);
+    const gb = gcd(blue, total);
+    return mkq(`A bag contains ${red} red marbles and ${blue} blue marbles. One marble is taken at random. The probability it is RED is …`, `${red / g}/${total / g}`, [`${blue / gb}/${total / gb}`, `${red}/${blue}`, `${total / g}/${red / g}`], `Step 1: probability = favourable outcomes ÷ total outcomes = ${red} ÷ ${total}. Step 2: simplify by dividing by ${g}: ${red / g}/${total / g}.`);
+  }
+  if (mode === 1) {
+    const n = ri(4, 6);
+    const mean = pick([70, 75, 80, 85]);
+    const newMean = mean + pick([2, 4, 6]);
+    const added = newMean * (n + 1) - mean * n;
+    return mkNumEn(`The mean score of ${n} students is ${mean}. After one more student joins, the mean rises to ${newMean}. The new student's score is …`, added, [added - 10, newMean, added + 5], `Step 1: the old total is ${n} × ${mean} = ${mean * n}. Step 2: the new total must be ${n + 1} × ${newMean} = ${newMean * (n + 1)}. Step 3: the new score = ${newMean * (n + 1)} − ${mean * n} = ${added}.`);
+  }
+  const vals = [ri(3, 9), ri(3, 9), ri(3, 9), ri(3, 9), ri(3, 9)];
+  const sorted = [...vals].sort((a, b) => a - b);
+  const med = sorted[2] ?? 0;
+  return mkNumEn(`Data: ${vals.join(", ")}. The median of this data is …`, med, [sorted[0] ?? 0, sorted[4] ?? 0, Math.round(vals.reduce((s, v) => s + v, 0) / 5)], `Step 1: sort the data: ${sorted.join(", ")}. Step 2: with 5 values the median is the 3rd value = ${med}.`);
+};
+
+const smaBioDetailEn: LGen = () => {
+  const mode = ri(0, 1);
+  if (mode === 0) {
+    return mkq("In a monohybrid cross Aa × Aa, the PHENOTYPE ratio of the offspring is …", "3 : 1", ["1 : 1", "1 : 2 : 1", "9 : 3 : 3 : 1"], "The genotypes are AA (1), Aa (2), aa (1). The dominant trait shows in AA and Aa — 3 parts — while the recessive trait shows only in aa — 1 part. So the phenotype ratio is 3 : 1; 1 : 2 : 1 is the GENOTYPE ratio.");
+  }
+  const it = pick([
+    { q: "A plant cell is placed in very salty water. The cell shrinks because …", a: "Water leaves the cell by osmosis towards the saltier side", w: ["Salt enters and crushes the cell", "The cell stops breathing", "The cell wall dissolves in salt"], ex: "Osmosis moves water from the less concentrated side to the more concentrated side. Salty water outside pulls water out of the cell, so the cell shrinks (plasmolysis)." },
+    { q: "Why do muscle cells contain far more mitochondria than skin cells?", a: "Muscles need much more energy (ATP) for movement", w: ["Mitochondria make the muscles red", "Skin cells do not need to live", "Mitochondria store fat for muscles"], ex: "Mitochondria produce ATP, the cell's energy currency. Muscle cells work hard and constantly, so they need many mitochondria; skin cells use far less energy." },
+  ] as const);
+  return mkq(it.q, it.a, [...it.w], it.ex);
+};
+
+const smaPhysDetailEn: LGen = () => {
+  const mode = ri(0, 2);
+  if (mode === 0) {
+    const w = pick([40, 60, 100, 200]);
+    const hours = pick([2, 3, 4, 5, 6, 10]);
+    const days = 30;
+    const kwh = (w * hours * days) / 1000;
+    if (!Number.isInteger(kwh)) return null;
+    return mkNumEn(`A ${w} W lamp is used ${hours} hours every day. The electrical energy used in ${days} days is … kWh`, kwh, [kwh + 3, (w * hours) / 1000, kwh * 2], `Step 1: energy per day = ${w} W × ${hours} h = ${w * hours} Wh = ${(w * hours) / 1000} kWh. Step 2: in ${days} days = ${(w * hours) / 1000} × ${days} = ${kwh} kWh. (1 kWh = 1,000 Wh.)`);
+  }
+  if (mode === 1) {
+    const h = pick([5, 20, 45, 80]);
+    const v = Math.sqrt(2 * 10 * h);
+    return mkNumEn(`An object is dropped from a height of ${h} m (g = 10 m/s²). Its speed just before hitting the ground is … m/s`, v, [Math.max(5, v - 10), v + 10, h], `Step 1: for free fall use v² = 2gh. Step 2: v = √(2 × 10 × ${h}) = √${2 * 10 * h} = ${v} m/s.`);
+  }
+  const v0 = ri(2, 10);
+  const a = ri(2, 5);
+  const t = ri(2, 6);
+  const s = v0 * t + 0.5 * a * t * t;
+  return mkNumEn(`A car starts at ${v0} m/s and accelerates at ${a} m/s² for ${t} s. The distance it travels is … m`, s, [v0 * t, s + a * t, (v0 + a * t) * t], `Step 1: for uniformly accelerated motion use s = v₀t + ½at². Step 2: s = ${v0}×${t} + ½×${a}×${t}² = ${v0 * t} + ${0.5 * a * t * t} = ${s} m.`);
+};
+
+const smaChemDetailEn: LGen = () => {
+  const mode = ri(0, 1);
+  if (mode === 0) {
+    const mol = pick([0.1, 0.2, 0.25, 0.5, 1]);
+    const volMl = pick([100, 200, 250, 500, 1000]);
+    const mRaw = mol / (volMl / 1000);
+    const m = Math.round(mRaw * 100) / 100;
+    if (Math.abs(m - mRaw) > 1e-9) return null;
+    return mkNumEn(`${mol} mol of NaOH is dissolved in water to make ${volMl} mL of solution. The molarity is … M`, m, [m + 0.5, mol * 10, Math.max(0.1, m - 0.2)], `Step 1: convert the volume to litres: ${volMl} mL = ${volMl / 1000} L. Step 2: M = moles ÷ volume = ${mol} ÷ ${volMl / 1000} = ${fmtDecEn(m)} M.`);
+  }
+  const it = pick([
+    { q: "A solution turns BLUE litmus paper RED, and its pH is measured as 3. The solution is …", a: "Acidic, because its pH is below 7", w: ["Basic, because litmus changes colour", "Neutral, because pH 3 is close to 0", "A salt, because it has no taste"], ex: "Acids turn blue litmus red and have pH < 7. Bases turn red litmus blue with pH > 7; pH 7 is neutral." },
+    { q: "In the reaction 2H₂ + O₂ → 2H₂O, how many moles of water are formed from 4 moles of H₂?", a: "4 moles", w: ["2 moles", "8 moles", "1 mole"], ex: "Step 1: compare the coefficients — 2 mol H₂ produces 2 mol H₂O, a 1 : 1 ratio. Step 2: so 4 mol H₂ produces 4 mol H₂O." },
+  ] as const);
+  return mkq(it.q, it.a, [...it.w], it.ex);
+};
+
 export const GENERATORS_EN: Partial<Record<JenjangId, Record<string, LGen[]>>> = {
   TK: {
     inggris: [tkEngPairsEn, tkEngArrangeEn, tkCompareEn],
-    matematika: [tkCountEn, tkAddSubEn, tkCompareEn, tkMissingEn, tkBeforeAfterEn, tkStoryCountEn, factGenL(TK_SHAPE_FACTS_EN, false)],
-    sains: [pairGenL({ pairs: TK_SAINS_PAIRS_EN, askA: (a) => `${a} mainly lives in …`, askB: (b) => `The animal that lives in ${b.charAt(0).toLowerCase() + b.slice(1)} is the …`, exA: (a, b) => `${a} lives in ${b.charAt(0).toLowerCase() + b.slice(1)}.`, exB: (a, b) => `The one that lives in ${b.charAt(0).toLowerCase() + b.slice(1)} is the ${a.toLowerCase()}.`, four: false }), factGenL(TK_SAINS_FACTS_EN, false)],
+    matematika: [tkCountEn, tkAddSubEn, tkCompareEn, tkMissingEn, tkBeforeAfterEn, tkStoryCountEn, tkStoryDetailEn, tkStoryDetailEn, factGenL(TK_SHAPE_FACTS_EN, false)],
+    sains: [pairGenL({ pairs: TK_SAINS_PAIRS_EN, askA: (a) => `${a} mainly lives in …`, askB: (b) => `The animal that lives in ${b.charAt(0).toLowerCase() + b.slice(1)} is the …`, exA: (a, b) => `${a} lives in ${b.charAt(0).toLowerCase() + b.slice(1)}.`, exB: (a, b) => `The one that lives in ${b.charAt(0).toLowerCase() + b.slice(1)} is the ${a.toLowerCase()}.`, four: false }), factGenL(TK_SAINS_FACTS_EN, false), factGenL(TK_SCI_STORY_FACTS_EN, false)],
     informatika: tikGensEn("TK"),
     sejarah: sejarahGensEn("TK"),
     korea: langVocabGensEn(KOREA_VOCAB_EN, "Korean", "TK"),
@@ -1436,12 +1873,12 @@ export const GENERATORS_EN: Partial<Record<JenjangId, Record<string, LGen[]>>> =
     mandarin: langVocabGensEn(MANDARIN_VOCAB_EN, "Mandarin", "TK"),
   },
   SD: {
-    matematika: [sdAddSubEn, bandGate(0.15, sdMulDivEn), bandGate(0.35, sdMixedEn), bandGate(0.35, sdFractionEn), bandGate(0.5, sdFpbKpkEn), bandGate(0.35, sdGeometryEn), bandGate(0.75, sdAverageEn), sdSequenceEn, bandGate(0.15, sdWordProblemEn), bandGate(0.5, sdRoundEn), bandGate(0.75, sdPercentEn), bandGate(0.15, sdClockEn), bandGate(0.15, sdUnitEn), bandGate(0.35, sdFracCompareEn),
+    matematika: [sdAddSubEn, bandGate(0.15, sdMulDivEn), bandGate(0.35, sdMixedEn), bandGate(0.35, sdFractionEn), bandGate(0.5, sdFpbKpkEn), bandGate(0.35, sdGeometryEn), bandGate(0.75, sdAverageEn), sdSequenceEn, bandGate(0.15, sdWordProblemEn), bandGate(0.5, sdRoundEn), bandGate(0.75, sdPercentEn), bandGate(0.15, sdClockEn), bandGate(0.15, sdUnitEn), bandGate(0.35, sdFracCompareEn), bandGate(0.35, sdShopDetailEn), bandGate(0.35, sdDataDetailEn), bandGate(0.5, sdRatioDetailEn), bandGate(0.35, sdTrueStmtEn),
       bandGate(0.5, pairGenL({ pairs: ROMAN_PAIRS_EN, askA: (a) => `The Roman numeral for ${a} is …`, askB: (b) => `The Roman numeral “${b}” has the value …`, exA: (a, b) => `${a} in Roman numerals is ${b}.`, exB: (a, b) => `${b} has the value ${a}.` }))],
     inggris: [...engVocabGensEn("SD"), sdEngPastEn],
     sains: [
       pairGenL({ pairs: SD_SAINS_PAIRS_EN, askA: (a) => `The function of the ${a.toLowerCase()} is to …`, askB: (b) => `The part/organ that functions to “${b.charAt(0).toLowerCase() + b.slice(1)}” is the …`, exA: (a, b) => `${a}: ${b.charAt(0).toLowerCase() + b.slice(1)}.`, exB: (a, b) => `The one that functions to ${b.charAt(0).toLowerCase() + b.slice(1)} is the ${a.toLowerCase()}.` }),
-      factGenL(SD_SAINS_FACTS_EN), planetGenEn,
+      factGenL(SD_SAINS_FACTS_EN), planetGenEn, sdScienceDetailEn, sdScienceDetailEn,
       classifyGenL(SD_SAINS_CLASSIFY_EN.map((x) => ({ item: x.item, cat: x.cat })), (i) => `The animal ${i.toLowerCase()} undergoes …`, (i, c) => `${i} has ${c.charAt(0).toLowerCase() + c.slice(1)}.`),
     ],
     ips: [
@@ -1454,17 +1891,17 @@ export const GENERATORS_EN: Partial<Record<JenjangId, Record<string, LGen[]>>> =
       pairGenL({ pairs: EN_PAST_EN, askA: (a) => `The past tense of “${a}” is …`, askB: (b) => `The base form (V1) of “${b}” is …`, exA: (a, b) => `${a} → ${b}.`, exB: (a, b) => `${b} comes from ${a}.` })],
     "cambridge-sci": [
       pairGenL({ pairs: CAM_SCI_PAIRS_EN, askA: (a) => `In science, the ${a.toLowerCase()} …`, askB: (b) => `“${b}” — this describes the …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `That is the ${a}.` }),
-      factGenL(SD_SAINS_FACTS_EN),
+      factGenL(SD_SAINS_FACTS_EN), sdScienceDetailEn,
     ],
-    "cambridge-math": [camMathEn],
+    "cambridge-math": [camMathEn, bandGate(0.35, sdShopDetailEn), bandGate(0.35, sdDataDetailEn), bandGate(0.5, sdRatioDetailEn), bandGate(0.35, sdTrueStmtEn)],
     korea: langVocabGensEn(KOREA_VOCAB_EN, "Korean", "SD", KOREA_FACTS_EN),
     jepang: [...langVocabGensEn(JEPANG_VOCAB_EN, "Japanese", "SD", JEPANG_FACTS_EN), pairGenL({ pairs: JEPANG_KANA_EN, askA: (a) => `The hiragana for the sound “${a}” is …`, askB: (b) => `The hiragana “${b}” is read …`, exA: (a, b) => `The sound “${a}” is written ${b}.`, exB: (a, b) => `${b} is read “${a}”.` })],
     mandarin: langVocabGensEn(MANDARIN_VOCAB_EN, "Mandarin", "SD", MANDARIN_FACTS_EN),
   },
   SMP: {
-    matematika: [smpNegOpsEn, smpEquationEn, smpSequenceEn, smpGradientEn, smpProbabilityEn, smpScaleEn, smpPhysicsEn, smpDiscountEn, smpProfitEn, smpPythagEn, smpCircleEn, smpVolumeEn, smpAnglesEn, smpTwoVarEn],
+    matematika: [smpNegOpsEn, smpEquationEn, smpSequenceEn, smpGradientEn, smpProbabilityEn, smpScaleEn, smpPhysicsEn, smpDiscountEn, smpProfitEn, smpPythagEn, smpCircleEn, smpVolumeEn, smpAnglesEn, smpTwoVarEn, smpMultiStepEn, smpDataDetailEn],
     inggris: engVocabGensEn("SMP"),
-    sains: [factGenL(SMP_SAINS_FACTS_EN), smpPhysicsEn, phGenEn,
+    sains: [factGenL(SMP_SAINS_FACTS_EN), smpPhysicsEn, phGenEn, smpScienceDetailEn, smpScienceDetailEn,
       pairGenL({ pairs: ORGANEL_EN, askA: (a) => `The function of the organelle ${a.toLowerCase()} is to …`, askB: (b) => `The organelle that functions to “${b.charAt(0).toLowerCase() + b.slice(1)}” is the …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `That is the ${a.toLowerCase()}.` })],
     ips: [
       pairGenL({ pairs: EVENT_YEAR_EN, askA: (a) => `${a} happened on / in …`, askB: (b) => `The event that happened on / in ${b} is …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, b) => `On / in ${b}: ${a}.` }),
@@ -1482,16 +1919,17 @@ export const GENERATORS_EN: Partial<Record<JenjangId, Record<string, LGen[]>>> =
     "cambridge-sci": [
       pairGenL({ pairs: CAM_SCI_PAIRS_EN, askA: (a) => `In science, the ${a.toLowerCase()} …`, askB: (b) => `“${b}” — this describes the …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `That is the ${a}.` }),
       pairGenL({ pairs: UNSUR_EN, askA: (a) => `The chemical symbol for ${a.toLowerCase()} is …`, askB: (b) => `The symbol “${b}” stands for the element …`, exA: (a, b) => `${a} = ${b}.`, exB: (a, b) => `${b} = ${a}.` }),
+      smpScienceDetailEn,
     ],
-    "cambridge-math": [camMathEn, smpEquationEn],
+    "cambridge-math": [camMathEn, smpEquationEn, smpMultiStepEn, smpDataDetailEn],
     korea: langVocabGensEn(KOREA_VOCAB_EN, "Korean", "SMP", KOREA_FACTS_EN),
     jepang: [...langVocabGensEn(JEPANG_VOCAB_EN, "Japanese", "SMP", JEPANG_FACTS_EN), pairGenL({ pairs: JEPANG_KANA_EN, askA: (a) => `The hiragana for the sound “${a}” is …`, askB: (b) => `The hiragana “${b}” is read …`, exA: (a, b) => `The sound “${a}” is written ${b}.`, exB: (a, b) => `${b} is read “${a}”.` })],
     mandarin: langVocabGensEn(MANDARIN_VOCAB_EN, "Mandarin", "SMP", MANDARIN_FACTS_EN),
   },
   SMA: {
-    matematika: [smaDerivativeEn, smaLimitEn, smaLogEn, smaSeriesEn, smaCombinationEn, smaQuadraticEn, smaGeomSeriesEn, smaDetEn, smaPermEn, factGenL(TRIG_FACTS_EN)],
+    matematika: [smaDerivativeEn, smaLimitEn, smaLogEn, smaSeriesEn, smaCombinationEn, smaQuadraticEn, smaGeomSeriesEn, smaDetEn, smaPermEn, factGenL(TRIG_FACTS_EN), smaFunctionDetailEn, smaTrigDetailEn, smaProbStatDetailEn],
     inggris: engVocabGensEn("SMA"),
-    biologi: [smaGeneticsEn,
+    biologi: [smaGeneticsEn, smaBioDetailEn, smaBioDetailEn,
       pairGenL({ pairs: ENZIM_EN, askA: (a) => `The enzyme ${a} functions to …`, askB: (b) => `The enzyme that functions to “${b.charAt(0).toLowerCase() + b.slice(1)}” is …`, exA: (a, b) => `${a}: ${b.charAt(0).toLowerCase() + b.slice(1)}.`, exB: (a, _b) => `That is the enzyme ${a}.` }),
       pairGenL({ pairs: ORGANEL_EN, askA: (a) => `The function of the organelle ${a.toLowerCase()} is to …`, askB: (b) => `The organelle that functions to “${b.charAt(0).toLowerCase() + b.slice(1)}” is the …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `That is the ${a.toLowerCase()}.` }),
       factGenL([
@@ -1499,8 +1937,8 @@ export const GENERATORS_EN: Partial<Record<JenjangId, Record<string, LGen[]>>> =
         ["The enzyme that joins Okazaki fragments in DNA replication is …", "DNA ligase", ["Helicase", "Primase", "Topoisomerase"], "DNA ligase joins Okazaki fragments on the lagging strand."],
         ["The respiratory organ of insects is the …", "Trachea", ["Lungs", "Gills", "Skin"], "Insects breathe through the tracheal system & spiracles."],
       ] as Fact[])],
-    fisika: [smaPhysicsEn],
-    kimia: [smaChemistryPhEn,
+    fisika: [smaPhysicsEn, smaPhysDetailEn, smaPhysDetailEn],
+    kimia: [smaChemistryPhEn, smaChemDetailEn, smaChemDetailEn,
       pairGenL({ pairs: UNSUR_EN, askA: (a) => `The symbol of the element ${a.toLowerCase()} is …`, askB: (b) => `The element with the symbol “${b}” is …`, exA: (a, b) => `${a} = ${b}.`, exB: (a, b) => `${b} = ${a}.` }),
       factGenL([
         ["The electron configuration of Fe (Z = 26) is …", "[Ar] 4s² 3d⁶", ["[Ar] 4s¹ 3d⁷", "[Ar] 3d⁸", "[Ne] 4s² 3d⁶"], "Fe: 1s²2s²2p⁶3s²3p⁶4s²3d⁶ = [Ar] 4s² 3d⁶."],
@@ -1536,9 +1974,9 @@ export const GENERATORS_EN: Partial<Record<JenjangId, Record<string, LGen[]>>> =
     "cambridge-sci": [
       pairGenL({ pairs: UNSUR_EN, askA: (a) => `The chemical symbol for ${a.toLowerCase()} is …`, askB: (b) => `The symbol “${b}” stands for the element …`, exA: (a, b) => `${a} = ${b}.`, exB: (a, b) => `${b} = ${a}.` }),
       pairGenL({ pairs: CAM_SCI_PAIRS_EN, askA: (a) => `In science, the ${a.toLowerCase()} …`, askB: (b) => `“${b}” — this describes the …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `That is the ${a}.` }),
-      smaPhysicsEn,
+      smaPhysicsEn, smaPhysDetailEn, smaBioDetailEn,
     ],
-    "cambridge-math": [camMathEn, smaSeriesEn],
+    "cambridge-math": [camMathEn, smaSeriesEn, smaFunctionDetailEn, smaTrigDetailEn, smaProbStatDetailEn],
     korea: langVocabGensEn(KOREA_VOCAB_EN, "Korean", "SMA", KOREA_FACTS_EN),
     jepang: [...langVocabGensEn(JEPANG_VOCAB_EN, "Japanese", "SMA", JEPANG_FACTS_EN), pairGenL({ pairs: JEPANG_KANA_EN, askA: (a) => `The hiragana for the sound “${a}” is …`, askB: (b) => `The hiragana “${b}” is read …`, exA: (a, b) => `The sound “${a}” is written ${b}.`, exB: (a, b) => `${b} is read “${a}”.` })],
     mandarin: langVocabGensEn(MANDARIN_VOCAB_EN, "Mandarin", "SMA", MANDARIN_FACTS_EN),
@@ -1568,6 +2006,8 @@ export const BANK_EN: Partial<Record<JenjangId, Partial<Record<string, Question[
       { q: "Complete the pattern: 2, 4, 6, …", options: ["7", "8", "10"], answer: 1, explain: "The pattern adds 2 each time: 2, 4, 6, 8." },
       { q: "Which is BIGGER: 9 or 5?", options: ["5", "The same", "9"], answer: 2, explain: "9 is bigger than 5." },
       { q: "5 − 1 = …", options: ["3", "4", "6"], answer: 1, explain: "5 minus 1 leaves 4." },
+      { q: "There are 5 ducks 🦆 in the pond. Then 2 more ducks come. How many ducks are there now?", options: ["6", "7", "8"], answer: 1, explain: "Count them all: 5 + 2 = 7 ducks." },
+      { q: "Sari has 8 balloons 🎈. 3 balloons fly away. How many balloons are left?", options: ["4", "5", "6"], answer: 1, explain: "8 − 3 = 5. The balloons become fewer because some flew away." },
     ],
     sains: [
       { q: "Which animal can FLY?", options: ["Fish", "Bird", "Cat"], answer: 1, explain: "Birds have wings and can fly." },
@@ -1575,6 +2015,8 @@ export const BANK_EN: Partial<Record<JenjangId, Partial<Record<string, Question[
       { q: "Which sense do we use to HEAR sounds?", options: ["Eyes", "Ears", "Nose"], answer: 1, explain: "We hear sounds with our ears." },
       { q: "When it rains, the sky is usually …", options: ["Clear and bright", "Cloudy and grey", "Full of stars"], answer: 1, explain: "Rain falls from thick grey clouds." },
       { q: "A baby cat is called a …", options: ["Puppy", "Kitten", "Calf"], answer: 1, explain: "A baby cat is a kitten; a puppy is a baby dog; a calf is a baby cow." },
+      { q: "It is raining this morning 🌧️. What do we use to stay dry?", options: ["An umbrella", "Sunglasses", "A swimsuit"], answer: 0, explain: "An umbrella (or a raincoat) protects us from the rain." },
+      { q: "A seed is planted and watered every day 🌱. What will happen to the seed?", options: ["It grows into a plant", "It turns into a rock", "It flies away"], answer: 0, explain: "With water and sunlight, a seed sprouts and grows into a plant." },
     ],
     informatika: [
       { q: "Which device do we use to TYPE letters on a computer?", options: ["Keyboard", "Monitor", "Speaker"], answer: 0, explain: "The keyboard is used for typing letters and numbers." },
@@ -1607,14 +2049,17 @@ export const BANK_EN: Partial<Record<JenjangId, Partial<Record<string, Question[
   },
   SD: {
     matematika: [
-      { q: "The result of 245 + 378 is …", options: ["613", "623", "633"], answer: 1, explain: "245 + 378 = 623." },
-      { q: "3/4 + 1/4 = …", options: ["4/8", "1", "2/4"], answer: 1, explain: "Same denominators: 3/4 + 1/4 = 4/4 = 1." },
+      { q: "The result of 245 + 378 is …", options: ["613", "623", "633"], answer: 1, lv: 4, explain: "245 + 378 = 623." },
+      { q: "3/4 + 1/4 = …", options: ["4/8", "1", "2/4"], answer: 1, lv: 4, explain: "Same denominators: 3/4 + 1/4 = 4/4 = 1." },
       { q: "The number pattern 5, 10, 15, 20, … — the next number is …", options: ["22", "24", "25"], answer: 2, explain: "The pattern adds 5: 20 + 5 = 25." },
       { q: "A rectangle has length 8 cm and width 5 cm. Its area is …", options: ["26 cm²", "40 cm²", "13 cm²"], answer: 1, explain: "Area = length × width = 8 × 5 = 40 cm²." },
-      { q: "Which fraction is the LARGEST?", options: ["1/2", "1/4", "1/8"], answer: 0, explain: "The same numerator: the smaller the denominator, the larger the fraction. 1/2 is the largest." },
+      { q: "Which fraction is the LARGEST?", options: ["1/2", "1/4", "1/8"], answer: 0, lv: 4, explain: "The same numerator: the smaller the denominator, the larger the fraction. 1/2 is the largest." },
       { q: "The result of 12 × 6 is …", options: ["66", "72", "78"], answer: 1, explain: "12 × 6 = 72." },
-      { q: "Rp10.000 − Rp3.750 = …", options: ["Rp6.250", "Rp6.350", "Rp7.250"], answer: 0, explain: "10.000 − 3.750 = 6.250." },
+      { q: "Rp10.000 − Rp3.750 = …", options: ["Rp6.250", "Rp6.350", "Rp7.250"], answer: 0, lv: 4, explain: "10.000 − 3.750 = 6.250." },
       { q: "The LCM of 4 and 6 is …", options: ["10", "12", "24"], answer: 1, explain: "Multiples of 4: 4, 8, 12… Multiples of 6: 6, 12… The smallest common one is 12." },
+      { q: "One dozen pencils cost Rp24,000. The price of one pencil is …", options: ["Rp1,000", "Rp2,000", "Rp12,000"], answer: 1, lv: 4, explain: "Step 1: one dozen = 12 pencils. Step 2: unit price = 24,000 ÷ 12 = Rp2,000." },
+      { q: "Dina's test scores in a week: 80, 90, 70, 100, 60. The highest and lowest scores are …", options: ["100 and 60", "90 and 70", "100 and 70"], answer: 0, lv: 3, explain: "Step 1: sort the scores from smallest: 60, 70, 80, 90, 100. Step 2: the biggest is 100 and the smallest is 60." },
+      { q: "Which statement about fractions is TRUE?", options: ["1/2 is bigger than 3/4", "2/4 is equal to 1/2", "1/3 is bigger than 1/2"], answer: 1, lv: 4, explain: "Step 1: simplify 2/4 by dividing the top and bottom by 2 → 1/2, so they are equal. Step 2: the others are false: 1/2 < 3/4 and 1/3 < 1/2." },
     ],
     inggris: [
       { q: "She ___ to school every day.", options: ["go", "goes", "going"], answer: 1, explain: "For she/he/it in the simple present, add -es: goes." },
@@ -1631,6 +2076,9 @@ export const BANK_EN: Partial<Record<JenjangId, Partial<Record<string, Question[
       { q: "Which animal is a herbivore (plant eater)?", options: ["Tiger", "Cow", "Snake"], answer: 1, explain: "Cows eat grass/plants, so they are herbivores." },
       { q: "The force that pulls objects toward the Earth is called …", options: ["Friction", "Magnetism", "Gravity"], answer: 2, explain: "Gravity pulls everything toward the centre of the Earth." },
       { q: "Which object can be attracted by a magnet?", options: ["Wooden ruler", "Iron nail", "Plastic cup"], answer: 1, explain: "Magnets attract iron and steel objects." },
+      { q: "Two plant pots: pot A stands by a bright window, pot B inside a dark cupboard. After a week, the plant expected to grow healthier is …", options: ["Pot B, because darkness makes wide leaves", "Pot A, because plants need sunlight for photosynthesis", "Both grow exactly the same"], answer: 1, explain: "Plants need sunlight to photosynthesise (make their food). In darkness a plant turns pale, thin, and weak." },
+      { q: "The temperature of water in a glass is measured every 5 minutes: 30°C, 34°C, 38°C, 42°C. The correct conclusion is …", options: ["The water gets colder", "The temperature rises 4°C every 5 minutes", "The temperature stays the same"], answer: 1, explain: "Step 1: find the differences: 34−30 = 4, 38−34 = 4, 42−38 = 4. Step 2: the rise is steady, 4°C every 5 minutes." },
+      { q: "Mom dries wet clothes under the sun. After a few hours the clothes are dry because …", options: ["The water in the clothes freezes", "The water evaporates because of the sun's heat", "The water soaks into the clothes line"], answer: 1, explain: "The sun's heat changes the water in the clothes into water vapour (evaporation) that escapes into the air, so the clothes dry." },
     ],
     ips: [
       { q: "The capital of West Java Province is …", options: ["Semarang", "Bandung", "Surabaya"], answer: 1, explain: "Bandung is the capital of West Java." },
@@ -1655,6 +2103,8 @@ export const BANK_EN: Partial<Record<JenjangId, Partial<Record<string, Question[
       { q: "A coin is tossed once. The probability of getting heads is …", options: ["1/4", "1/3", "1/2"], answer: 2, explain: "There are 2 equally likely sides, so P(heads) = 1/2." },
       { q: "The value of (−4) × (−5) − 8 is …", options: ["12", "−28", "28"], answer: 0, explain: "(−4)×(−5) = 20; 20 − 8 = 12." },
       { q: "The area of a circle with radius 7 cm (π = 22/7) is …", options: ["44 cm²", "154 cm²", "616 cm²"], answer: 1, explain: "A = πr² = 22/7 × 49 = 154 cm²." },
+      { q: "A shop gives a 20% discount on shoes costing Rp250,000, plus a further Rp10,000 off at the till. The final price paid is …", options: ["Rp180,000", "Rp190,000", "Rp200,000"], answer: 1, explain: "Step 1: the discount is 20/100 × 250,000 = 50,000, so the price becomes 250,000 − 50,000 = 200,000. Step 2: minus the till voucher: 200,000 − 10,000 = Rp190,000." },
+      { q: "Class test scores: 6, 7, 8, 7, 9, 7, 8. The median of the data is …", options: ["6", "7", "8"], answer: 1, explain: "Step 1: sort the data: 6, 7, 7, 7, 8, 8, 9. Step 2: with 7 values, the median is the middle (4th) value, which is 7." },
     ],
     inggris: [
       { q: "The report ___ by the students last week.", options: ["is written", "was written", "writes"], answer: 1, explain: "Passive past: was/were + past participle (written)." },
@@ -1670,6 +2120,8 @@ export const BANK_EN: Partial<Record<JenjangId, Partial<Record<string, Question[
       { q: "In a food chain, organisms that make their own food are called …", options: ["Consumers", "Producers", "Decomposers"], answer: 1, explain: "Producers (plants) make food through photosynthesis." },
       { q: "The SI unit of force is the …", options: ["Joule", "Watt", "Newton"], answer: 2, explain: "Force is measured in newtons (N)." },
       { q: "A solution with pH 3 is …", options: ["Basic", "Neutral", "Acidic"], answer: 2, explain: "pH < 7 is acidic; pH 7 is neutral; pH > 7 is basic." },
+      { q: "Experiment: three identical plants get different amounts of water — A 50 ml/day, B 100 ml/day, C 200 ml/day. After 2 weeks their heights are A 8 cm, B 14 cm, C 10 cm. The best conclusion is …", options: ["The more water, the taller the plant", "Watering 100 ml/day gave the best growth in this experiment", "Water has no effect on growth"], answer: 1, explain: "The data shows plant B (100 ml/day) grew tallest, 14 cm. Plant C got the most water but grew less than B, so the conclusion must follow the data: there is a right amount of water, not simply 'more is better'." },
+      { q: "A circuit uses a 12 V battery and a lamp with resistance 4 Ω. The current flowing is … A", options: ["0.33", "3", "48"], answer: 1, explain: "Step 1: use Ohm's law: I = V ÷ R. Step 2: I = 12 ÷ 4 = 3 A." },
     ],
     ips: [
       { q: "The Proclamation of Indonesian Independence was read by Soekarno on …", options: ["17 August 1945", "20 May 1908", "28 October 1928"], answer: 0, explain: "The Proclamation took place on Friday, 17 August 1945." },
@@ -1692,6 +2144,8 @@ export const BANK_EN: Partial<Record<JenjangId, Partial<Record<string, Question[
       { q: "The sum of the first 10 terms of 2 + 5 + 8 + … is …", options: ["145", "155", "165"], answer: 1, explain: "S₁₀ = 10/2 × (2×2 + 9×3) = 5 × 31 = 155." },
       { q: "The number of ways to choose 2 students from 6 is …", options: ["12", "15", "30"], answer: 1, explain: "C(6,2) = 6!/(2!4!) = 15." },
       { q: "The roots of x² − 5x + 6 = 0 are …", options: ["1 and 6", "2 and 3", "−2 and −3"], answer: 1, explain: "(x−2)(x−3) = 0 → x = 2 or x = 3." },
+      { q: "Given f(x) = 2x + 3 and g(x) = x² − 1. The value of (f ∘ g)(2) is …", options: ["7", "9", "15"], answer: 1, explain: "Step 1: work from the inside out: g(2) = 2² − 1 = 3. Step 2: put the result into f: f(3) = 2×3 + 3 = 9." },
+      { q: "The mean score of 5 students is 78. After one new student joins, the mean becomes 80. The new student's score is …", options: ["82", "88", "90"], answer: 2, explain: "Step 1: the old total is 5 × 78 = 390. Step 2: the new total is 6 × 80 = 480. Step 3: the new student's score = 480 − 390 = 90." },
     ],
     inggris: [
       { q: "Had I known about the traffic, I ___ earlier.", options: ["will leave", "would have left", "would leave"], answer: 1, explain: "Third conditional (inverted): would have + past participle." },
@@ -1704,18 +2158,21 @@ export const BANK_EN: Partial<Record<JenjangId, Partial<Record<string, Question[
       { q: "A dihybrid cross AaBb × AaBb gives a 9:3:3:1 phenotype ratio in the offspring. This pattern is explained by …", options: ["Mendel's law of independent assortment", "Incomplete dominance", "Codominance"], answer: 0, explain: "In a dihybrid cross, the two gene pairs separate independently, giving the 9:3:3:1 phenotype ratio." },
       { q: "The enzyme that joins Okazaki fragments during DNA replication is …", options: ["Helicase", "DNA ligase", "Primase"], answer: 1, explain: "DNA ligase seals the fragments on the lagging strand." },
       { q: "The breathing organ of insects is the …", options: ["Lungs", "Gills", "Tracheal system"], answer: 2, explain: "Insects breathe through tracheae and spiracles." },
+      { q: "In a monohybrid cross Aa × Aa, the phenotype ratio of the offspring is …", options: ["1 : 1", "3 : 1", "1 : 2 : 1"], answer: 1, explain: "The genotypes are AA (1), Aa (2), aa (1). The dominant trait appears in AA and Aa — 3 parts; the recessive trait appears only in aa — 1 part. So the phenotype ratio is 3 : 1, while 1 : 2 : 1 is the genotype ratio." },
     ],
     fisika: [
       { q: "An object falls freely from rest (g = 10 m/s²). Its speed after 3 s is …", options: ["10 m/s", "20 m/s", "30 m/s"], answer: 2, explain: "v = g·t = 10 × 3 = 30 m/s." },
       { q: "A resistor of 6 Ω is connected to 12 V. The current is …", options: ["0.5 A", "2 A", "72 A"], answer: 1, explain: "I = V/R = 12/6 = 2 A." },
       { q: "The kinetic energy of a 2 kg object moving at 5 m/s is …", options: ["10 J", "25 J", "50 J"], answer: 1, explain: "KE = ½mv² = ½ × 2 × 25 = 25 J." },
       { q: "A wave has frequency 10 Hz and wavelength 2 m. Its speed is …", options: ["5 m/s", "12 m/s", "20 m/s"], answer: 2, explain: "v = f·λ = 10 × 2 = 20 m/s." },
+      { q: "A 60 W lamp is switched on for 5 hours every day. The electrical energy it uses in 30 days is … kWh", options: ["9", "18", "90"], answer: 0, explain: "Step 1: energy per day = 60 W × 5 h = 300 Wh = 0.3 kWh. Step 2: over 30 days = 0.3 × 30 = 9 kWh." },
     ],
     kimia: [
       { q: "The electron configuration of Fe (Z = 26) is …", options: ["[Ar] 4s² 3d⁶", "[Ar] 4s¹ 3d⁷", "[Ne] 4s² 3d⁶"], answer: 0, explain: "Fe: 1s² 2s² 2p⁶ 3s² 3p⁶ 4s² 3d⁶." },
       { q: "The oxidation number of S in H₂SO₄ is …", options: ["+2", "+4", "+6"], answer: 2, explain: "2(+1) + S + 4(−2) = 0 → S = +6." },
       { q: "A solution has [H⁺] = 10⁻³ M. Its pH is …", options: ["3", "7", "11"], answer: 0, explain: "pH = −log[H⁺] = 3." },
       { q: "A buffer solution consists of …", options: ["A strong acid and a strong base", "A weak acid and its conjugate base", "Salt and water only"], answer: 1, explain: "Buffers pair a weak acid with its conjugate base (or the reverse)." },
+      { q: "0.2 mol of NaOH is dissolved in water to make 500 mL of solution. The molarity of the solution is … M", options: ["0.1", "0.4", "1.0"], answer: 1, explain: "Step 1: convert the volume to litres: 500 mL = 0.5 L. Step 2: M = moles ÷ volume = 0.2 ÷ 0.5 = 0.4 M." },
     ],
     ips: [
       { q: "The economic theory of laissez-faire (minimal government intervention) was put forward by …", options: ["Karl Marx", "Adam Smith", "John Maynard Keynes"], answer: 1, explain: "Adam Smith, 'The Wealth of Nations' (1776)." },

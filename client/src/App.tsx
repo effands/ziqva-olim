@@ -5,18 +5,18 @@ import {
 BANK, JENJANG, KELAS_BY_JENJANG, LEVELS, SCHOOL_TYPES, SUBJECTS, SESSION_SIZE, UNLOCK_SCORE, buildSession, defaultKelas, jenjangKelasLabel, kelasLabel, medalFor, motivationFor, subjectsFor,
 type JenjangId, type Question, type SchoolType,
 } from "./data/questions";
-
-/** Total soal inti tertulis di bank soal (di luar variasi acak generator). */
-const TOTAL_AUTHORED = Object.values(BANK).reduce(
-  (sum, bySubject) => sum + Object.values(bySubject ?? {}).reduce((a, qs) => a + (qs?.length ?? 0), 0),
-  0,
-);
 import { shuffle, shuffleOptions } from "./data/generators";
 import { materialFor } from "./data/materials";
 import { modulesFor, moduleForQuestion, type LibraryModule } from "./data/library";
 import heroImg from "./assets/media-generation-hero-kids-olympiad-0-8efd557a-635d-47a5-88c3-3e408d6372e3.webp";
 import { actionFields } from "@hatch/space-sdk/fields" with { type: "macro" };
 import type { Actions } from "../../server/src/actions";
+
+/** Total soal inti tertulis di bank soal (di luar variasi acak generator). */
+const TOTAL_AUTHORED = Object.values(BANK).reduce(
+  (sum, bySubject) => sum + Object.values(bySubject ?? {}).reduce((a, qs) => a + (qs?.length ?? 0), 0),
+  0,
+);
 
 const FIELDS = actionFields<typeof Actions>();
 

@@ -193,6 +193,8 @@ export const BANK: Bank = {
       { q: "🍎🍎 + 🍎🍎🍎 = … apel?", emoji: "🍎", options: ["4", "5", "6"], answer: 1, explain: "2 + 3 = 5 apel." },
       { q: "Bentuk apa yang TIDAK punya sudut?", emoji: "⭕", options: ["Segitiga", "Persegi", "Lingkaran"], answer: 2, explain: "Lingkaran melengkung dan tidak memiliki sudut." },
       { q: "Setelah angka 17 adalah …", emoji: "🔢", options: ["16", "18", "20"], answer: 1, explain: "Urutan bilangan: …16, 17, 18, 19…" },
+      { q: "Di taman ada 4 burung 🐦. Lalu datang lagi 3 burung 🐦. Sekarang ada berapa burung semuanya?", emoji: "🐦", options: ["6", "7", "8"], answer: 1, explain: "Hitung semuanya: 4 + 3 = 7 burung." },
+      { q: "Ibu membawa 9 permen 🍬. Permen itu dimakan adik 2 buah. Sisa permen Ibu adalah …", emoji: "🍬", options: ["6", "7", "8"], answer: 1, explain: "9 − 2 = 7. Permen berkurang karena dimakan adik." },
     ],
     sains: [
       { q: "Hewan apa yang bisa terbang?", emoji: "🦋", options: ["Ikan", "Kupu-kupu", "Kucing"], answer: 1, explain: "Kupu-kupu punya sayap dan bisa terbang." },
@@ -200,6 +202,8 @@ export const BANK: Bank = {
       { q: "Tanaman butuh apa supaya tumbuh?", emoji: "🌱", options: ["Air dan matahari", "Mainan", "Sepatu"], answer: 0, explain: "Tanaman butuh air dan cahaya matahari untuk tumbuh." },
       { q: "Suara sapi adalah …", emoji: "🐄", options: ["Meong", "Moo", "Guk guk"], answer: 1, explain: "Sapi bersuara “moo”." },
       { q: "Benda apa yang ada di langit pada malam hari?", emoji: "🌙", options: ["Matahari", "Bulan dan bintang", "Pelangi"], answer: 1, explain: "Malam hari kita melihat bulan dan bintang." },
+      { q: "Pagi ini hujan turun 🌧️. Benda apa yang dipakai supaya badan tidak basah?", emoji: "☂️", options: ["Payung", "Kacamata hitam", "Topi ulang tahun"], answer: 0, explain: "Payung melindungi kita dari air hujan." },
+      { q: "Bunga di pot disiram air setiap hari 💧🌷. Apa yang terjadi pada bunga itu?", emoji: "🌷", options: ["Bunga tumbuh segar", "Bunga berubah jadi batu", "Bunga hilang"], answer: 0, explain: "Tanaman butuh air supaya bisa tumbuh segar." },
     ],
     informatika: [
       { q: "Alat kecil yang digerakkan tangan untuk memindahkan panah di layar adalah …", emoji: "🖱️", options: ["Mouse", "Buku", "Penggaris"], answer: 0, explain: "Mouse menggerakkan panah (kursor) di layar." },
@@ -254,6 +258,10 @@ export const BANK: Bank = {
       { q: "Keliling persegi panjang 12 cm × 7 cm adalah … cm", options: ["38", "42", "76", "84"], answer: 0, lv: 4, explain: "K = 2×(12+7) = 2×19 = 38 cm." },
       { q: "Hasil dari 5² + 3³ adalah …", options: ["34", "43", "52", "61"], answer: 2, lv: 5, explain: "5²=25, 3³=27, 25+27=52." },
       { q: "Rata-rata nilai 6, 8, 7, 9, 10 adalah …", options: ["7", "8", "8,5", "9"], answer: 1, lv: 4, explain: "Jumlah=40, 40:5=8." },
+      { q: "Sebuah toko menjual 1 lusin pensil seharga Rp24.000. Harga 1 pensil adalah …", options: ["Rp1.000", "Rp2.000", "Rp2.400", "Rp12.000"], answer: 1, lv: 4, explain: "Langkah 1: 1 lusin = 12 pensil. Langkah 2: harga satuan = 24.000 : 12 = Rp2.000." },
+      { q: "Nilai ulangan Dina selama seminggu: 80, 90, 70, 100, 60. Nilai tertinggi dan terendah berturut-turut adalah …", options: ["100 dan 60", "90 dan 70", "100 dan 70", "90 dan 60"], answer: 0, lv: 3, explain: "Langkah 1: urutkan nilai dari yang kecil: 60, 70, 80, 90, 100. Langkah 2: yang paling besar adalah 100 dan yang paling kecil adalah 60." },
+      { q: "Sebuah bus berangkat pukul 08.15 dan tiba pukul 10.45. Lama perjalanan bus adalah …", options: ["2 jam", "2 jam 15 menit", "2 jam 30 menit", "3 jam"], answer: 2, lv: 3, explain: "Langkah 1: dari 08.15 ke 10.15 adalah 2 jam. Langkah 2: dari 10.15 ke 10.45 adalah 30 menit. Jadi lama perjalanan 2 jam 30 menit." },
+      { q: "Pernyataan yang BENAR tentang pecahan adalah …", options: ["1/2 lebih besar dari 3/4", "2/4 sama dengan 1/2", "1/3 lebih besar dari 1/2", "3/4 lebih kecil dari 1/4"], answer: 1, lv: 4, explain: "Langkah 1: sederhanakan 2/4 dengan membagi pembilang dan penyebut dengan 2, hasilnya 1/2 — jadi 2/4 sama dengan 1/2. Langkah 2: pilihan lain salah: 1/2 < 3/4, 1/3 < 1/2, dan 3/4 > 1/4." },
     ],
     inggris: [
       { q: "Read: “Sinta goes to school by bicycle every morning.” How does Sinta go to school?", options: ["By bus", "By bicycle", "On foot", "By car"], answer: 1, explain: "Kalimatnya jelas: by bicycle = dengan sepeda." },
@@ -270,6 +278,10 @@ export const BANK: Bank = {
       { q: "Hewan yang mengalami metamorfosis sempurna adalah …", options: ["Ayam", "Kecoa", "Kupu-kupu", "Belalang"], answer: 2, explain: "Kupu-kupu: telur → larva (ulat) → pupa (kepompong) → dewasa." },
       { q: "Gaya yang menyebabkan buah jatuh ke tanah adalah gaya …", options: ["Gesek", "Magnet", "Gravitasi", "Otot"], answer: 2, explain: "Gravitasi Bumi menarik benda ke bawah." },
       { q: "Urutan planet dari yang terdekat dengan Matahari adalah …", options: ["Venus, Merkurius, Bumi", "Merkurius, Venus, Bumi", "Bumi, Venus, Mars", "Merkurius, Bumi, Venus"], answer: 1, explain: "Merkurius – Venus – Bumi – Mars – Jupiter – Saturnus – Uranus – Neptunus." },
+      { q: "Dua pot tanaman diletakkan di tempat berbeda. Pot A di dekat jendela yang terang, pot B di dalam lemari yang gelap. Setelah seminggu, tanaman yang diperkirakan tumbuh lebih sehat adalah …", options: ["Pot B, karena gelap membuat daun lebar", "Pot A, karena tanaman butuh cahaya matahari untuk fotosintesis", "Keduanya sama sehatnya", "Pot B, karena lemari lebih hangat"], answer: 1, explain: "Tanaman memerlukan cahaya matahari untuk berfotosintesis (membuat makanan). Di tempat gelap tanaman menjadi pucat, kurus, dan lemah." },
+      { q: "Suhu air dalam gelas diukur setiap 5 menit: 30°C, 34°C, 38°C, 42°C. Kesimpulan yang tepat dari data itu adalah …", options: ["Air semakin dingin", "Suhu air naik 4°C setiap 5 menit", "Suhu air tetap", "Suhu air naik 10°C setiap 5 menit"], answer: 1, explain: "Langkah 1: hitung selisih tiap pengukuran: 34−30 = 4, 38−34 = 4, 42−38 = 4. Langkah 2: kenaikannya tetap, yaitu 4°C setiap 5 menit." },
+      { q: "Sebuah magnet didekatkan ke beberapa benda: paku besi menempel, penghapus tidak menempel, peniti menempel, kertas tidak menempel. Kesimpulan yang tepat adalah …", options: ["Magnet menarik semua benda", "Magnet hanya menarik benda dari logam besi", "Magnet menarik benda yang kecil saja", "Magnet tidak menarik benda apa pun"], answer: 1, explain: "Paku dan peniti terbuat dari besi sehingga tertarik magnet. Penghapus dan kertas bukan logam besi sehingga tidak tertarik — jadi magnet hanya menarik benda logam tertentu seperti besi." },
+      { q: "Ibu menjemur pakaian basah di bawah sinar matahari. Setelah beberapa jam pakaian menjadi kering karena …", options: ["Air pada pakaian membeku", "Air pada pakaian menguap oleh panas matahari", "Air meresap ke tali jemuran", "Angin mengubah air menjadi debu"], answer: 1, explain: "Panas matahari membuat air pada pakaian berubah menjadi uap air (menguap) ke udara, sehingga pakaian menjadi kering." },
     ],
     indonesia: [
       { q: "Ide pokok paragraf biasanya terdapat pada kalimat …", options: ["Penjelas", "Utama", "Terakhir saja", "Judul"], answer: 1, explain: "Ide pokok terdapat pada kalimat utama paragraf." },
@@ -369,6 +381,9 @@ export const BANK: Bank = {
       { q: "Peluang muncul mata dadu prima pada satu kali lemparan adalah …", options: ["1/6", "1/3", "1/2", "2/3"], answer: 2, explain: "Mata prima: 2,3,5 → 3 dari 6 = 1/2." },
       { q: "Gradien garis yang melalui (2,3) dan (6,11) adalah …", options: ["1", "2", "3", "4"], answer: 1, explain: "m = (11−3)/(6−2) = 8/4 = 2." },
       { q: "Luas permukaan kubus dengan rusuk 5 cm adalah … cm²", options: ["125", "150", "100", "75"], answer: 1, explain: "6 × 5² = 6 × 25 = 150 cm²." },
+      { q: "Sebuah toko memberi diskon 20% untuk sepatu seharga Rp250.000, lalu ada potongan tambahan Rp10.000 di kasir. Harga akhir yang dibayar adalah …", options: ["Rp180.000", "Rp190.000", "Rp200.000", "Rp210.000"], answer: 1, explain: "Langkah 1: diskon 20% = 20/100 × 250.000 = Rp50.000, sehingga harga menjadi 250.000 − 50.000 = Rp200.000. Langkah 2: dikurangi potongan kasir: 200.000 − 10.000 = Rp190.000." },
+      { q: "Data nilai ulangan satu kelas: 6, 7, 8, 7, 9, 7, 8. Median data tersebut adalah …", options: ["6", "7", "8", "9"], answer: 1, explain: "Langkah 1: urutkan data dari kecil: 6, 7, 7, 7, 8, 8, 9. Langkah 2: ada 7 data, nilai tengahnya adalah data ke-4, yaitu 7." },
+      { q: "Sebuah tangga sepanjang 13 m disandarkan ke dinding. Ujung bawah tangga berjarak 5 m dari dinding. Tinggi ujung atas tangga dari lantai adalah … m", options: ["8", "10", "12", "18"], answer: 2, explain: "Langkah 1: tangga, dinding, dan lantai membentuk segitiga siku-siku dengan tangga sebagai sisi miring. Langkah 2: tinggi = √(13² − 5²) = √(169 − 25) = √144 = 12 m." },
     ],
     inggris: [
       { q: "“The report ___ by the students yesterday.” Choose the correct passive form!", options: ["writes", "wrote", "was written", "is writing"], answer: 2, explain: "Passive past: was/were + V3 (written). Yesterday → was written." },
@@ -384,6 +399,9 @@ export const BANK: Bank = {
       { q: "pH larutan yang bersifat asam adalah …", options: ["pH = 7", "pH > 7", "pH < 7", "pH = 14"], answer: 2, explain: "Asam: pH<7, netral: 7, basa: pH>7." },
       { q: "Perpindahan panas tanpa melalui zat perantara disebut …", options: ["Konduksi", "Konveksi", "Radiasi", "Isolasi"], answer: 2, explain: "Radiasi: panas matahari sampai ke Bumi tanpa medium." },
       { q: "Satuan SI untuk kuat arus listrik adalah …", options: ["Volt", "Ohm", "Ampere", "Watt"], answer: 2, explain: "Kuat arus = Ampere (A); tegangan = Volt; hambatan = Ohm; daya = Watt." },
+      { q: "Percobaan: tiga tanaman sejenis diberi air berbeda — A 50 ml/hari, B 100 ml/hari, C 200 ml/hari. Tinggi tanaman setelah 2 minggu: A 8 cm, B 14 cm, C 10 cm. Kesimpulan paling tepat adalah …", options: ["Semakin banyak air, semakin tinggi tanaman", "Pemberian air 100 ml/hari memberi pertumbuhan terbaik pada percobaan ini", "Air tidak berpengaruh pada pertumbuhan", "Tanaman C pasti mati karena kebanyakan air"], answer: 1, explain: "Data menunjukkan tanaman B (100 ml/hari) tumbuh paling tinggi, 14 cm. Tanaman C yang diberi air paling banyak justru lebih pendek dari B, jadi kesimpulan harus mengikuti data: ada jumlah air yang pas, bukan sekadar semakin banyak semakin baik." },
+      { q: "Sebuah rangkaian memakai baterai 12 V dan lampu berhambatan 4 Ω. Kuat arus yang mengalir adalah … A", options: ["0,33", "3", "8", "48"], answer: 1, explain: "Langkah 1: gunakan Hukum Ohm: I = V : R. Langkah 2: I = 12 : 4 = 3 A." },
+      { q: "Pada percobaan fotosintesis, tanaman air di gelas yang diletakkan di tempat terang mengeluarkan banyak gelembung, sedangkan di tempat gelap tidak. Gelembung itu adalah gas … dan percobaan ini membuktikan fotosintesis membutuhkan …", options: ["Karbon dioksida; air", "Oksigen; cahaya matahari", "Nitrogen; pupuk", "Uap air; tanah"], answer: 1, explain: "Gelembung yang keluar dari tanaman air saat fotosintesis adalah gas oksigen, hasil fotosintesis. Karena gelembung hanya muncul di tempat terang, cahaya matahari terbukti menjadi syarat fotosintesis." },
     ],
     indonesia: [
       { q: "Kalimat berikut yang merupakan kalimat efektif adalah …", options: ["Para siswa-siswa sedang belajar.", "Siswa sedang belajar di kelas.", "Kepada para hadirin dimohon berdiri.", "Demi untuk kelancaran acara ini…"], answer: 1, explain: "Kalimat efektif hemat kata: “para” + jamak (siswa-siswa) adalah pemborosan." },
@@ -476,6 +494,9 @@ export const BANK: Bank = {
       { q: "Jika ²log 8 + ³log 27 = …", options: ["5", "6", "7", "9"], answer: 1, explain: "²log8=3, ³log27=3, jumlah=6." },
       { q: "Persamaan lingkaran berpusat (0,0) melalui titik (3,4) memiliki jari-jari …", options: ["5", "7", "25", "12"], answer: 0, explain: "r = √(3²+4²) = √25 = 5." },
       { q: "Dari 7 siswa dipilih 3 orang pengurus. Banyak cara memilih adalah …", options: ["21", "35", "210", "343"], answer: 1, explain: "Kombinasi C(7,3) = 7!/(3!4!) = 35." },
+      { q: "Diketahui f(x) = 2x + 3 dan g(x) = x² − 1. Nilai (f ∘ g)(2) adalah …", options: ["7", "9", "11", "15"], answer: 1, explain: "Langkah 1: kerjakan fungsi yang di dalam dulu: g(2) = 2² − 1 = 3. Langkah 2: masukkan hasilnya ke f: f(3) = 2×3 + 3 = 9." },
+      { q: "Sebuah dadu dan sebuah koin dilempar bersamaan. Peluang muncul mata dadu genap dan sisi angka pada koin adalah …", options: ["1/2", "1/4", "1/6", "1/12"], answer: 1, explain: "Langkah 1: peluang mata dadu genap = 3/6 = 1/2, peluang sisi angka pada koin = 1/2. Langkah 2: kedua kejadian saling bebas, jadi peluangnya dikalikan: 1/2 × 1/2 = 1/4." },
+      { q: "Nilai rata-rata 5 siswa adalah 78. Setelah ditambah satu siswa baru, rata-ratanya menjadi 80. Nilai siswa baru adalah …", options: ["82", "88", "90", "92"], answer: 2, explain: "Langkah 1: jumlah nilai awal = 5 × 78 = 390. Langkah 2: jumlah nilai akhir = 6 × 80 = 480. Langkah 3: nilai siswa baru = 480 − 390 = 90." },
     ],
     inggris: [
       { q: "“Had I known about the traffic, I ___ earlier.”", options: ["will leave", "would leave", "would have left", "leave"], answer: 2, explain: "Third conditional (inversi Had I…): would have + V3." },
@@ -488,18 +509,22 @@ export const BANK: Bank = {
       { q: "Persilangan monohibrid Aa × Aa menghasilkan fenotipe dominan : resesif = …", options: ["1 : 1", "3 : 1", "1 : 2 : 1", "9 : 3 : 3 : 1"], answer: 1, explain: "Genotipe 1AA:2Aa:1aa → fenotipe 3 dominan : 1 resesif." },
       { q: "Enzim yang berfungsi menyambung fragmen Okazaki pada replikasi DNA adalah …", options: ["Helikase", "Primase", "DNA ligase", "Topoisomerase"], answer: 2, explain: "DNA ligase menyambung fragmen Okazaki pada untai lagging." },
       { q: "Organ pernapasan pada serangga adalah …", options: ["Paru-paru", "Insang", "Trakea", "Kulit"], answer: 2, explain: "Serangga bernapas melalui sistem trakea & spirakel." },
+      { q: "Pada persilangan monohibrid Aa × Aa, perbandingan fenotipe keturunannya adalah …", options: ["1 : 1", "3 : 1", "1 : 2 : 1", "9 : 3 : 3 : 1"], answer: 1, explain: "Keturunannya bergenotipe AA (1), Aa (2), aa (1). Sifat dominan tampak pada AA dan Aa, yaitu 3 bagian; sifat resesif hanya tampak pada aa, 1 bagian. Jadi fenotipenya 3 : 1 — sedangkan 1 : 2 : 1 adalah perbandingan genotipenya." },
     ],
     fisika: [
       { q: "Sebuah mobil bergerak dengan kecepatan awal 10 m/s dan percepatan 2 m/s² selama 5 s. Kecepatan akhirnya … m/s", options: ["15", "20", "25", "12"], answer: 1, explain: "v = v₀ + at = 10 + 2×5 = 20 m/s." },
       { q: "Energi kinetik benda 2 kg yang bergerak 10 m/s adalah … J", options: ["20", "50", "100", "200"], answer: 2, explain: "Ek = ½mv² = ½×2×100 = 100 J." },
       { q: "Periode getaran pegas dinyatakan T = 2π√(m/k). Jika massa dijadikan 4 kali, periode menjadi …", options: ["Tetap", "2 kali semula", "4 kali semula", "Setengah kali"], answer: 1, explain: "T sebanding √m → m×4 → T×2." },
       { q: "Hambatan 6 Ω dan 3 Ω diparalel, hambatan penggantinya … Ω", options: ["9", "2", "4,5", "18"], answer: 1, explain: "1/R = 1/6+1/3 = 1/2 → R = 2 Ω." },
+      { q: "Sebuah benda dijatuhkan dari ketinggian 20 m (g = 10 m/s²). Kecepatan benda sesaat sebelum menyentuh tanah adalah … m/s", options: ["10", "20", "30", "40"], answer: 1, explain: "Langkah 1: untuk gerak jatuh bebas gunakan v² = 2gh. Langkah 2: v = √(2 × 10 × 20) = √400 = 20 m/s." },
+      { q: "Sebuah lampu 60 W menyala 5 jam setiap hari. Energi listrik yang dipakai lampu itu dalam 30 hari adalah … kWh", options: ["9", "18", "36", "90"], answer: 0, explain: "Langkah 1: energi per hari = 60 W × 5 jam = 300 Wh = 0,3 kWh. Langkah 2: selama 30 hari = 0,3 × 30 = 9 kWh." },
     ],
     kimia: [
       { q: "Konfigurasi elektron unsur dengan nomor atom 26 (Fe) adalah …", options: ["[Ar] 4s² 3d⁶", "[Ar] 4s¹ 3d⁷", "[Ar] 3d⁸", "[Ne] 4s² 3d⁶"], answer: 0, explain: "Fe (Z=26): 1s²2s²2p⁶3s²3p⁶4s²3d⁶ = [Ar] 4s² 3d⁶." },
       { q: "pH larutan HCl 0,01 M adalah …", options: ["1", "2", "3", "12"], answer: 1, explain: "HCl asam kuat: [H⁺]=10⁻² → pH = 2." },
       { q: "Bilangan oksidasi S dalam H₂SO₄ adalah …", options: ["+2", "+4", "+6", "−2"], answer: 2, explain: "2(+1) + S + 4(−2) = 0 → S = +6." },
       { q: "Larutan penyangga (buffer) terdiri dari …", options: ["Asam kuat + basa kuat", "Asam lemah + basa konjugasinya", "Garam + air saja", "Asam kuat + garamnya"], answer: 1, explain: "Buffer: asam lemah + basa konjugasi (atau basa lemah + asam konjugasi)." },
+      { q: "Sebanyak 0,2 mol NaOH dilarutkan dalam air hingga volumenya 500 mL. Molaritas larutan tersebut adalah … M", options: ["0,1", "0,2", "0,4", "1,0"], answer: 2, explain: "Langkah 1: ubah volume ke liter: 500 mL = 0,5 L. Langkah 2: M = mol : volume = 0,2 : 0,5 = 0,4 M." },
     ],
     indonesia: [
       { q: "Kalimat yang mengandung majas personifikasi adalah …", options: ["Wajahnya bersinar seperti bulan.", "Angin malam berbisik menyampaikan rindu.", "Ia berlari secepat kilat.", "Rumahnya besar bak istana."], answer: 1, explain: "Personifikasi: benda mati (angin) seolah berperilaku seperti manusia (berbisik)." },

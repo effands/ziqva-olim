@@ -896,7 +896,7 @@ const sdMixed: LGen = (level) => {
   const a = ri(3, 9 + level * 2);
   const b = ri(3, 9);
   const c = ri(2, 40);
-  return mkNum(`Hasil dari ${a} × ${b} + ${c} adalah …`, a * b + c, [a * (b + c), a * b - c, a * b + c + 10], `Kerjakan perkalian dulu: ${a}×${b}=${a * b}, lalu + ${c} = ${a * b + c}.`);
+  return mkNum(`Hasil dari ${a} × ${b} + ${c} adalah …`, a * b + c, [a * (b + c), a * b - c, a * b + c + 10], `Langkah 1: perkalian dikerjakan lebih dulu daripada penjumlahan: ${a} × ${b} = ${a * b}. Langkah 2: tambahkan hasilnya dengan ${c}: ${a * b} + ${c} = ${a * b + c}.`);
 };
 const sdFraction: LGen = (level) => {
   if (level < 3) return null;
@@ -907,7 +907,7 @@ const sdFraction: LGen = (level) => {
   const g = gcd(sum, den);
   const ans = `${sum / g}/${den / g}`;
   const wrong = [`${sum}/${den}`, `${a + b + 1}/${den}`, `${sum}/${den + 1}`].filter((w) => w !== ans);
-  return mkq(`Hasil dari ${a}/${den} + ${b}/${den} adalah …`, ans, wrong, `Penyebut sama: (${a}+${b})/${den} = ${sum}/${den}${g > 1 ? `, disederhanakan menjadi ${ans}` : ""}.`);
+  return mkq(`Hasil dari ${a}/${den} + ${b}/${den} adalah …`, ans, wrong, `Langkah 1: penyebutnya sudah sama (${den}), jadi jumlahkan pembilangnya saja: ${a} + ${b} = ${sum}, hasilnya ${sum}/${den}. ${g > 1 ? `Langkah 2: sederhanakan dengan membagi pembilang dan penyebut dengan ${g}: ${sum}/${den} = ${ans}.` : "Pecahan itu sudah paling sederhana."}`);
 };
 const sdFpbKpk: LGen = (level) => {
   if (level < 4) return null;
@@ -915,12 +915,22 @@ const sdFpbKpk: LGen = (level) => {
   const p = pick(pairs);
   const a = p[0];
   const b = p[1];
+  const fac = (n: number): number[] => {
+    const f: number[] = [];
+    for (let i = 1; i <= n; i++) if (n % i === 0) f.push(i);
+    return f;
+  };
   if (Math.random() < 0.5) {
     const v = gcd(a, b);
-    return mkNum(`FPB dari ${a} dan ${b} adalah …`, v, [v + 2, v * 2, Math.max(2, v - 2)], `Faktor bersama terbesar dari ${a} dan ${b} adalah ${v}.`);
+    return mkNum(`FPB dari ${a} dan ${b} adalah …`, v, [v + 2, v * 2, Math.max(2, v - 2)], `Langkah 1: daftar faktornya — faktor ${a}: ${fac(a).join(", ")}; faktor ${b}: ${fac(b).join(", ")}. Langkah 2: faktor yang sama (persekutuan) dicari, yang terbesar adalah ${v}. Jadi FPB = ${v}.`);
   }
   const v = lcm(a, b);
-  return mkNum(`KPK dari ${a} dan ${b} adalah …`, v, [v + a, v * 2, v - b], `Kelipatan persekutuan terkecil dari ${a} dan ${b} adalah ${v}.`);
+  const mults = (n: number, upto: number): number[] => {
+    const m: number[] = [];
+    for (let x = n; x <= upto; x += n) m.push(x);
+    return m;
+  };
+  return mkNum(`KPK dari ${a} dan ${b} adalah …`, v, [v + a, v * 2, v - b], `Langkah 1: daftar kelipatannya — kelipatan ${a}: ${mults(a, v).join(", ")}; kelipatan ${b}: ${mults(b, v).join(", ")}. Langkah 2: kelipatan yang sama paling kecil adalah ${v}. Jadi KPK = ${v}.`);
 };
 const sdGeometry: LGen = (level) => {
   const kind = ri(0, 2);
@@ -947,7 +957,7 @@ const sdAverage: LGen = (level) => {
   const vals = Array.from({ length: n }, () => ri(4, 10) * 10 + pick([0, 5]));
   const avg = vals.reduce((s, v) => s + v, 0) / n;
   if (!Number.isInteger(avg)) return sdAverage(level);
-  return mkNum(`Rata-rata dari nilai ${vals.join(", ")} adalah …`, avg, [avg - 5, avg + 5, avg + 10], `Jumlah = ${vals.reduce((s, v) => s + v, 0)}, dibagi ${n} = ${avg}.`);
+  return mkNum(`Rata-rata dari nilai ${vals.join(", ")} adalah …`, avg, [avg - 5, avg + 5, avg + 10], `Langkah 1: jumlahkan semua nilai: ${vals.join(" + ")} = ${vals.reduce((s, v) => s + v, 0)}. Langkah 2: bagi dengan banyaknya nilai (${n}): ${vals.reduce((s, v) => s + v, 0)} : ${n} = ${avg}.`);
 };
 const sdSequence: LGen = (level) => {
   const start = ri(2, 20);
@@ -963,12 +973,12 @@ const sdWordProblem: LGen = (level) => {
   const qty = ri(2, 6 + level * 2);
   const price = pick([500, 1000, 1500, 2000, 2500, 3000, 5000]) * (level >= 4 ? ri(1, 4) : 1);
   if (Math.random() < 0.5) {
-    return mkNum(`${name} membeli ${qty} ${item} dengan harga Rp${fmt(price)} per buah. Total yang harus dibayar adalah …`, qty * price, [qty * price - price, qty * price + price, (qty + 1) * price], `${qty} × Rp${fmt(price)} = Rp${fmt(qty * price)}.`);
+    return mkNum(`${name} membeli ${qty} ${item} dengan harga Rp${fmt(price)} per buah. Total yang harus dibayar adalah …`, qty * price, [qty * price - price, qty * price + price, (qty + 1) * price], `Langkah 1: total harga = banyak barang × harga per buah. Langkah 2: ${qty} × Rp${fmt(price)} = Rp${fmt(qty * price)}.`);
   }
   const money = pick([20000, 50000, 100000]);
   const total = qty * price;
   if (total >= money) return sdWordProblem(level);
-  return mkNum(`${name} membeli ${qty} ${item} seharga Rp${fmt(price)} per buah dan membayar dengan Rp${fmt(money)}. Kembaliannya adalah …`, money - total, [money - total + price, money - total - 1000, total], `Total belanja ${qty}×${fmt(price)} = Rp${fmt(total)}. Kembalian = ${fmt(money)} − ${fmt(total)} = Rp${fmt(money - total)}.`);
+  return mkNum(`${name} membeli ${qty} ${item} seharga Rp${fmt(price)} per buah dan membayar dengan Rp${fmt(money)}. Kembaliannya adalah …`, money - total, [money - total + price, money - total - 1000, total], `Langkah 1: total belanja = ${qty} × Rp${fmt(price)} = Rp${fmt(total)}. Langkah 2: kembalian = uang dibayar − total belanja = Rp${fmt(money)} − Rp${fmt(total)} = Rp${fmt(money - total)}.`);
 };
 const sdEngPast: LGen = () => {
   const v = pick(EN_PAST);
@@ -1047,7 +1057,7 @@ const smpEquation: LGen = (level) => {
   const x = ri(2, 12);
   const b = ri(1, 15);
   const c = a * x + b;
-  return mkNum(`Jika ${a}x + ${b} = ${c}, maka nilai x adalah …`, x, [x - 1, x + 1, x + 2], `${a}x = ${c} − ${b} = ${c - b}, jadi x = ${c - b} : ${a} = ${x}.`);
+  return mkNum(`Jika ${a}x + ${b} = ${c}, maka nilai x adalah …`, x, [x - 1, x + 1, x + 2], `Langkah 1: pindahkan +${b} ke ruas kanan menjadi kurang: ${a}x = ${c} − ${b} = ${c - b}. Langkah 2: bagi kedua ruas dengan ${a}: x = ${c - b} : ${a} = ${x}.`);
 };
 const smpNegOps: LGen = (level) => {
   const a = ri(2, 6 + level * 2);
@@ -1062,7 +1072,7 @@ const smpSequence: LGen = (level) => {
   const d = ri(2, 4 + level);
   const n = ri(6, 12);
   const un = a + (n - 1) * d;
-  return mkNum(`Suku ke-${n} barisan aritmetika ${a}, ${a + d}, ${a + 2 * d}, … adalah …`, un, [un - d, un + d, a + n * d], `Un = a + (n−1)b = ${a} + ${n - 1}×${d} = ${un}.`);
+  return mkNum(`Suku ke-${n} barisan aritmetika ${a}, ${a + d}, ${a + 2 * d}, … adalah …`, un, [un - d, un + d, a + n * d], `Langkah 1: suku pertama a = ${a} dan bedanya b = ${d}. Langkah 2: pakai rumus Un = a + (n − 1)b: U${n} = ${a} + ${n - 1}×${d} = ${un}.`);
 };
 const smpGradient: LGen = (level) => {
   if (level < 3) return null;
@@ -1072,7 +1082,7 @@ const smpGradient: LGen = (level) => {
   const dx = ri(2, 5);
   const x2 = x1 + dx;
   const y2 = y1 + m * dx;
-  return mkNum(`Gradien garis yang melalui titik (${x1}, ${y1}) dan (${x2}, ${y2}) adalah …`, m, [m + 1, m === 1 ? m + 3 : m - 1, m + 2], `m = (y₂−y₁)/(x₂−x₁) = (${y2}−${y1})/(${x2}−${x1}) = ${m * dx}/${dx} = ${m}.`);
+  return mkNum(`Gradien garis yang melalui titik (${x1}, ${y1}) dan (${x2}, ${y2}) adalah …`, m, [m + 1, m === 1 ? m + 3 : m - 1, m + 2], `Langkah 1: gradien adalah perubahan y dibagi perubahan x: m = (y₂ − y₁) : (x₂ − x₁). Langkah 2: m = (${y2} − ${y1}) : (${x2} − ${x1}) = ${m * dx} : ${dx} = ${m}.`);
 };
 const smpProbability: LGen = (level) => {
   if (level < 2) return null;
@@ -1105,7 +1115,7 @@ const smpScale: LGen = (level) => {
   const scale = pick([100000, 200000, 250000, 500000, 1000000]);
   const cm = ri(2, 9);
   const km = (cm * scale) / 100000;
-  return mkNum(`Peta berskala 1 : ${fmt(scale)}. Jarak dua tempat pada peta ${cm} cm. Jarak sebenarnya adalah … km`, km, [km / 2, km * 2, km + 5], `${cm} × ${fmt(scale)} cm = ${fmt(cm * scale)} cm = ${km} km.`);
+  return mkNum(`Peta berskala 1 : ${fmt(scale)}. Jarak dua tempat pada peta ${cm} cm. Jarak sebenarnya adalah … km`, km, [km / 2, km * 2, km + 5], `Langkah 1: jarak sebenarnya = jarak pada peta × penyebut skala = ${cm} × ${fmt(scale)} cm = ${fmt(cm * scale)} cm. Langkah 2: ubah sentimeter ke kilometer dengan membagi 100.000: ${fmt(cm * scale)} : 100.000 = ${km} km.`);
 };
 const SMP_SAINS_FACTS: readonly Fact[] = [
   ["Organel sel yang berfungsi sebagai tempat respirasi penghasil energi adalah …", "Mitokondria", ["Ribosom", "Nukleus", "Vakuola"], "Mitokondria = “powerhouse of the cell”, menghasilkan ATP."],
@@ -1122,20 +1132,20 @@ const smpPhysics: LGen = (level) => {
   if (kind === 0) {
     const m = ri(2, 4 + level * 2);
     const a = ri(2, 9);
-    return mkNum(`Benda bermassa ${m} kg dipercepat ${a} m/s². Gaya yang bekerja adalah … N`, m * a, [m + a, m * a + m, m * a - a], `Hukum II Newton: F = m × a = ${m} × ${a} = ${m * a} N.`);
+    return mkNum(`Benda bermassa ${m} kg dipercepat ${a} m/s². Gaya yang bekerja adalah … N`, m * a, [m + a, m * a + m, m * a - a], `Langkah 1: pakai Hukum II Newton: F = m × a (massa × percepatan). Langkah 2: F = ${m} × ${a} = ${m * a} N.`);
   }
   if (kind === 1) {
     const s = pick([60, 80, 100, 120, 150, 200, 240, 300]);
     const t = pick([2, 3, 4, 5, 6, 10]);
     const v = s / t;
     if (!Number.isInteger(v)) return smpPhysics(level);
-    return mkNum(`Sebuah mobil menempuh jarak ${s} m dalam ${t} detik. Kecepatan rata-ratanya adalah … m/s`, v, [v + 2, v - 2, v * 2], `v = s : t = ${s} : ${t} = ${v} m/s.`);
+    return mkNum(`Sebuah mobil menempuh jarak ${s} m dalam ${t} detik. Kecepatan rata-ratanya adalah … m/s`, v, [v + 2, v - 2, v * 2], `Langkah 1: kecepatan rata-rata v = jarak : waktu. Langkah 2: v = ${s} : ${t} = ${v} m/s.`);
   }
   const m = ri(2, 20 + level * 10);
   const vol = pick([2, 4, 5, 10]);
   const rho = m / vol;
   if (!Number.isInteger(rho)) return smpPhysics(level);
-  return mkNum(`Benda bermassa ${m} kg bervolume ${vol} m³. Massa jenisnya adalah … kg/m³`, rho, [rho + 1, rho * 2, Math.max(1, rho - 1)], `ρ = m : V = ${m} : ${vol} = ${rho} kg/m³.`);
+  return mkNum(`Benda bermassa ${m} kg bervolume ${vol} m³. Massa jenisnya adalah … kg/m³`, rho, [rho + 1, rho * 2, Math.max(1, rho - 1)], `Langkah 1: massa jenis ρ = massa : volume. Langkah 2: ρ = ${m} : ${vol} = ${rho} kg/m³.`);
 };
 const phGen: LGen = (level) => {
   if (level < 3) return null;
@@ -1179,20 +1189,20 @@ const smaDerivative: LGen = (level) => {
   if (level >= 4 && Math.random() < 0.5) {
     const x0 = ri(1, 4);
     const val = 2 * a * x0 + b;
-    return mkNum(`Jika f(x) = ${a}x² + ${b}x + ${c}, maka f'(${x0}) adalah …`, val, [val - b, val + 2, 2 * a + b], `f'(x) = ${2 * a}x + ${b}; f'(${x0}) = ${2 * a}×${x0} + ${b} = ${val}.`);
+    return mkNum(`Jika f(x) = ${a}x² + ${b}x + ${c}, maka f'(${x0}) adalah …`, val, [val - b, val + 2, 2 * a + b], `Langkah 1: turunkan fungsinya: f'(x) = ${2 * a}x + ${b}. Langkah 2: substitusi x = ${x0}: f'(${x0}) = ${2 * a}×${x0} + ${b} = ${val}.`);
   }
-  return mkq(`Jika f(x) = ${a}x² − ${b}x + ${c}, maka f'(x) adalah …`, `${2 * a}x − ${b}`, [`${a}x − ${b}`, `${2 * a}x + ${c}`, `${2 * a}x − ${b + 1}`], `Turunan: d/dx(${a}x²)=${2 * a}x, d/dx(−${b}x)=−${b}, konstanta→0.`);
+  return mkq(`Jika f(x) = ${a}x² − ${b}x + ${c}, maka f'(x) adalah …`, `${2 * a}x − ${b}`, [`${a}x − ${b}`, `${2 * a}x + ${c}`, `${2 * a}x − ${b + 1}`], `Langkah 1: turunkan suku demi suku — turunan ${a}x² adalah ${2 * a}x, turunan −${b}x adalah −${b}, dan konstanta ${c} turunannya 0. Langkah 2: gabungkan hasilnya: f'(x) = ${2 * a}x − ${b}.`);
 };
 const smaLimit: LGen = () => {
   const a = ri(2, 9);
-  return mkNum(`Nilai lim (x→${a}) (x² − ${a * a})/(x − ${a}) adalah …`, 2 * a, [a, 2 * a - 1, a * a], `(x²−${a * a}) = (x−${a})(x+${a}); sederhanakan → x+${a}; x=${a} → ${2 * a}.`);
+  return mkNum(`Nilai lim (x→${a}) (x² − ${a * a})/(x − ${a}) adalah …`, 2 * a, [a, 2 * a - 1, a * a], `Langkah 1: substitusi langsung menghasilkan 0/0, jadi faktorkan pembilang: x² − ${a * a} = (x − ${a})(x + ${a}). Langkah 2: coret faktor (x − ${a}) yang sama, tersisa (x + ${a}). Langkah 3: substitusi x = ${a}: ${a} + ${a} = ${2 * a}.`);
 };
 const smaLog: LGen = (_level) => {
   const base = pick([2, 3, 5, 10]);
   const e1 = ri(1, 3);
   const e2 = ri(1, 3);
   const sum = e1 + e2;
-  return mkNum(`Nilai dari ${base}log ${base ** e1} + ${base}log ${base ** e2} adalah …`, sum, [sum - 1, sum + 1, e1 * e2], `${base}log ${base ** e1} = ${e1} dan ${base}log ${base ** e2} = ${e2}; jumlahnya ${sum}.`);
+  return mkNum(`Nilai dari ${base}log ${base ** e1} + ${base}log ${base ** e2} adalah …`, sum, [sum - 1, sum + 1, e1 * e2], `Langkah 1: ${base}log ${base ** e1} = ${e1} karena ${base}^${e1} = ${base ** e1}. Langkah 2: ${base}log ${base ** e2} = ${e2} karena ${base}^${e2} = ${base ** e2}. Langkah 3: jumlahkan: ${e1} + ${e2} = ${sum}.`);
 };
 const smaSeries: LGen = (level) => {
   const a = ri(2, 12);
@@ -1201,16 +1211,16 @@ const smaSeries: LGen = (level) => {
   const un = a + (n - 1) * d;
   if (level >= 3 && Math.random() < 0.5) {
     const sn = (n / 2) * (a + un);
-    return mkNum(`Jumlah ${n} suku pertama deret aritmetika ${a}, ${a + d}, ${a + 2 * d}, … adalah …`, sn, [sn - d * n, un * n, sn + a * n], `Un = ${a}+${n - 1}×${d} = ${un}; Sn = n/2 × (a+Un) = ${n}/2 × ${a + un} = ${sn}.`);
+    return mkNum(`Jumlah ${n} suku pertama deret aritmetika ${a}, ${a + d}, ${a + 2 * d}, … adalah …`, sn, [sn - d * n, un * n, sn + a * n], `Langkah 1: cari suku terakhir dulu: Un = ${a} + ${n - 1}×${d} = ${un}. Langkah 2: pakai rumus jumlah Sn = n/2 × (a + Un) = ${n}/2 × (${a} + ${un}) = ${sn}.`);
   }
-  return mkNum(`Suku ke-${n} barisan aritmetika ${a}, ${a + d}, ${a + 2 * d}, … adalah …`, un, [un - d, un + d, a + n * d], `Un = a + (n−1)b = ${a} + ${n - 1}×${d} = ${un}.`);
+  return mkNum(`Suku ke-${n} barisan aritmetika ${a}, ${a + d}, ${a + 2 * d}, … adalah …`, un, [un - d, un + d, a + n * d], `Langkah 1: suku pertama a = ${a} dan bedanya b = ${d}. Langkah 2: pakai rumus Un = a + (n − 1)b: U${n} = ${a} + ${n - 1}×${d} = ${un}.`);
 };
 const smaCombination: LGen = (level) => {
   if (level < 3) return null;
   const n = ri(6, 10);
   const r = pick([2, 3]);
   const comb = r === 2 ? (n * (n - 1)) / 2 : (n * (n - 1) * (n - 2)) / 6;
-  return mkNum(`Dari ${n} siswa dipilih ${r} orang pengurus (urutan tidak penting). Banyak cara memilih adalah …`, comb, [comb - n, n * (n - 1), comb + n], `Kombinasi C(${n},${r}) = ${comb} cara.`);
+  return mkNum(`Dari ${n} siswa dipilih ${r} orang pengurus (urutan tidak penting). Banyak cara memilih adalah …`, comb, [comb - n, n * (n - 1), comb + n], `Langkah 1: karena urutan tidak penting, gunakan kombinasi C(${n}, ${r}) = ${n}! : (${r}! × ${n - r}!). Langkah 2: hitung hasilnya = ${comb} cara. (Kalau urutan penting, barulah memakai permutasi.)`);
 };
 const smaPhysics: LGen = (level) => {
   const kind = ri(0, 3);
@@ -1218,12 +1228,12 @@ const smaPhysics: LGen = (level) => {
     const v0 = ri(2, 15);
     const a = ri(1, 4);
     const t = ri(2, 6);
-    return mkNum(`Mobil bergerak dengan kecepatan awal ${v0} m/s dan percepatan ${a} m/s² selama ${t} s. Kecepatan akhirnya … m/s`, v0 + a * t, [v0 + a * t - a, v0 * a, v0 + t], `v = v₀ + at = ${v0} + ${a}×${t} = ${v0 + a * t} m/s.`);
+    return mkNum(`Mobil bergerak dengan kecepatan awal ${v0} m/s dan percepatan ${a} m/s² selama ${t} s. Kecepatan akhirnya … m/s`, v0 + a * t, [v0 + a * t - a, v0 * a, v0 + t], `Langkah 1: pakai rumus gerak lurus berubah beraturan v = v₀ + at. Langkah 2: v = ${v0} + ${a}×${t} = ${v0 + a * t} m/s.`);
   }
   if (kind === 1) {
     const m = pick([1, 2, 4, 5]);
     const v = ri(3, 6 + level);
-    return mkNum(`Energi kinetik benda bermassa ${m} kg yang bergerak dengan kecepatan ${v} m/s adalah … J`, 0.5 * m * v * v, [m * v, 0.5 * m * v, m * v * v], `Ek = ½mv² = ½×${m}×${v}² = ${0.5 * m * v * v} J.`);
+    return mkNum(`Energi kinetik benda bermassa ${m} kg yang bergerak dengan kecepatan ${v} m/s adalah … J`, 0.5 * m * v * v, [m * v, 0.5 * m * v, m * v * v], `Langkah 1: energi kinetik Ek = ½ × m × v². Langkah 2: Ek = ½ × ${m} × ${v}² = ${0.5 * m * v * v} J.`);
   }
   if (kind === 2) {
     const r1 = pick([2, 3, 4, 6]);
@@ -1231,17 +1241,17 @@ const smaPhysics: LGen = (level) => {
     if (r1 === r2) return smaPhysics(level);
     const rp = (r1 * r2) / (r1 + r2);
     if (!Number.isInteger(rp)) return smaPhysics(level);
-    return mkNum(`Hambatan ${r1} Ω dan ${r2} Ω dirangkai paralel. Hambatan penggantinya … Ω`, rp, [r1 + r2, rp + 1, Math.max(1, rp - 1)], `1/R = 1/${r1} + 1/${r2} → R = ${rp} Ω.`);
+    return mkNum(`Hambatan ${r1} Ω dan ${r2} Ω dirangkai paralel. Hambatan penggantinya … Ω`, rp, [r1 + r2, rp + 1, Math.max(1, rp - 1)], `Langkah 1: untuk rangkaian paralel berlaku 1/R = 1/R₁ + 1/R₂ = 1/${r1} + 1/${r2}. Langkah 2: R = (${r1} × ${r2}) : (${r1} + ${r2}) = ${rp} Ω. Hambatan paralel selalu lebih kecil dari hambatan terkecilnya — menjumlahkan langsung (${r1 + r2} Ω) itu untuk rangkaian seri.`);
   }
   const lam = ri(2, 8);
   const f = ri(5, 40) * 10;
-  return mkNum(`Gelombang dengan panjang gelombang ${lam} m dan frekuensi ${f} Hz memiliki cepat rambat … m/s`, lam * f, [lam + f, lam * f / 2, f], `v = λ × f = ${lam} × ${f} = ${lam * f} m/s.`);
+  return mkNum(`Gelombang dengan panjang gelombang ${lam} m dan frekuensi ${f} Hz memiliki cepat rambat … m/s`, lam * f, [lam + f, lam * f / 2, f], `Langkah 1: cepat rambat gelombang v = λ × f (panjang gelombang × frekuensi). Langkah 2: v = ${lam} × ${f} = ${lam * f} m/s.`);
 };
 const smaChemistryPh: LGen = (level) => {
   if (level < 2) return null;
   const n = ri(1, Math.min(6, level + 2));
-  if (Math.random() < 0.5) return mkNum(`pH larutan HCl 10⁻${n} M (0,${"0".repeat(Math.max(0, n - 1))}1 M) adalah …`, n, [n + 1, n === 1 ? n + 2 : n - 1, 14 - n], `HCl asam kuat: [H⁺] = 10⁻${n} → pH = ${n}.`);
-  return mkNum(`pH larutan NaOH 10⁻${n} M adalah …`, 14 - n, [n, 14 - n - 1, 14 - n + 1], `NaOH basa kuat: pOH = ${n}, pH = 14 − ${n} = ${14 - n}.`);
+  if (Math.random() < 0.5) return mkNum(`pH larutan HCl 10⁻${n} M (0,${"0".repeat(Math.max(0, n - 1))}1 M) adalah …`, n, [n + 1, n === 1 ? n + 2 : n - 1, 14 - n], `Langkah 1: HCl adalah asam kuat yang terionisasi sempurna, sehingga [H⁺] = 10⁻${n} M. Langkah 2: pH = −log [H⁺] = ${n}.`);
+  return mkNum(`pH larutan NaOH 10⁻${n} M adalah …`, 14 - n, [n, 14 - n - 1, 14 - n + 1], `Langkah 1: NaOH adalah basa kuat, sehingga [OH⁻] = 10⁻${n} M dan pOH = ${n}. Langkah 2: pH = 14 − pOH = 14 − ${n} = ${14 - n}.`);
 };
 const smaGenetics: LGen = (level) => {
   if (level < 2) return null;
@@ -1403,7 +1413,7 @@ const sdPercent: LGen = (level) => {
   const pct = pick([10, 20, 25, 50, 75]);
   const base = pick([100, 200, 240, 300, 400, 500, 600, 800, 1000]) * (level >= 5 ? ri(1, 3) : 1);
   const v = (pct * base) / 100;
-  return mkNum(`Hasil dari ${pct}% dari ${fmt(base)} adalah …`, v, [v + base / 10, Math.max(1, v - base / 20), v * 2], `${pct}% × ${fmt(base)} = ${fmt(v)}.`);
+  return mkNum(`Hasil dari ${pct}% dari ${fmt(base)} adalah …`, v, [v + base / 10, Math.max(1, v - base / 20), v * 2], `Langkah 1: persen artinya per seratus, jadi ${pct}% = ${pct}/100. Langkah 2: ${pct}/100 × ${fmt(base)} = ${fmt(v)}.`);
 };
 const sdClock: LGen = (level) => {
   if (level < 2) return null;
@@ -1421,7 +1431,7 @@ const sdClock: LGen = (level) => {
     `${String((eh + 1) % 24).padStart(2, "0")}.${String(em).padStart(2, "0")}`,
     `${String(eh).padStart(2, "0")}.${String((em + 15) % 60).padStart(2, "0")}`,
   ].filter((w) => w !== ans);
-  return mkq(`Sebuah kegiatan mulai pukul ${String(h).padStart(2, "0")}.${String(m).padStart(2, "0")} dan berlangsung ${durH} jam${durM ? ` ${durM} menit` : ""}. Kegiatan selesai pukul …`, ans, wrong, `${String(h).padStart(2, "0")}.${String(m).padStart(2, "0")} + ${durH} jam${durM ? ` ${durM} menit` : ""} = ${ans}.`);
+  return mkq(`Sebuah kegiatan mulai pukul ${String(h).padStart(2, "0")}.${String(m).padStart(2, "0")} dan berlangsung ${durH} jam${durM ? ` ${durM} menit` : ""}. Kegiatan selesai pukul …`, ans, wrong, `Langkah 1: tambahkan jamnya dulu: ${String(h).padStart(2, "0")}.${String(m).padStart(2, "0")} + ${durH} jam. Langkah 2: ${durM ? `tambahkan menitnya ${durM} menit, hasilnya ` : "hasilnya "}pukul ${ans}.`);
 };
 const sdUnit: LGen = (level) => {
   if (level < 2) return null;
@@ -1598,7 +1608,7 @@ const smpDiscount: LGen = (level) => {
   const price = pick([50000, 80000, 100000, 120000, 150000, 200000, 250000, 400000]);
   const disc = pick([10, 20, 25, 30, 40, 50]);
   const pay = price - (price * disc) / 100;
-  return mkNum(`Sebuah tas berharga Rp${fmt(price)} mendapat diskon ${disc}%. Harga yang harus dibayar adalah …`, pay, [price - disc * 1000, pay + price / 10, price], `Diskon = ${disc}% × ${fmt(price)} = Rp${fmt((price * disc) / 100)}. Bayar = ${fmt(price)} − ${fmt((price * disc) / 100)} = Rp${fmt(pay)}.`);
+  return mkNum(`Sebuah tas berharga Rp${fmt(price)} mendapat diskon ${disc}%. Harga yang harus dibayar adalah …`, pay, [price - disc * 1000, pay + price / 10, price], `Langkah 1: besar potongan diskon = ${disc}% × Rp${fmt(price)} = Rp${fmt((price * disc) / 100)}. Langkah 2: harga bayar = harga awal − diskon = Rp${fmt(price)} − Rp${fmt((price * disc) / 100)} = Rp${fmt(pay)}.`);
 };
 const smpProfit: LGen = (level) => {
   if (level < 3) return null;
@@ -1606,7 +1616,7 @@ const smpProfit: LGen = (level) => {
   const pct = pick([5, 10, 20, 25, 40, 50]);
   const profit = Math.random() < 0.6;
   const sell = profit ? buy + (buy * pct) / 100 : buy - (buy * pct) / 100;
-  return mkq(`Pedagang membeli barang seharga Rp${fmt(buy)} lalu menjualnya seharga Rp${fmt(sell)}. Persentase ${profit ? "keuntungan" : "kerugian"}nya adalah …`, `${pct}%`, [`${pct - 5}%`, `${pct + 5}%`, `${pct * 2}%`].filter((w) => !w.startsWith("-") && w !== `${pct}%`), `${profit ? "Untung" : "Rugi"} = Rp${fmt(Math.abs(sell - buy))}; ${fmt(Math.abs(sell - buy))} : ${fmt(buy)} × 100% = ${pct}%.`);
+  return mkq(`Pedagang membeli barang seharga Rp${fmt(buy)} lalu menjualnya seharga Rp${fmt(sell)}. Persentase ${profit ? "keuntungan" : "kerugian"}nya adalah …`, `${pct}%`, [`${pct - 5}%`, `${pct + 5}%`, `${pct * 2}%`].filter((w) => !w.startsWith("-") && w !== `${pct}%`), `Langkah 1: ${profit ? "keuntungan" : "kerugian"} = selisih harga jual dan harga beli = Rp${fmt(Math.abs(sell - buy))}. Langkah 2: persentase selalu dibandingkan ke harga BELI: ${fmt(Math.abs(sell - buy))} : ${fmt(buy)} × 100% = ${pct}%.`);
 };
 const smpPythag: LGen = (level) => {
   if (level < 3) return null;
@@ -1614,30 +1624,30 @@ const smpPythag: LGen = (level) => {
   const t = pick(triples);
   const a = t[0]; const b = t[1]; const c = t[2];
   if (Math.random() < 0.5) {
-    return mkNum(`Segitiga siku-siku mempunyai sisi tegak ${a} cm dan ${b} cm. Panjang sisi miringnya (hipotenusa) adalah … cm`, c, [c - 1, c + 2, a + b], `c = √(${a}² + ${b}²) = √${a * a + b * b} = ${c} cm.`);
+    return mkNum(`Segitiga siku-siku mempunyai sisi tegak ${a} cm dan ${b} cm. Panjang sisi miringnya (hipotenusa) adalah … cm`, c, [c - 1, c + 2, a + b], `Langkah 1: pakai Teorema Pythagoras c² = a² + b² untuk sisi miring. Langkah 2: c = √(${a}² + ${b}²) = √${a * a + b * b} = ${c} cm.`);
   }
-  return mkNum(`Segitiga siku-siku mempunyai sisi miring ${c} cm dan satu sisi tegak ${a} cm. Sisi tegak lainnya adalah … cm`, b, [b - 2, b + 1, c - a], `b = √(${c}² − ${a}²) = √${c * c - a * a} = ${b} cm.`);
+  return mkNum(`Segitiga siku-siku mempunyai sisi miring ${c} cm dan satu sisi tegak ${a} cm. Sisi tegak lainnya adalah … cm`, b, [b - 2, b + 1, c - a], `Langkah 1: dari Pythagoras, sisi tegak lain memenuhi b² = c² − a² (kuadrat sisi miring dikurangi kuadrat sisi tegak yang diketahui). Langkah 2: b = √(${c}² − ${a}²) = √${c * c - a * a} = ${b} cm.`);
 };
 const smpCircle: LGen = (level) => {
   if (level < 2) return null;
   const r = pick([7, 14, 21, 28, 35]);
   if (Math.random() < 0.5) {
     const k = 2 * (22 / 7) * r;
-    return mkNum(`Keliling lingkaran dengan jari-jari ${r} cm (π = 22/7) adalah … cm`, k, [k - 14, k + 22, (22 / 7) * r], `K = 2πr = 2 × 22/7 × ${r} = ${k} cm.`);
+    return mkNum(`Keliling lingkaran dengan jari-jari ${r} cm (π = 22/7) adalah … cm`, k, [k - 14, k + 22, (22 / 7) * r], `Langkah 1: keliling lingkaran K = 2πr. Langkah 2: K = 2 × 22/7 × ${r} = ${k} cm.`);
   }
   const area = (22 / 7) * r * r;
-  return mkNum(`Luas lingkaran dengan jari-jari ${r} cm (π = 22/7) adalah … cm²`, area, [area - 154, 2 * (22 / 7) * r, area + 154], `L = πr² = 22/7 × ${r}² = ${fmt(area)} cm².`);
+  return mkNum(`Luas lingkaran dengan jari-jari ${r} cm (π = 22/7) adalah … cm²`, area, [area - 154, 2 * (22 / 7) * r, area + 154], `Langkah 1: luas lingkaran L = πr². Langkah 2: L = 22/7 × ${r}² = ${fmt(area)} cm². Pilihan ${fmt(2 * (22 / 7) * r)} adalah kelilingnya, bukan luasnya.`);
 };
 const smpVolume: LGen = (level) => {
   if (Math.random() < 0.5) {
     const s = ri(3, 8 + level * 2);
-    return mkNum(`Volume kubus dengan rusuk ${s} cm adalah … cm³`, s * s * s, [s * s * 6, s * s, s * 12], `V = ${s}³ = ${fmt(s * s * s)} cm³.`);
+    return mkNum(`Volume kubus dengan rusuk ${s} cm adalah … cm³`, s * s * s, [s * s * 6, s * s, s * 12], `Langkah 1: volume kubus V = rusuk × rusuk × rusuk. Langkah 2: V = ${s} × ${s} × ${s} = ${fmt(s * s * s)} cm³. (Nilai 6 × ${s}² adalah luas permukaannya, bukan volumenya.)`);
   }
   const p = ri(4, 12 + level);
   const l = ri(3, 9);
   const t = ri(2, 8);
   const v = p * l * t;
-  return mkNum(`Volume balok berukuran ${p} cm × ${l} cm × ${t} cm adalah … cm³`, v, [v + p * l, 2 * (p * l + p * t + l * t), v - t], `V = p×l×t = ${p}×${l}×${t} = ${fmt(v)} cm³.`);
+  return mkNum(`Volume balok berukuran ${p} cm × ${l} cm × ${t} cm adalah … cm³`, v, [v + p * l, 2 * (p * l + p * t + l * t), v - t], `Langkah 1: volume balok V = panjang × lebar × tinggi. Langkah 2: V = ${p} × ${l} × ${t} = ${fmt(v)} cm³.`);
 };
 const smpAngles: LGen = (_level) => {
   const x = ri(15, 80);
@@ -1653,7 +1663,7 @@ const smpTwoVar: LGen = (level) => {
   const y = ri(2, x - 1);
   const s = x + y;
   const d = x - y;
-  return mkNum(`Jika x + y = ${s} dan x − y = ${d}, maka nilai x adalah …`, x, [y, x + 1, s - x + 2], `Jumlahkan kedua persamaan: 2x = ${s} + ${d} = ${s + d} → x = ${x}. (y = ${y})`);
+  return mkNum(`Jika x + y = ${s} dan x − y = ${d}, maka nilai x adalah …`, x, [y, x + 1, s - x + 2], `Langkah 1: jumlahkan kedua persamaan agar y hilang: (x + y) + (x − y) = ${s} + ${d}, menjadi 2x = ${s + d}. Langkah 2: x = ${s + d} : 2 = ${x}. (Cek: y = ${s} − ${x} = ${y}.)`);
 };
 /* --- SMA --- */
 const smaQuadratic: LGen = () => {
@@ -1667,9 +1677,9 @@ const smaQuadratic: LGen = () => {
   const cTerm = prod === 0 ? "" : prod > 0 ? ` + ${prod}` : ` − ${-prod}`;
   const eq = `x²${bTerm}${cTerm} = 0`;
   const mode = ri(0, 2);
-  if (mode === 0) return mkNum(`Jumlah akar-akar persamaan kuadrat ${eq} adalah …`, sum, [sum - 2, sum + 2, prod], `Faktornya (x − (${r1}))(x − (${r2})), akar-akarnya ${r1} dan ${r2}; jumlahnya ${r1} + ${r2} = ${sum}.`);
-  if (mode === 1) return mkNum(`Hasil kali akar-akar persamaan kuadrat ${eq} adalah …`, prod, [prod - r1, prod + r2, sum], `Akar-akarnya ${r1} dan ${r2}; hasil kalinya ${r1} × ${r2} = ${prod} (= c/a).`);
-  return mkNum(`Jika ${r1} dan ${r2} adalah akar-akar suatu persamaan kuadrat, maka nilai (${r1})² + (${r2})² adalah …`, r1 * r1 + r2 * r2, [sum * sum, prod * 2, r1 * r1 + r2 * r2 + 2], `(${r1})² + (${r2})² = ${r1 * r1} + ${r2 * r2} = ${r1 * r1 + r2 * r2}.`);
+  if (mode === 0) return mkNum(`Jumlah akar-akar persamaan kuadrat ${eq} adalah …`, sum, [sum - 2, sum + 2, prod], `Langkah 1: faktorkan persamaannya menjadi (x − (${r1}))(x − (${r2})) = 0, sehingga akar-akarnya adalah ${r1} dan ${r2}. Langkah 2: jumlah akar = ${r1} + ${r2} = ${sum} (sama dengan −b/a).`);
+  if (mode === 1) return mkNum(`Hasil kali akar-akar persamaan kuadrat ${eq} adalah …`, prod, [prod - r1, prod + r2, sum], `Langkah 1: akar-akar persamaannya adalah ${r1} dan ${r2} (dari faktor (x − (${r1}))(x − (${r2})) = 0). Langkah 2: hasil kali akar = ${r1} × ${r2} = ${prod} (sama dengan c/a).`);
+  return mkNum(`Jika ${r1} dan ${r2} adalah akar-akar suatu persamaan kuadrat, maka nilai (${r1})² + (${r2})² adalah …`, r1 * r1 + r2 * r2, [sum * sum, prod * 2, r1 * r1 + r2 * r2 + 2], `Langkah 1: kuadratkan tiap akar: (${r1})² = ${r1 * r1} dan (${r2})² = ${r2 * r2}. Langkah 2: jumlahkan: ${r1 * r1} + ${r2 * r2} = ${r1 * r1 + r2 * r2}. (Bukan (${r1} + ${r2})² — itu menghasilkan ${sum * sum} karena masih ada suku 2 × hasil kali akar.)`);
 };
 const smaGeomSeries: LGen = (level) => {
   const a = ri(1, 6);
@@ -1678,15 +1688,15 @@ const smaGeomSeries: LGen = (level) => {
   const un = a * r ** (n - 1);
   if (level >= 4 && Math.random() < 0.5) {
     const sn = (a * (r ** n - 1)) / (r - 1);
-    return mkNum(`Jumlah ${n} suku pertama deret geometri ${a}, ${a * r}, ${a * r * r}, … adalah …`, sn, [sn - un, un * n, sn + a], `Sn = a(rⁿ−1)/(r−1) = ${a}×(${r ** n}−1)/${r - 1} = ${fmt(sn)}.`);
+    return mkNum(`Jumlah ${n} suku pertama deret geometri ${a}, ${a * r}, ${a * r * r}, … adalah …`, sn, [sn - un, un * n, sn + a], `Langkah 1: deret geometri berasio r = ${r}; gunakan rumus Sn = a(rⁿ − 1) : (r − 1). Langkah 2: Sn = ${a}×(${r ** n} − 1) : ${r - 1} = ${fmt(sn)}.`);
   }
-  return mkNum(`Suku ke-${n} barisan geometri ${a}, ${a * r}, ${a * r * r}, … adalah …`, un, [a * r ** (n - 2), un + a, un * r], `Un = a·rⁿ⁻¹ = ${a}×${r}^${n - 1} = ${fmt(un)}.`);
+  return mkNum(`Suku ke-${n} barisan geometri ${a}, ${a * r}, ${a * r * r}, … adalah …`, un, [a * r ** (n - 2), un + a, un * r], `Langkah 1: barisan geometri mempunyai rasio r = ${r} dan suku pertama a = ${a}. Langkah 2: Un = a × rⁿ⁻¹ = ${a} × ${r}^${n - 1} = ${fmt(un)}.`);
 };
 const smaDet: LGen = (level) => {
   if (level < 2) return null;
   const a = ri(1, 6); const b = ri(1, 6); const c = ri(1, 6); const d = ri(1, 6);
   const det = a * d - b * c;
-  return mkNum(`Determinan matriks [[${a}, ${b}], [${c}, ${d}]] adalah …`, det, [a * d + b * c, det + b, det - c], `det = ${a}×${d} − ${b}×${c} = ${a * d} − ${b * c} = ${det}.`);
+  return mkNum(`Determinan matriks [[${a}, ${b}], [${c}, ${d}]] adalah …`, det, [a * d + b * c, det + b, det - c], `Langkah 1: determinan matriks 2×2 = (diagonal utama) − (diagonal samping): det = ${a}×${d} − ${b}×${c}. Langkah 2: det = ${a * d} − ${b * c} = ${det}.`);
 };
 const smaPerm: LGen = (level) => {
   if (level < 3) return null;
@@ -3025,10 +3035,765 @@ function jsoGens(jenjang: JenjangId): LGen[] {
   return [floatSink, plantNeeds, variableGen, dataTable, growthMeasure, magnetShadow, fairConclusion, controlGroup, matterChange, emojiPictureGen(jenjang)];
 }
 
+/* ================================================================
+   SOAL DETAIL — Matematika & Sains diperdalam (edit 2026-11-26)
+   Batang soal kaya konteks nyata (belanja dua langkah, data dalam
+   daftar/diagram gambar, perbandingan & harga satuan, percobaan
+   dengan variabel, data pengamatan), soal bertahap 2–3 langkah di
+   kelas/level lebih tinggi, dan soal "pernyataan yang benar".
+   Semua kunci DIHITUNG kode dari parameter acak, dan pembahasan
+   ditulis langkah demi langkah (Langkah 1, 2, 3 … sampai jawaban)
+   dengan menyebut rumus/konsep yang dipakai. Jenjang rendah (TK)
+   tetap sederhana, bergambar emoji, dan pembahasannya pendek.
+   ================================================================ */
+const fmtDec = (x: number): string => {
+  const v = Math.round(x * 100) / 100;
+  if (Number.isInteger(v)) return String(v);
+  return v.toFixed(2).replace(/0$/, "").replace(".", ",");
+};
+
+/* ---------- TK Matematika: cerita bergambar yang hidup ---------- */
+const tkStoryDetail: LGen = (level) => {
+  const name = pick(NAMES);
+  const mode = ri(0, 2);
+  if (mode === 0) {
+    const items: readonly (readonly [string, string])[] = [["🍎", "apel"], ["🍓", "stroberi"], ["⭐", "bintang"], ["🐤", "anak ayam"], ["🌷", "bunga tulip"], ["🍪", "biskuit"]];
+    const it = pick(items);
+    const a = ri(2, 3 + level);
+    const b = ri(1, 4);
+    const total = a + b;
+    return mkNum(
+      `Di keranjang ${name} ada ${it[0].repeat(a)} (${a} ${it[1]}). Ibu menambahkan ${it[0].repeat(b)} (${b} ${it[1]}) lagi. Sekarang ada berapa ${it[1]} di keranjang ${name}?`,
+      total, [total - 1, total + 1, total + 2].filter((x) => x > 0 && x !== total),
+      `Mula-mula ada ${a} ${it[1]}. Ditambah ${b} lagi menjadi ${a} + ${b} = ${total}. Hitung gambarnya satu-satu, ya!`,
+      it[0], false,
+    );
+  }
+  if (mode === 1) {
+    const a = ri(4, 6 + level);
+    const b = ri(1, a - 2);
+    const left = a - b;
+    return mkNum(
+      `${name} membawa ${a} balon ke taman 🎈. Di tengah jalan, ${b} balon terbang terbawa angin. Sisa balon ${name} sekarang adalah …`,
+      left, [left + 1, left - 1, a].filter((x) => x >= 0 && x !== left),
+      `Balonnya berkurang karena terbang: ${a} − ${b} = ${left}. Jadi sisa balon ${name} ada ${left}.`,
+      "🎈", false,
+    );
+  }
+  const a = ri(2, 8);
+  let b = ri(2, 8);
+  if (b === a) b = a + 1;
+  const moreButterfly = a > b;
+  return mkq(
+    `Di taman bunga, ${name} menghitung kupu-kupu ${"🦋".repeat(a)} dan lebah ${"🐝".repeat(b)}. Hewan yang jumlahnya LEBIH BANYAK adalah …`,
+    moreButterfly ? `Kupu-kupu (${a} ekor)` : `Lebah (${b} ekor)`,
+    [moreButterfly ? `Lebah (${b} ekor)` : `Kupu-kupu (${a} ekor)`, "Sama banyak"],
+    `Hitung satu-satu: kupu-kupu ada ${a} ekor, lebah ada ${b} ekor. Karena ${Math.max(a, b)} lebih banyak daripada ${Math.min(a, b)}, yang lebih banyak adalah ${moreButterfly ? "kupu-kupu" : "lebah"}.`,
+    "🦋", false,
+  );
+};
+
+/* ---------- SD Matematika: belanja dua langkah ---------- */
+const sdShopDetail: LGen = () => {
+  const name = pick(NAMES);
+  const i1 = pick(["buku tulis", "pensil warna", "penghapus besar", "penggaris", "tempat pensil"]);
+  const i2 = pick(["stiker", "permen susu", "biskuit", "susu kotak", "roti cokelat", "apel"]);
+  const a = ri(2, 5);
+  const p1 = pick([1500, 2000, 2500, 3000, 4000, 5000]);
+  const b = ri(1, 4);
+  const p2 = pick([1000, 1500, 2000, 2500, 3000]);
+  const t1 = a * p1;
+  const t2 = b * p2;
+  const total = t1 + t2;
+  if (Math.random() < 0.5) {
+    return mkNum(
+      `${name} membeli ${a} ${i1} seharga Rp${fmt(p1)} per buah dan ${b} ${i2} seharga Rp${fmt(p2)} per buah. Total belanja ${name} adalah …`,
+      total, [t1, t2, total + p1],
+      `Langkah 1: harga ${i1} = ${a} × Rp${fmt(p1)} = Rp${fmt(t1)}. Langkah 2: harga ${i2} = ${b} × Rp${fmt(p2)} = Rp${fmt(t2)}. Langkah 3: total = Rp${fmt(t1)} + Rp${fmt(t2)} = Rp${fmt(total)}.`,
+      "🛒",
+    );
+  }
+  const money = pick([50000, 100000]);
+  const change = money - total;
+  return mkNum(
+    `${name} membeli ${a} ${i1} seharga Rp${fmt(p1)} per buah dan ${b} ${i2} seharga Rp${fmt(p2)} per buah. ${name} membayar dengan uang Rp${fmt(money)}. Kembalian ${name} adalah …`,
+    change, [total, change + p1, change - 1000].filter((x) => x > 0 && x !== change),
+    `Langkah 1: harga ${i1} = ${a} × Rp${fmt(p1)} = Rp${fmt(t1)}, harga ${i2} = ${b} × Rp${fmt(p2)} = Rp${fmt(t2)}. Langkah 2: total belanja = Rp${fmt(t1)} + Rp${fmt(t2)} = Rp${fmt(total)}. Langkah 3: kembalian = Rp${fmt(money)} − Rp${fmt(total)} = Rp${fmt(change)}.`,
+    "🛒",
+  );
+};
+
+/* ---------- SD Matematika: membaca data (daftar nilai & diagram gambar) ---------- */
+const sdDataDetail: LGen = () => {
+  const mode = ri(0, 2);
+  if (mode === 0) {
+    const modeVal = pick([6, 7, 8, 9]);
+    const others = sample([5, 6, 7, 8, 9, 10].filter((v) => v !== modeVal), 3);
+    const vals = shuffle([modeVal, modeVal, modeVal, ...others]);
+    return mkNum(
+      `Nilai ulangan satu kelompok belajar adalah: ${vals.join(", ")}. Nilai yang PALING SERING muncul (modus) dari data itu adalah …`,
+      modeVal, others,
+      `Langkah 1: hitung kemunculan tiap nilai — ${modeVal} muncul 3 kali, sedangkan ${others.join(", ")} masing-masing hanya muncul 1 kali. Langkah 2: nilai yang paling sering muncul disebut modus. Jadi modusnya adalah ${modeVal}.`,
+      "📊",
+    );
+  }
+  if (mode === 1) {
+    const cats: readonly (readonly [string, string])[] = [["Apel", "🍎"], ["Jeruk", "🍊"], ["Mangga", "🥭"], ["Pisang", "🍌"]];
+    const counts = sample([2, 3, 4, 5, 6, 7], 4);
+    const bars = cats.map((c, i) => `${c[0]}: ${c[1].repeat(counts[i] as number)}`).join("   •   ");
+    const maxIdx = counts.indexOf(Math.max(...counts));
+    const minIdx = counts.indexOf(Math.min(...counts));
+    const maxCat = cats[maxIdx] as (readonly [string, string]);
+    const minCat = cats[minIdx] as (readonly [string, string]);
+    if (Math.random() < 0.5) {
+      return mkq(
+        `Diagram gambar hasil panen kebun sekolah: ${bars}. Buah yang PALING BANYAK dipanen adalah …`,
+        `${maxCat[0]} (${counts[maxIdx]} buah)`,
+        cats.filter((_, i) => i !== maxIdx).map((c, i) => `${c[0]} (${counts[cats.indexOf(c)]} buah)`).slice(0, 3),
+        `Langkah 1: hitung gambar pada tiap baris — ${cats.map((c, i) => `${c[0]} ${counts[i]}`).join(", ")}. Langkah 2: baris terpanjang adalah ${maxCat[0]} dengan ${counts[maxIdx]} buah, jadi itulah yang paling banyak dipanen.`,
+        "📊",
+      );
+    }
+    const diff = (counts[maxIdx] as number) - (counts[minIdx] as number);
+    return mkNum(
+      `Diagram gambar hasil panen kebun sekolah: ${bars}. Selisih panen ${maxCat[0]} dan ${minCat[0]} adalah … buah`,
+      diff, [diff + 1, diff + 2, counts[maxIdx] as number].filter((x) => x > 0 && x !== diff),
+      `Langkah 1: dari diagram, ${maxCat[0]} ada ${counts[maxIdx]} buah dan ${minCat[0]} ada ${counts[minIdx]} buah. Langkah 2: selisih = ${counts[maxIdx]} − ${counts[minIdx]} = ${diff} buah.`,
+      "📊",
+    );
+  }
+  const vals = sample([55, 60, 65, 70, 75, 80, 85, 90, 95, 100], 5);
+  const hi = Math.max(...vals);
+  const lo = Math.min(...vals);
+  const range = hi - lo;
+  return mkNum(
+    `Data nilai ulangan Matematika satu kelompok: ${vals.join(", ")}. Selisih nilai tertinggi dan nilai terendah adalah …`,
+    range, [range + 5, range - 5, hi].filter((x) => x > 0 && x !== range),
+    `Langkah 1: cari nilai tertinggi (${hi}) dan terendah (${lo}) dari data. Langkah 2: selisih = ${hi} − ${lo} = ${range}.`,
+    "📊",
+  );
+};
+
+/* ---------- SD Matematika: perbandingan, campuran & harga satuan ---------- */
+const sdRatioDetail: LGen = () => {
+  const mode = ri(0, 2);
+  if (mode === 0) {
+    const pairs: readonly (readonly [number, number])[] = [[1, 2], [2, 3], [3, 4], [1, 3], [3, 5], [2, 5], [4, 5]];
+    const pr = pick(pairs);
+    const a = pr[0];
+    const b = pr[1];
+    const k = ri(2, 6);
+    const total = (a + b) * k;
+    const nameA = pick(NAMES);
+    const nameB = pick(NAMES.filter((n) => n !== nameA));
+    const valA = a * k;
+    return mkNum(
+      `Perbandingan kelereng ${nameA} dan ${nameB} adalah ${a} : ${b}. Jumlah kelereng mereka berdua ${total} butir. Banyak kelereng ${nameA} adalah … butir`,
+      valA, [b * k, valA + k, valA - k].filter((x) => x > 0 && x !== valA),
+      `Langkah 1: jumlah bagian perbandingan = ${a} + ${b} = ${a + b} bagian. Langkah 2: nilai satu bagian = ${total} : ${a + b} = ${k} butir. Langkah 3: kelereng ${nameA} = ${a} bagian × ${k} = ${valA} butir.`,
+      "🔮",
+    );
+  }
+  if (mode === 1) {
+    const n1 = pick([2, 4, 5]);
+    const u1 = pick([1000, 1500, 2000, 2500]);
+    const n2 = pick([3, 5, 6]);
+    const u2 = pick([1200, 1800, 2200, 3000].filter((u) => u !== u1));
+    const cheapA = u1 < u2;
+    return mkq(
+      `Di toko alat tulis, pensil dijual dalam dua paket. Paket A berisi ${n1} pensil seharga Rp${fmt(n1 * u1)}. Paket B berisi ${n2} pensil seharga Rp${fmt(n2 * u2)}. Paket yang harga per pensilnya LEBIH MURAH adalah …`,
+      cheapA ? "Paket A" : "Paket B",
+      [cheapA ? "Paket B" : "Paket A", "Sama saja, harganya sama"],
+      `Langkah 1: harga satuan Paket A = Rp${fmt(n1 * u1)} : ${n1} = Rp${fmt(u1)} per pensil. Langkah 2: harga satuan Paket B = Rp${fmt(n2 * u2)} : ${n2} = Rp${fmt(u2)} per pensil. Langkah 3: bandingkan — Rp${fmt(Math.min(u1, u2))} lebih murah daripada Rp${fmt(Math.max(u1, u2))}, jadi yang lebih murah adalah Paket ${cheapA ? "A" : "B"}. Pilihan "sama saja" salah karena harga satuannya berbeda.`,
+      "🛒",
+    );
+  }
+  const pr2 = pick([[1, 2], [1, 3], [2, 3], [1, 4], [3, 4]] as readonly (readonly [number, number])[]);
+  const a2 = pr2[0];
+  const b2 = pr2[1];
+  const k2 = pick([100, 150, 200, 250]);
+  const total2 = (a2 + b2) * k2;
+  const sirup = a2 * k2;
+  return mkNum(
+    `Untuk membuat minuman segar, Ibu mencampur sirup dan air dengan perbandingan ${a2} : ${b2}. Ibu membuat ${fmt(total2)} ml minuman. Volume sirup yang dipakai Ibu adalah … ml`,
+    sirup, [b2 * k2, sirup + k2, total2 - sirup].filter((x) => x > 0 && x !== sirup),
+    `Langkah 1: jumlah bagian = ${a2} + ${b2} = ${a2 + b2} bagian. Langkah 2: volume satu bagian = ${fmt(total2)} : ${a2 + b2} = ${k2} ml. Langkah 3: sirup menempati ${a2} bagian, jadi ${a2} × ${k2} ml = ${sirup} ml.`,
+    "🥤",
+  );
+};
+
+/* ---------- SD Matematika: pernyataan yang benar (uji konsep) ---------- */
+const sdTrueStmt: LGen = () => {
+  const mode = ri(0, 2);
+  if (mode === 0) {
+    const n = pick([12, 18, 20, 24, 30, 36, 42, 48]);
+    const d = pick([2, 3, 4, 6].filter((x) => n % x === 0));
+    const nonDiv = pick([5, 7, 9].filter((x) => n % x !== 0));
+    return mkq(
+      `Pernyataan yang BENAR tentang bilangan ${n} adalah …`,
+      `${n} habis dibagi ${d}`,
+      [`${n} adalah bilangan prima`, `${n} habis dibagi ${nonDiv}`, `${n} adalah bilangan ganjil`],
+      `Periksa satu per satu: ${n} : ${d} = ${n / d} pas tanpa sisa, jadi "${n} habis dibagi ${d}" BENAR. ${n} bukan bilangan prima karena mempunyai faktor selain 1 dan dirinya sendiri (misalnya ${n} = ${d} × ${n / d}). ${n} : ${nonDiv} bersisa, jadi tidak habis dibagi ${nonDiv}. ${n} adalah bilangan genap, bukan ganjil.`,
+      "🔢",
+    );
+  }
+  if (mode === 1) {
+    const den = pick([4, 5, 6, 8]);
+    const num = ri(1, den - 1);
+    return mkq(
+      `Pernyataan yang BENAR tentang pecahan ${num}/${den} adalah …`,
+      `${num}/${den} lebih kecil dari 1`,
+      [`Pembilang dari ${num}/${den} adalah ${den}`, `${num * 2}/${den} senilai dengan ${num}/${den}`, `${num}/${den} lebih besar dari 1`],
+      `Ingat: pembilang adalah angka di atas (${num}) dan penyebut angka di bawah (${den}). Karena pembilang lebih kecil dari penyebut, nilai ${num}/${den} kurang dari 1 — pernyataan itu BENAR. ${num * 2}/${den} nilainya dua kali lipat ${num}/${den}, jadi tidak senilai.`,
+      "🔢",
+    );
+  }
+  const s = pick([3, 5, 6, 7, 9]);
+  return mkq(
+    `Pernyataan yang BENAR tentang persegi adalah …`,
+    `Keliling persegi dengan sisi ${s} cm adalah ${4 * s} cm`,
+    [`Luas persegi dengan sisi ${s} cm adalah ${4 * s} cm²`, "Persegi mempunyai 3 sisi yang sama panjang", "Semua sudut persegi adalah sudut lancip"],
+    `Keliling persegi = 4 × sisi = 4 × ${s} = ${4 * s} cm — pernyataan itu BENAR. Luas persegi = sisi × sisi = ${s} × ${s} = ${s * s} cm², bukan ${4 * s} cm² (itu hasil keliling). Persegi mempunyai 4 sisi, dan semua sudutnya siku-siku (90°), bukan lancip.`,
+    "🔢",
+  );
+};
+
+/* ---------- SMP Matematika: soal bertahap (diskon bertingkat, perjalanan, lusin) ---------- */
+const smpMultiStep: LGen = (level) => {
+  const mode = ri(0, 2);
+  if (mode === 0) {
+    const price = pick([200000, 250000, 300000, 400000, 500000]);
+    const d1 = pick([10, 20, 25, 30]);
+    const d2 = pick([5, 10]);
+    const disc1 = (price * d1) / 100;
+    const after1 = price - disc1;
+    const disc2 = (after1 * d2) / 100;
+    const pay = after1 - disc2;
+    if (!Number.isInteger(pay)) return null;
+    return mkNum(
+      `Sebuah jaket berharga Rp${fmt(price)} mendapat diskon ${d1}%. Di kasir, harga setelah diskon itu dipotong lagi sebesar ${d2}%. Harga akhir yang harus dibayar adalah …`,
+      pay, [price - (price * (d1 + d2)) / 100, after1, pay + disc2].filter((x) => x > 0 && x !== pay),
+      `Langkah 1: diskon pertama = ${d1}% × Rp${fmt(price)} = Rp${fmt(disc1)}, harga menjadi Rp${fmt(after1)}. Langkah 2: potongan kedua dihitung dari harga BARU: ${d2}% × Rp${fmt(after1)} = Rp${fmt(disc2)}. Langkah 3: harga akhir = Rp${fmt(after1)} − Rp${fmt(disc2)} = Rp${fmt(pay)}. Ingat: diskon bertingkat TIDAK boleh dijumlahkan persennya (${d1}% + ${d2}% itu keliru).`,
+      "🛍️",
+    );
+  }
+  if (mode === 1) {
+    const v1 = pick([40, 50, 60]);
+    const t1 = pick([1, 2, 3]);
+    const v2 = pick([30, 40, 50, 60, 80]);
+    const t2 = pick([1, 2]);
+    const s1 = v1 * t1;
+    const s2 = v2 * t2;
+    const tot = s1 + s2;
+    const tt = t1 + t2;
+    const avg = tot / tt;
+    if (Math.random() < 0.5 || !Number.isInteger(avg)) {
+      return mkNum(
+        `Sebuah bus melaju ${v1} km/jam selama ${t1} jam, kemudian melaju ${v2} km/jam selama ${t2} jam. Total jarak yang ditempuh bus adalah … km`,
+        tot, [s1, s2, (v1 + v2) * tt],
+        `Langkah 1: jarak tahap pertama = ${v1} × ${t1} = ${s1} km (rumus jarak = kecepatan × waktu). Langkah 2: jarak tahap kedua = ${v2} × ${t2} = ${s2} km. Langkah 3: total jarak = ${s1} + ${s2} = ${tot} km.`,
+        "🚌",
+      );
+    }
+    return mkNum(
+      `Sebuah bus melaju ${v1} km/jam selama ${t1} jam, kemudian melaju ${v2} km/jam selama ${t2} jam. Kecepatan rata-rata bus selama seluruh perjalanan adalah … km/jam`,
+      avg, [(v1 + v2) / 2, avg + 5, avg - 5].filter((x) => x > 0 && x !== avg),
+      `Langkah 1: total jarak = ${v1}×${t1} + ${v2}×${t2} = ${s1} + ${s2} = ${tot} km. Langkah 2: total waktu = ${t1} + ${t2} = ${tt} jam. Langkah 3: kecepatan rata-rata = total jarak : total waktu = ${tot} : ${tt} = ${avg} km/jam. Bukan rata-rata biasa dari dua kecepatan, karena waktunya berbeda.`,
+      "🚌",
+    );
+  }
+  const buyDozen = pick([24000, 36000, 48000, 60000]);
+  const sellEach = pick([3000, 4000, 5000, 6000]);
+  const revenue = sellEach * 12;
+  const profit = revenue - buyDozen;
+  if (profit <= 0) return smpMultiStep(level);
+  return mkNum(
+    `Seorang pedagang membeli 1 lusin pensil seharga Rp${fmt(buyDozen)}. Semua pensil itu dijual kembali seharga Rp${fmt(sellEach)} per buah. Keuntungan pedagang adalah …`,
+    profit, [revenue, profit + sellEach, buyDozen].filter((x) => x > 0 && x !== profit),
+    `Langkah 1: 1 lusin = 12 buah. Langkah 2: hasil penjualan seluruhnya = 12 × Rp${fmt(sellEach)} = Rp${fmt(revenue)}. Langkah 3: keuntungan = hasil penjualan − harga beli = Rp${fmt(revenue)} − Rp${fmt(buyDozen)} = Rp${fmt(profit)}.`,
+    "🛍️",
+  );
+};
+
+/* ---------- SMP Matematika: data & statistika bertahap ---------- */
+const smpDataDetail: LGen = () => {
+  const mode = ri(0, 2);
+  if (mode === 0) {
+    const vals = sample([3, 4, 5, 6, 7, 8, 9, 10, 11, 12], 7);
+    const sorted = [...vals].sort((x, y) => x - y);
+    const med = sorted[3] as number;
+    const meanR = Math.round(vals.reduce((s, v) => s + v, 0) / vals.length);
+    const d3 = meanR !== med ? meanR : med + 2;
+    return mkNum(
+      `Data tinggi bibit tanaman (cm) hasil pengamatan: ${vals.join(", ")}. Median (nilai tengah) data tersebut adalah …`,
+      med, [sorted[2] as number, sorted[4] as number, d3].filter((x) => x !== med),
+      `Langkah 1: urutkan data dari terkecil: ${sorted.join(", ")}. Langkah 2: banyak data 7 (ganjil), jadi median adalah data ke-4. Langkah 3: data ke-4 adalah ${med}. Jadi mediannya ${med} cm.`,
+      "📊",
+    );
+  }
+  if (mode === 1) {
+    const n1 = pick([10, 20, 25]);
+    const a1 = pick([70, 72, 75, 76, 80]);
+    const n2 = pick([10, 15, 20, 30]);
+    const a2 = pick([78, 80, 82, 84, 85, 88]);
+    const totVal = n1 * a1 + n2 * a2;
+    const totN = n1 + n2;
+    const comb = totVal / totN;
+    if (!Number.isInteger(comb)) return null;
+    const naive = (a1 + a2) / 2;
+    return mkNum(
+      `Rata-rata nilai ulangan kelas A (${n1} siswa) adalah ${a1}. Rata-rata nilai kelas B (${n2} siswa) adalah ${a2}. Rata-rata gabungan kedua kelas adalah …`,
+      comb, [Number.isInteger(naive) && naive !== comb ? naive : comb + 2, comb + 1, comb - 1].filter((x) => x !== comb),
+      `Langkah 1: jumlah nilai kelas A = ${n1} × ${a1} = ${fmt(totVal - n2 * a2)} dan kelas B = ${n2} × ${a2} = ${fmt(n2 * a2)}. Langkah 2: total nilai = ${fmt(totVal)} dari total ${totN} siswa. Langkah 3: rata-rata gabungan = ${fmt(totVal)} : ${totN} = ${comb}. Rata-rata gabungan bukan sekadar rata-rata dari dua rata-rata, karena jumlah siswa kedua kelas berbeda.`,
+      "📊",
+    );
+  }
+  const A = pick([70, 75, 80]);
+  const name = pick(NAMES);
+  const known = [A + pick([-6, -3, 0, 3]), A + pick([-4, 2, 5]), A + pick([-5, -2, 4]), A + pick([-3, 1, 6])];
+  const sumKnown = known.reduce((s, v) => s + v, 0);
+  const miss = 5 * A - sumKnown;
+  if (miss < 0 || miss > 100) return null;
+  return mkNum(
+    `Rata-rata nilai 5 kali ulangan ${name} adalah ${A}. Empat nilai yang sudah diketahui adalah ${known.join(", ")}. Nilai ulangan kelima ${name} adalah …`,
+    miss, [A, miss + 3, miss - 3].filter((x) => x >= 0 && x !== miss),
+    `Langkah 1: jumlah seluruh nilai = banyak ulangan × rata-rata = 5 × ${A} = ${5 * A}. Langkah 2: jumlah 4 nilai yang diketahui = ${known.join(" + ")} = ${sumKnown}. Langkah 3: nilai kelima = ${5 * A} − ${sumKnown} = ${miss}.`,
+    "📊",
+  );
+};
+
+/* ---------- SMA Matematika: fungsi bertahap ---------- */
+const smaFunctionDetail: LGen = () => {
+  const mode = ri(0, 2);
+  if (mode === 0) {
+    const a = ri(2, 5);
+    const b = ri(1, 6);
+    const c = ri(1, 5);
+    const d = ri(1, 6);
+    const x0 = ri(1, 4);
+    const gx = c * x0 + d;
+    const fog = a * gx + b;
+    return mkNum(
+      `Diketahui f(x) = ${a}x + ${b} dan g(x) = ${c}x + ${d}. Nilai (f ∘ g)(${x0}) adalah …`,
+      fog, [a * (c * x0) + b, a * (c * x0 + b) + d, fog + a],
+      `Langkah 1: kerjakan fungsi yang di dalam dulu — g(${x0}) = ${c}×${x0} + ${d} = ${gx}. Langkah 2: masukkan hasil itu ke f — f(${gx}) = ${a}×${gx} + ${b} = ${fog}. Jadi (f ∘ g)(${x0}) = ${fog}. Urutan komposisi tidak boleh dibalik.`,
+    );
+  }
+  if (mode === 1) {
+    const a = pick([1, 2, 3]);
+    const b = ri(1, 6);
+    const c = ri(1, 9);
+    const k = ri(2, 5);
+    const val = a * k * k - b * k + c;
+    return mkNum(
+      `Jika f(x) = ${a}x² − ${b}x + ${c}, maka nilai f(${k}) adalah …`,
+      val, [a * k * k + b * k + c, a * k - b + c, val + b * k],
+      `Langkah 1: ganti setiap x dengan ${k}: f(${k}) = ${a}(${k})² − ${b}(${k}) + ${c}. Langkah 2: hitung pangkat dan kalinya: ${a * k * k} − ${b * k} + ${c}. Langkah 3: jumlahkan = ${val}. Hati-hati: suku tengah bertanda negatif.`,
+    );
+  }
+  const a = pick([2, 3, 4, 5]);
+  const b = ri(1, 9);
+  const x0 = ri(2, 9);
+  const y = a * x0 + b;
+  return mkNum(
+    `Fungsi f(x) = ${a}x + ${b}. Nilai f⁻¹(${y}) (invers fungsi pada ${y}) adalah …`,
+    x0, [y - b, x0 + a, x0 - 1].filter((x) => x !== x0),
+    `Langkah 1: f⁻¹(${y}) adalah nilai x yang membuat f(x) = ${y}. Langkah 2: selesaikan ${a}x + ${b} = ${y} → ${a}x = ${y} − ${b} = ${y - b}. Langkah 3: x = ${y - b} : ${a} = ${x0}. Jadi f⁻¹(${y}) = ${x0}.`,
+  );
+};
+
+/* ---------- SMA Matematika: trigonometri terapan ---------- */
+const smaTrigDetail: LGen = () => {
+  const mode = ri(0, 2);
+  if (mode === 0) {
+    const k = ri(1, 4);
+    const opp = 3 * k;
+    const adj = 4 * k;
+    const hyp = 5 * k;
+    const which = pick(["sin", "cos", "tan"] as const);
+    const vals: Record<string, string> = { sin: fracStr(opp, hyp), cos: fracStr(adj, hyp), tan: fracStr(opp, adj) };
+    const correct = vals[which] as string;
+    const others = ["sin", "cos", "tan"].filter((w) => w !== which).map((w) => vals[w] as string);
+    const recip = fracStr(hyp, opp);
+    const ds = [...others, recip].filter((x) => x !== correct);
+    return mkq(
+      `Segitiga siku-siku PQR siku-siku di Q. Untuk sudut θ di P: sisi di depan θ adalah ${opp} cm, sisi di samping θ adalah ${adj} cm, dan sisi miringnya ${hyp} cm. Nilai ${which} θ adalah …`,
+      correct, ds,
+      `Langkah 1: ingat definisi perbandingan trigonometri — sin = depan : miring, cos = samping : miring, tan = depan : samping. Langkah 2: ${which} θ = ${which === "sin" ? `${opp} : ${hyp}` : which === "cos" ? `${adj} : ${hyp}` : `${opp} : ${adj}`} = ${correct} (disederhanakan).`,
+    );
+  }
+  if (mode === 1) {
+    const d = pick([8, 10, 12, 15, 20, 25, 30]);
+    return mkNum(
+      `Dari jarak ${d} m dari pangkal pohon, puncak pohon terlihat dengan sudut elevasi 45°. Tinggi pohon dari permukaan tanah adalah … m`,
+      d, [d / 2, d * 2, d + 5],
+      `Langkah 1: tinggi pohon dan jarak mendatar membentuk segitiga siku-siku; gunakan tan = depan : samping. Langkah 2: tan 45° = 1, jadi tinggi : ${d} = 1. Langkah 3: tinggi = 1 × ${d} = ${d} m.`,
+    );
+  }
+  const h = pick([10, 12, 16, 20, 24, 30]);
+  const half = h / 2;
+  const useSin = Math.random() < 0.5;
+  return mkNum(
+    useSin
+      ? `Sebuah tangga sepanjang ${h} m disandarkan pada dinding dan membentuk sudut 30° dengan tanah. Tinggi dinding yang dicapai ujung atas tangga adalah … m`
+      : `Sebuah tangga sepanjang ${h} m disandarkan pada dinding dan membentuk sudut 60° dengan tanah. Jarak kaki tangga dari dinding adalah … m`,
+    half, [h, half + 3, h - 2],
+    useSin
+      ? `Langkah 1: tinggi yang dicapai adalah sisi di depan sudut 30°, dicari dengan sin (depan : miring). Langkah 2: sin 30° = 1/2, jadi tinggi = ${h} × 1/2 = ${half} m.`
+      : `Langkah 1: jarak kaki tangga adalah sisi di samping sudut 60°, dicari dengan cos (samping : miring). Langkah 2: cos 60° = 1/2, jadi jarak = ${h} × 1/2 = ${half} m.`,
+  );
+};
+
+/* ---------- SMA Matematika: peluang & statistika bertahap ---------- */
+const smaProbStatDetail: LGen = () => {
+  const mode = ri(0, 2);
+  if (mode === 0) {
+    const s = pick([5, 6, 7, 8, 9]);
+    let count = 0;
+    const pairList: string[] = [];
+    for (let i = 1; i <= 6; i++) {
+      const j = s - i;
+      if (j >= 1 && j <= 6) {
+        count++;
+        pairList.push(`(${i}, ${j})`);
+      }
+    }
+    const g = gcd(count, 36);
+    const ans = `${count / g}/${36 / g}`;
+    const seenVal = new Set<string>([ans]);
+    const ds: string[] = [];
+    for (const c of [count - 1, count + 1, count + 2]) {
+      if (c < 1) continue;
+      const gg = gcd(c, 36);
+      const key = `${c / gg}/${36 / gg}`;
+      if (seenVal.has(key)) continue;
+      seenVal.add(key);
+      ds.push(`${c}/36`);
+      if (ds.length === 3) break;
+    }
+    if (ds.length < 3) return null;
+    return mkq(
+      `Dua buah dadu dilempar bersamaan satu kali. Peluang muncul jumlah mata dadu ${s} adalah …`,
+      ans, ds,
+      `Langkah 1: pasangan mata dadu yang jumlahnya ${s} adalah ${pairList.join(", ")} — ada ${count} pasangan. Langkah 2: seluruh kemungkinan pasangan = 6 × 6 = 36. Langkah 3: peluang = ${count}/36, disederhanakan menjadi ${ans}.`,
+    );
+  }
+  if (mode === 1) {
+    const variants: readonly (readonly [string, string, readonly string[], string])[] = [
+      ["Dua koin dilempar bersamaan satu kali. Peluang muncul tepat satu sisi angka adalah …", "1/2", ["1/4", "3/4", "1/8"], "Langkah 1: semua hasil yang mungkin adalah AA, AG, GA, GG (A = angka, G = gambar) — 4 hasil. Langkah 2: tepat satu angka terjadi pada AG dan GA — 2 hasil. Langkah 3: peluang = 2/4 = 1/2."],
+      ["Dua koin dilempar bersamaan satu kali. Peluang muncul dua sisi gambar adalah …", "1/4", ["1/2", "3/4", "1/8"], "Langkah 1: semua hasil yang mungkin adalah AA, AG, GA, GG — 4 hasil. Langkah 2: dua sisi gambar hanya GG — 1 hasil. Langkah 3: peluang = 1/4."],
+      ["Dua koin dilempar bersamaan satu kali. Peluang muncul paling sedikit satu sisi angka adalah …", "3/4", ["1/4", "1/2", "1/8"], "Langkah 1: semua hasil yang mungkin adalah AA, AG, GA, GG — 4 hasil. Langkah 2: paling sedikit satu angka terjadi pada AA, AG, GA — 3 hasil (hanya GG yang gagal). Langkah 3: peluang = 3/4."],
+    ];
+    const v = pick(variants);
+    return mkq(v[0], v[1], [...v[2]], v[3]);
+  }
+  const vals = sample([3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], 6);
+  const sorted = [...vals].sort((x, y) => x - y);
+  const med = ((sorted[2] as number) + (sorted[3] as number)) / 2;
+  const medStr = fmtDec(med);
+  const meanR = Math.round(vals.reduce((s2, v) => s2 + v, 0) / vals.length);
+  const d3 = fmtDec(meanR) !== medStr ? fmtDec(meanR) : fmtDec(med + 1);
+  return mkq(
+    `Data berat badan (kg) enam siswa: ${vals.join(", ")}. Median data tersebut adalah … kg`,
+    medStr, [String(sorted[2]), String(sorted[3]), d3],
+    `Langkah 1: urutkan data: ${sorted.join(", ")}. Langkah 2: banyak data 6 (genap), jadi median adalah rata-rata data ke-3 dan ke-4. Langkah 3: median = (${sorted[2]} + ${sorted[3]}) : 2 = ${medStr} kg.`,
+  );
+};
+
+/* ---------- TK Sains: cerita pengamatan yang hidup ---------- */
+const TK_SCI_STORY_FACTS: readonly Fact[] = [
+  ["Pagi ini Sinta menyiram tanaman cabai di pot. Agar cabainya tumbuh subur dan berbuah, tanaman itu juga membutuhkan …", "Cahaya matahari", ["Mainan baru", "Batu besar"], "Tanaman butuh air DAN cahaya matahari untuk memasak makanannya. Tanpa cahaya, tanaman jadi pucat dan lemah."],
+  ["Seekor anak ayam 🐤 baru saja menetas dari telur di kandang. Anak ayam adalah anak dari hewan …", "Ayam", ["Bebek", "Kucing"], "Anak ayam menetas dari telur yang dierami induk ayam."],
+  ["Di luar sedang hujan deras 🌧️. Agar tidak kehujanan saat pergi ke sekolah, benda yang tepat dipakai adalah …", "Payung atau jas hujan", ["Kacamata hitam", "Kipas tangan"], "Payung dan jas hujan melindungi tubuh dari air hujan. Kacamata hitam untuk menahan silau matahari."],
+  ["Kucing peliharaan Dito mengeong terus di dekat mangkuknya yang kosong. Kemungkinan besar kucing itu sedang …", "Lapar dan ingin makan", ["Ingin berenang", "Ingin terbang"], "Hewan memberi tanda bila lapar — kucing mengeong di dekat tempat makannya."],
+  ["Es krim Rara cepat meleleh saat dimakan di bawah terik matahari. Es krim itu meleleh karena …", "Panas matahari membuatnya mencair", ["Ditiup angin kencang", "Warnanya berubah"], "Es krim adalah benda padat yang mencair bila terkena panas."],
+  ["Bima menanam biji kacang di atas kapas basah. Beberapa hari kemudian, biji itu akan …", "Bertunas dan tumbuh akar", ["Berubah menjadi batu", "Terbang ke langit"], "Biji yang mendapat air akan berkecambah: keluar akar dan tunas, lalu tumbuh menjadi tanaman."],
+  ["Ibu menjemur pakaian basah di halaman yang panas. Pakaian itu akan kering karena …", "Airnya menguap oleh panas matahari", ["Ditiup sampai jatuh", "Warnanya memudar"], "Air pada pakaian berubah menjadi uap (menguap) karena panas matahari, jadi pakaian kering."],
+  ["Saat malam hari yang cerah, Dita menatap langit. Benda langit yang bercahaya dan berkelip-kelip adalah …", "Bintang", ["Batu", "Awan tebal"], "Bintang memancarkan cahayanya sendiri dan tampak berkelip di langit malam."],
+  ["Di kebun ada kupu-kupu hinggap dari bunga ke bunga 🌸. Kupu-kupu membantu bunga karena …", "Membawa serbuk sari sehingga bunga bisa jadi buah", ["Memakan semua daun", "Membuat bunga layu"], "Kupu-kupu membantu penyerbukan: serbuk sari menempel di tubuhnya dan berpindah ke bunga lain."],
+];
+
+/* ---------- SD Sains: data pengamatan, percobaan, sebab–akibat, prediksi ---------- */
+const sdScienceDetail: LGen = () => {
+  const mode = ri(0, 3);
+  if (mode === 0) {
+    const days = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat"];
+    const base = ri(24, 28);
+    const offsets = shuffle([0, 1, 2, 3, 5]).slice(0, 5);
+    const temps = days.map((_, i) => base + (offsets[i] as number));
+    const maxT = Math.max(...temps);
+    const maxDay = days[temps.indexOf(maxT)] as string;
+    const table = days.map((d, i) => `${d} ${temps[i]}°C`).join(", ");
+    if (Math.random() < 0.5) {
+      return mkq(
+        `Siswa kelas 5 mengukur suhu udara pada jam pulang sekolah selama 5 hari: ${table}. Kesimpulan yang TEPAT dari data pengamatan itu adalah …`,
+        `Hari ${maxDay} adalah hari terpanas dengan suhu ${maxT}°C`,
+        ["Semua hari suhunya sama persis", "Hari Senin selalu menjadi hari terpanas", "Suhu udara tidak pernah berubah"],
+        `Langkah 1: bandingkan semua angka suhu pada data. Langkah 2: suhu tertinggi adalah ${maxT}°C dan itu terjadi pada hari ${maxDay}. Kesimpulan yang baik harus sesuai data pengamatan, bukan tebakan.`,
+        "🌡️",
+      );
+    }
+    const i1 = ri(0, 3);
+    const i2 = i1 + 1;
+    const diff = Math.abs((temps[i2] as number) - (temps[i1] as number));
+    return mkNum(
+      `Data suhu udara selama 5 hari: ${table}. Selisih suhu hari ${days[i2]} dan hari ${days[i1]} adalah … °C`,
+      diff, [diff + 1, diff + 2, diff === 0 ? 1 : diff - 1].filter((x) => x >= 0 && x !== diff),
+      `Langkah 1: suhu hari ${days[i2]} adalah ${temps[i2]}°C dan hari ${days[i1]} adalah ${temps[i1]}°C. Langkah 2: selisih = suhu lebih besar − suhu lebih kecil = ${diff}°C.`,
+      "🌡️",
+    );
+  }
+  if (mode === 1) {
+    const exps: readonly (readonly [string, string, readonly string[], string])[] = [
+      ["Dua gelas sama besar berisi es batu sama banyak diletakkan pada saat yang sama. Gelas A diletakkan di bawah sinar matahari, gelas B di dalam kulkas.",
+        "Tempat meletakkan gelas (di bawah matahari / di dalam kulkas)",
+        ["Banyaknya es batu dalam gelas", "Ukuran gelas yang dipakai", "Waktu memulai percobaan"],
+        "Percobaan yang adil hanya membedakan SATU hal. Di sini yang dibedakan adalah tempat (suhu lingkungan); es, gelas, dan waktu mulai dibuat sama."],
+      ["Dua pot tanaman kacang sejenis ditanam pada tanah yang sama dan diletakkan di tempat yang sama terangnya. Pot A disiram setiap hari, pot B tidak pernah disiram.",
+        "Pemberian air (disiram / tidak disiram)",
+        ["Jenis tanaman kacang", "Jenis tanah dalam pot", "Terang tempat meletakkan pot"],
+        "Percobaan yang adil hanya membedakan SATU hal. Di sini yang dibedakan adalah pemberian air; tanaman, tanah, dan cahaya dibuat sama."],
+      ["Dua mangkuk sama besar berisi air sama banyak diletakkan berdampingan di tempat teduh. Mangkuk A ditutup rapat, mangkuk B dibiarkan terbuka.",
+        "Penutup mangkuk (ditutup / dibiarkan terbuka)",
+        ["Banyaknya air dalam mangkuk", "Tempat meletakkan mangkuk", "Ukuran mangkuk"],
+        "Percobaan yang adil hanya membedakan SATU hal. Di sini yang dibedakan adalah penutup mangkuk; air, tempat, dan ukuran mangkuk dibuat sama."],
+    ];
+    const e = pick(exps);
+    return mkq(
+      `${e[0]} Dalam percobaan ini, hal yang SENGAJA DIBEDAKAN adalah …`,
+      e[1], [...e[2]],
+      `Langkah 1: cari satu-satunya perbedaan antara dua benda/kelompok itu. Langkah 2: hal lain (jumlah bahan, ukuran alat, tempat) dibuat sama agar percobaan adil. Jadi yang sengaja dibedakan adalah: ${e[1].toLowerCase()}. ${e[3]}`,
+      "🧪",
+    );
+  }
+  if (mode === 2) {
+    const cases: readonly (readonly [string, string, readonly string[], string, string])[] = [
+      ["Petani membasmi SEMUA ulat di sawahnya dengan pestisida berlebihan. Akibat yang PALING MUNGKIN terjadi pada burung pemakan ulat adalah …",
+        "Jumlah burung menurun karena kekurangan makanan",
+        ["Burung berubah menjadi ulat", "Burung tidak perlu makan lagi", "Padi berhenti membutuhkan air"],
+        "🌾",
+        "Ini soal rantai makanan: ulat adalah makanan burung. Bila makanannya habis, burung kelaparan dan jumlahnya menurun. Semua makhluk hidup saling terhubung."],
+      ["Hutan di daerah hulu sungai ditebang habis. Saat hujan deras tiba, akibat yang PALING MUNGKIN terjadi di daerah bawahnya adalah …",
+        "Banjir dan tanah longsor karena air hujan tidak terserap",
+        ["Sungai menjadi lebih jernih", "Hujan berhenti turun selamanya", "Tanah menjadi makin subur"],
+        "🌳",
+        "Akar pohon menahan dan menyerap air hujan. Tanpa hutan, air langsung mengalir deras membawa tanah — terjadilah banjir dan longsor."],
+      ["Pada pagi hari, kaca jendela berembun (ada titik-titik air). Titik air itu berasal dari …",
+        "Uap air di udara yang menyentuh kaca dingin lalu mengembun",
+        ["Air yang keluar dari dalam kaca", "Air hujan yang merembes lewat kaca", "Kaca yang berubah menjadi air"],
+        "🪟",
+        "Udara mengandung uap air yang tak terlihat. Saat menyentuh kaca yang dingin, uap berubah menjadi titik-titik air — peristiwa ini disebut mengembun."],
+    ];
+    const c = pick(cases);
+    return mkq(c[0], c[1], [...c[2]], c[4], c[3]);
+  }
+  const preds: readonly (readonly [string, string, readonly string[], string, string])[] = [
+    ["Dua pot ditanami biji kacang. Pot A disiram setiap hari, pot B tidak pernah disiram sama sekali. Prediksi hasil setelah satu minggu yang PALING MASUK AKAL adalah …",
+      "Biji di pot A bertunas dan tumbuh, biji di pot B kering dan tidak bertunas",
+      ["Kedua pot bertunas sama cepatnya", "Biji di pot B bertunas lebih cepat karena kering", "Kedua biji tidak bertunas sama sekali"],
+      "🌱",
+      "Biji membutuhkan air untuk berkecambah. Pot A mendapat air sehingga bertunas; pot B kekeringan sehingga bijinya tidak bisa bertunas."],
+    ["Dua magnet didekatkan dengan kutub yang SAMA (utara dengan utara). Yang akan terjadi adalah …",
+      "Kedua magnet saling menolak (saling menjauh)",
+      ["Kedua magnet saling menarik dengan kuat", "Kedua magnet melebur menjadi satu", "Kedua magnet kehilangan kekuatannya selamanya"],
+      "🧲",
+      "Aturan magnet: kutub yang sama saling menolak, kutub yang berbeda saling menarik."],
+    ["Dua tanaman sejenis diletakkan berbeda tempat: satu di dekat jendela yang terang, satu di dalam lemari yang gelap. Setelah dua minggu, prediksi yang PALING MASUK AKAL adalah …",
+      "Tanaman di dekat jendela tumbuh hijau dan subur, tanaman di lemari pucat dan lemah",
+      ["Tanaman di lemari tumbuh lebih subur", "Kedua tanaman tumbuh persis sama", "Tanaman di dekat jendela langsung mati"],
+      "🌿",
+      "Tanaman memasak makanan dengan cahaya matahari (fotosintesis). Tanpa cahaya, tanaman tidak bisa membuat makanan sehingga pucat dan lemah."],
+  ];
+  const p = pick(preds);
+  return mkq(p[0], p[1], [...p[2]], p[4], p[3]);
+};
+
+/* ---------- SMP Sains: variabel, data gerak, listrik, kesimpulan ---------- */
+const smpScienceDetail: LGen = () => {
+  const mode = ri(0, 3);
+  if (mode === 0) {
+    const exps: readonly (readonly [string, string, string, string])[] = [
+      ["Dua kelompok tanaman kacang diberi jumlah air berbeda (50 ml dan 100 ml per hari). Cahaya, jenis tanah, dan ukuran pot dibuat sama. Tinggi tanaman diukur setiap minggu.",
+        "Jumlah air yang diberikan", "Tinggi tanaman", "Cahaya, jenis tanah, dan ukuran pot (dibuat sama)"],
+      ["Dua gelas air dengan suhu berbeda (30°C dan 60°C) diberi satu sendok gula pasir yang sama banyak. Waktu sampai gula larut sempurna dicatat.",
+        "Suhu air", "Waktu gula larut", "Jumlah gula dan volume air (dibuat sama)"],
+      ["Dua bola berbeda massa dijatuhkan dari ketinggian yang sama di tempat yang sama. Waktu yang dibutuhkan bola untuk sampai ke tanah diukur dengan stopwatch.",
+        "Massa bola", "Waktu jatuh bola", "Ketinggian tempat menjatuhkan bola (dibuat sama)"],
+    ];
+    const e = pick(exps);
+    const askBebas = Math.random() < 0.5;
+    return mkq(
+      `Percobaan: ${e[0]} Yang merupakan variabel ${askBebas ? "BEBAS (yang sengaja diubah)" : "TERIKAT (yang diamati/diukur hasilnya)"} dalam percobaan itu adalah …`,
+      askBebas ? e[1] : e[2],
+      [askBebas ? e[2] : e[1], e[3], "Alat pengukur yang digunakan"],
+      `Variabel bebas adalah yang sengaja diubah peneliti: ${e[1].toLowerCase()}. Variabel terikat adalah hasil yang diukur: ${e[2].toLowerCase()}. Hal lain — ${e[3].toLowerCase()} — adalah variabel kontrol yang dibuat sama agar percobaan adil (fair test).`,
+      "🧪",
+    );
+  }
+  if (mode === 1) {
+    const v1 = pick([2, 3, 4, 5]);
+    const v2 = pick([6, 8, 10, 12]);
+    const s = [0, v1, 2 * v1, 2 * v1 + v2, 2 * v1 + 2 * v2];
+    const table = s.map((dist, t) => `t = ${t} s → ${dist} m`).join("; ");
+    return mkNum(
+      `Sebuah troli bergerak lurus dan posisinya dicatat tiap detik: ${table}. Kecepatan troli pada selang waktu t = 2 s sampai t = 4 s adalah … m/s`,
+      v2, [v1, v2 + 1, (2 * v1 + 2 * v2) / 4].filter((x) => x !== v2),
+      `Langkah 1: pada selang itu posisi berubah dari ${2 * v1} m menjadi ${2 * v1 + 2 * v2} m, jadi jarak yang ditempuh = ${2 * v2} m. Langkah 2: lama selang = 4 − 2 = 2 s. Langkah 3: kecepatan = jarak : waktu = ${2 * v2} : 2 = ${v2} m/s.`,
+      "📈",
+    );
+  }
+  if (mode === 2) {
+    const V = pick([6, 9, 12, 24]);
+    const R = pick([2, 3, 4, 6]);
+    const I = V / R;
+    if (!Number.isInteger(I)) return null;
+    if (Math.random() < 0.5) {
+      return mkNum(
+        `Sebuah lampu dihubungkan ke sumber tegangan ${V} volt. Arus yang mengalir pada lampu adalah ${I} ampere. Hambatan lampu adalah … ohm`,
+        R, [V * I, R + 2, Math.max(1, R - 1)],
+        `Langkah 1: gunakan Hukum Ohm V = I × R, diubah menjadi R = V : I. Langkah 2: R = ${V} : ${I} = ${R} ohm.`,
+        "💡",
+      );
+    }
+    const P = V * I;
+    return mkNum(
+      `Sebuah setrika listrik dihubungkan ke tegangan ${V} volt dan dialiri arus ${I} ampere. Daya listrik setrika adalah … watt`,
+      P, [V + I, P + V, Math.max(1, P - I)].filter((x) => x !== P),
+      `Langkah 1: rumus daya listrik adalah P = V × I (tegangan × kuat arus). Langkah 2: P = ${V} × ${I} = ${P} watt.`,
+      "💡",
+    );
+  }
+  const a = ri(9, 14);
+  const b = a - ri(2, 5);
+  return mkq(
+    `Percobaan pertumbuhan tanaman: 10 tanaman diberi pupuk organik tumbuh rata-rata ${a} cm dalam sebulan, sedangkan 10 tanaman sejenis tanpa pupuk tumbuh rata-rata ${b} cm. Tanah, air, dan cahaya untuk kedua kelompok dibuat sama. Kesimpulan yang PALING TEPAT adalah …`,
+    "Pada percobaan ini, pemberian pupuk organik membantu tanaman tumbuh lebih tinggi",
+    ["Pupuk organik pasti membuat semua tanaman di mana pun tumbuh lebih cepat", "Tanaman sebenarnya tidak membutuhkan air untuk tumbuh", "Perbedaan tinggi tanaman disebabkan oleh perbedaan cahaya"],
+    `Langkah 1: satu-satunya perbedaan perlakuan adalah pupuk — tanah, air, dan cahaya dibuat sama. Langkah 2: kelompok berpupuk tumbuh ${a} cm, lebih tinggi daripada ${b} cm. Jadi kesimpulannya: pada percobaan ini pupuk membantu pertumbuhan. Kesimpulan tidak boleh berlebihan (tidak berlaku mutlak untuk semua tanaman), dan pilihan terakhir salah karena cahaya justru dibuat sama.`,
+    "🧪",
+  );
+};
+
+/* ---------- SMA Biologi: membaca data percobaan & pertumbuhan populasi ---------- */
+const smaBioDetail: LGen = () => {
+  if (Math.random() < 0.5) {
+    const temps = [10, 20, 30, 40, 50];
+    const peakIdx = ri(1, 3);
+    const peak = ri(70, 95);
+    const othersPool = sample([8, 15, 22, 30, 38, 45, 52, 60], 4);
+    const acts = temps.map((_, i) => (i === peakIdx ? peak : (othersPool.pop() as number)));
+    const table = temps.map((t, i) => `${t}°C → ${acts[i]} unit`).join("; ");
+    return mkq(
+      `Aktivitas enzim amilase diukur pada berbagai suhu dengan hasil: ${table}. Suhu optimum enzim amilase berdasarkan data itu adalah …`,
+      `${temps[peakIdx]}°C`,
+      temps.filter((_, i) => i !== peakIdx).slice(0, 3).map((t) => `${t}°C`),
+      `Langkah 1: cari aktivitas tertinggi pada data, yaitu ${peak} unit. Langkah 2: aktivitas itu terjadi pada suhu ${temps[peakIdx]}°C — inilah suhu optimum, suhu kerja terbaik enzim. Langkah 3: pada suhu yang lebih tinggi aktivitas menurun karena enzim mulai rusak (denaturasi).`,
+      "🧫",
+    );
+  }
+  const n0 = pick([100, 200, 500, 1000]);
+  const periods = ri(3, 6);
+  const total = n0 * 2 ** periods;
+  return mkNum(
+    `Suatu koloni bakteri berjumlah ${fmt(n0)} sel dan membelah menjadi dua setiap 20 menit. Jumlah bakteri setelah ${periods * 20} menit adalah … sel`,
+    total, [n0 * periods * 2, total / 2, n0 + total / 2].filter((x) => x !== total),
+    `Langkah 1: dalam ${periods * 20} menit terjadi ${periods * 20} : 20 = ${periods} kali pembelahan. Langkah 2: setiap pembelahan melipatduakan jumlah, jadi jumlah akhir = ${fmt(n0)} × 2^${periods} = ${fmt(n0)} × ${2 ** periods} = ${fmt(total)} sel.`,
+    "🧫",
+  );
+};
+
+/* ---------- SMA Fisika: listrik rumah, GLBB & usaha bertahap ---------- */
+const smaPhysDetail: LGen = () => {
+  const mode = ri(0, 2);
+  if (mode === 0) {
+    const P = pick([100, 200, 400, 500, 1000]);
+    const hours = pick([2, 4, 5, 10]);
+    const kwh = (P / 1000) * hours * 30;
+    const kwStr = fmtDec(P / 1000);
+    if (Math.random() < 0.5) {
+      return mkNum(
+        `Sebuah pendingin ruangan (AC) berdaya ${fmt(P)} watt dipakai ${hours} jam setiap hari selama 30 hari. Energi listrik yang digunakan AC itu adalah … kWh`,
+        kwh, [kwh / 30 * hours === kwh ? kwh + 30 : kwh / 30 * hours, (P * hours) / 100, kwh * 2].filter((x) => x > 0 && x !== kwh),
+        `Langkah 1: ubah daya ke kilowatt: ${fmt(P)} W = ${kwStr} kW. Langkah 2: total waktu pakai = ${hours} jam × 30 hari = ${hours * 30} jam. Langkah 3: energi = daya × waktu = ${kwStr} × ${hours * 30} = ${kwh} kWh.`,
+      );
+    }
+    const cost = kwh * 1500;
+    return mkNum(
+      `Sebuah pendingin ruangan (AC) berdaya ${fmt(P)} watt dipakai ${hours} jam setiap hari selama 30 hari. Jika tarif listrik Rp1.500 per kWh, biaya listrik untuk AC itu selama 30 hari adalah …`,
+      cost, [kwh * 1000, cost / 2, cost + kwh * 500].filter((x) => x > 0 && x !== cost),
+      `Langkah 1: energi terpakai = (${fmt(P)} : 1000) kW × ${hours} jam × 30 hari = ${kwh} kWh. Langkah 2: biaya = energi × tarif = ${kwh} × Rp1.500 = Rp${fmt(cost)}.`,
+    );
+  }
+  if (mode === 1) {
+    const v0 = ri(0, 10);
+    const a = pick([2, 4, 6]);
+    const t = ri(2, 5);
+    const s = v0 * t + 0.5 * a * t * t;
+    return mkNum(
+      `Sebuah benda bergerak lurus dengan kecepatan awal ${v0} m/s dan percepatan tetap ${a} m/s². Jarak yang ditempuh benda setelah ${t} sekon adalah … m`,
+      s, [v0 * t, s + a * t, v0 * t + a * t * t].filter((x) => x !== s),
+      `Langkah 1: gunakan rumus gerak lurus berubah beraturan s = v₀t + ½at². Langkah 2: s = ${v0}×${t} + ½×${a}×${t}² = ${v0 * t} + ${0.5 * a * t * t} = ${s} m.`,
+    );
+  }
+  const F = pick([10, 20, 25, 40, 50]);
+  const s2 = ri(2, 12);
+  const W = F * s2;
+  return mkNum(
+    `Sebuah gaya sebesar ${F} N mendorong kotak sejauh ${s2} m searah dengan arah gaya. Usaha yang dilakukan gaya itu adalah … J`,
+    W, [F + s2, W / 2, W + F],
+    `Langkah 1: usaha dirumuskan W = F × s (gaya × perpindahan searah gaya). Langkah 2: W = ${F} × ${s2} = ${W} joule.`,
+  );
+};
+
+/* ---------- SMA Kimia: mol, konsentrasi & kadar bertahap ---------- */
+const smaChemDetail: LGen = () => {
+  const mode = ri(0, 2);
+  if (mode === 0) {
+    const subs: readonly (readonly [string, number, readonly number[]])[] = [
+      ["NaOH", 40, [4, 8, 20, 80]],
+      ["H₂O", 18, [9, 18, 36, 90]],
+      ["CO₂", 44, [11, 22, 44, 88]],
+      ["glukosa (C₆H₁₂O₆)", 180, [45, 90, 180, 360]],
+      ["CaCO₃", 100, [25, 50, 100, 200]],
+    ];
+    const s = pick(subs);
+    const m = pick(s[2]);
+    const n = m / s[1];
+    const ans = fmtDec(n);
+    const ds = [fmtDec(n * 2), fmtDec(n + 1), fmtDec(n / 2)].filter((x) => x !== ans);
+    return mkq(
+      `Jumlah mol dari ${m} gram ${s[0]} (Mr = ${s[1]}) adalah … mol`,
+      ans, ds,
+      `Langkah 1: gunakan rumus mol n = massa : Mr. Langkah 2: n = ${m} : ${s[1]} = ${ans} mol.`,
+    );
+  }
+  if (mode === 1) {
+    const mol = pick([1, 2, 3, 4]);
+    const vol = pick([1, 2, 4, 5]);
+    const M = mol / vol;
+    const ans = fmtDec(M);
+    const ds = [fmtDec(mol * vol), fmtDec(M * 2), fmtDec(M / 2)].filter((x) => x !== ans);
+    return mkq(
+      `Sebanyak ${mol} mol zat terlarut dilarutkan dalam air hingga volume larutan menjadi ${vol} liter. Konsentrasi (molaritas) larutan itu adalah … M`,
+      ans, ds,
+      `Langkah 1: molaritas M = jumlah mol : volume larutan (liter). Langkah 2: M = ${mol} : ${vol} = ${ans} mol/L.`,
+    );
+  }
+  const solute = pick([10, 20, 25, 40]);
+  const totalM = pick([100, 200, 250, 500]);
+  const pct = (solute / totalM) * 100;
+  if (!Number.isInteger(pct)) return null;
+  return mkNum(
+    `Sebuah larutan dibuat dari ${solute} gram gula yang dilarutkan dalam air hingga massa larutan menjadi ${totalM} gram. Kadar gula dalam larutan itu adalah … %`,
+    pct, [pct + 5, pct - 5, solute].filter((x) => x > 0 && x !== pct),
+    `Langkah 1: kadar = (massa zat terlarut : massa larutan) × 100%. Langkah 2: kadar = (${solute} : ${totalM}) × 100% = ${pct}%.`,
+  );
+};
+
 export const GENERATORS: Partial<Record<JenjangId, Record<string, LGen[]>>> = {
   TK: {
     inggris: [pairGenL({ pairs: TK_ENG_PAIRS, askA: (a) => `What is “${a}” in Indonesian? / “${a}” artinya …`, askB: (b) => `Bahasa Inggris dari “${b}” adalah …`, exA: (a, b) => `“${a}” artinya ${b}.`, exB: (a, b) => `“${a}” dalam Bahasa Inggris adalah ${b}.`, four: false }), tkEngArrange, tkCompare],
-    matematika: [tkCount, tkAddSub, tkCompare, tkMissing, tkBeforeAfter, tkStoryCount, factGenL(TK_SHAPE_FACTS, false), mathStoryGen("TK"), emojiPictureGen("TK")],
+    matematika: [tkCount, tkAddSub, tkCompare, tkMissing, tkBeforeAfter, tkStoryCount, tkStoryDetail, tkStoryDetail, factGenL(TK_SHAPE_FACTS, false), mathStoryGen("TK"), emojiPictureGen("TK")],
     nalaria: nalariaGens("TK"),
     "kanguru-matematika": kanguruMathGens("TK"),
     "kanguru-bahasa": kanguruBahasaGens("TK"),
@@ -3036,7 +3801,7 @@ export const GENERATORS: Partial<Record<JenjangId, Record<string, LGen[]>>> = {
     sasmo: sasmoGens("TK"),
     amo: amoGens("TK"),
     jso: jsoGens("TK"),
-    sains: [pairGenL({ pairs: TK_SAINS_PAIRS, askA: (a) => `${a} hidup terutama di …`, askB: (b) => `Hewan yang hidup di ${b.toLowerCase()} adalah …`, exA: (a, b) => `${a} hidup di ${b.toLowerCase()}.`, exB: (a, b) => `Yang hidup di ${b.toLowerCase()} adalah ${a}.`, four: false }), factGenL(TK_SAINS_FACTS, false), emojiPictureGen("TK")],
+    sains: [pairGenL({ pairs: TK_SAINS_PAIRS, askA: (a) => `${a} hidup terutama di …`, askB: (b) => `Hewan yang hidup di ${b.toLowerCase()} adalah …`, exA: (a, b) => `${a} hidup di ${b.toLowerCase()}.`, exB: (a, b) => `Yang hidup di ${b.toLowerCase()} adalah ${a}.`, four: false }), factGenL(TK_SAINS_FACTS, false), factGenL(TK_SCI_STORY_FACTS, false), emojiPictureGen("TK")],
     pai: [factGenL(TK_PAI_FACTS, false),
       pairGenL({ pairs: MALAIKAT, askA: (a) => `Tugas Malaikat ${a} adalah …`, askB: (b) => `Malaikat yang bertugas “${b.toLowerCase()}” adalah …`, exA: (a, b) => `${a}: ${b.toLowerCase()}.`, exB: (a, _b) => `Itu tugas Malaikat ${a}.`, four: false }),
       pairGenL({ pairs: KITAB_NABI, askA: (a) => `Kitab ${a} diturunkan kepada …`, askB: (b) => `Kitab yang diturunkan kepada ${b} adalah …`, exA: (a, b) => `${a} → ${b}.`, exB: (a, b) => `${b} menerima kitab ${a}.`, four: false })],
@@ -3054,7 +3819,7 @@ export const GENERATORS: Partial<Record<JenjangId, Record<string, LGen[]>>> = {
     // tidak muncul di kelas rendah — perkalian/pembagian mulai Kelas 2,
     // operasi campuran & pecahan & bangun mulai Kelas 3, pembulatan &
     // FPB/KPK & Romawi mulai Kelas 4, rata-rata & persen mulai Kelas 5.
-    matematika: [sdAddSub, bandGate(0.15, sdMulDiv), bandGate(0.35, sdMixed), bandGate(0.35, sdFraction), bandGate(0.5, sdFpbKpk), bandGate(0.35, sdGeometry), bandGate(0.75, sdAverage), sdSequence, bandGate(0.15, sdWordProblem), bandGate(0.5, sdRound), bandGate(0.75, sdPercent), bandGate(0.15, sdClock), bandGate(0.15, sdUnit), bandGate(0.35, sdFracCompare), sdGradeMath, sdGradeMath, bandGate(0.15, mathStoryGen("SD")), emojiPictureGen("SD"),
+    matematika: [sdAddSub, bandGate(0.15, sdMulDiv), bandGate(0.35, sdMixed), bandGate(0.35, sdFraction), bandGate(0.5, sdFpbKpk), bandGate(0.35, sdGeometry), bandGate(0.75, sdAverage), sdSequence, bandGate(0.15, sdWordProblem), bandGate(0.5, sdRound), bandGate(0.75, sdPercent), bandGate(0.15, sdClock), bandGate(0.15, sdUnit), bandGate(0.35, sdFracCompare), sdGradeMath, sdGradeMath, bandGate(0.35, sdShopDetail), bandGate(0.35, sdDataDetail), bandGate(0.5, sdRatioDetail), bandGate(0.35, sdTrueStmt), bandGate(0.15, mathStoryGen("SD")), emojiPictureGen("SD"),
       bandGate(0.5, pairGenL({ pairs: ROMAN_PAIRS, askA: (a) => `Bilangan Romawi dari ${a} adalah …`, askB: (b) => `Angka Romawi “${b}” bernilai …`, exA: (a, b) => `${a} dalam angka Romawi adalah ${b}.`, exB: (a, b) => `${b} bernilai ${a}.` }))],
     nalaria: nalariaGens("SD"),
     "kanguru-matematika": kanguruMathGens("SD"),
@@ -3071,7 +3836,7 @@ export const GENERATORS: Partial<Record<JenjangId, Record<string, LGen[]>>> = {
     ],
     sains: [
       pairGenL({ pairs: SD_SAINS_PAIRS, askA: (a) => `Fungsi ${a.toLowerCase()} adalah …`, askB: (b) => `Bagian/organ yang berfungsi “${b.toLowerCase()}” adalah …`, exA: (a, b) => `${a}: ${b.toLowerCase()}.`, exB: (a, b) => `Yang berfungsi ${b.toLowerCase()} adalah ${a}.` }),
-      factGenL(SD_SAINS_FACTS), planetGen, emojiPictureGen("SD"),
+      factGenL(SD_SAINS_FACTS), planetGen, sdScienceDetail, sdScienceDetail, emojiPictureGen("SD"),
       classifyGen(SD_SAINS_CLASSIFY.map((x) => ({ item: x.item, cat: x.cat })), (i) => `Hewan ${i} mengalami …`, (i, c) => `${i} termasuk ${c.toLowerCase()}.`),
     ],
     indonesia: [
@@ -3133,7 +3898,7 @@ export const GENERATORS: Partial<Record<JenjangId, Record<string, LGen[]>>> = {
     mandarin: langVocabGensL(MANDARIN_VOCAB, "Mandarin", "SD", MANDARIN_FACTS),
   },
   SMP: {
-    matematika: [smpNegOps, smpEquation, smpSequence, smpGradient, smpProbability, smpScale, smpPhysics, smpDiscount, smpProfit, smpPythag, smpCircle, smpVolume, smpAngles, smpTwoVar, mathStoryGen("SMP")],
+    matematika: [smpNegOps, smpEquation, smpSequence, smpGradient, smpProbability, smpScale, smpPhysics, smpDiscount, smpProfit, smpPythag, smpCircle, smpVolume, smpAngles, smpTwoVar, smpMultiStep, smpDataDetail, mathStoryGen("SMP")],
     nalaria: nalariaGens("SMP"),
     "kanguru-matematika": kanguruMathGens("SMP"),
     "kanguru-bahasa": kanguruBahasaGens("SMP"),
@@ -3152,7 +3917,7 @@ export const GENERATORS: Partial<Record<JenjangId, Record<string, LGen[]>>> = {
         ["“Despite the rain, the match continued.” The word “despite” shows …", "contrast / concession (pertentangan)", ["cause", "time", "purpose"], "Despite = walaupun → concession."],
       ] as Fact[]),
     ],
-    sains: [factGenL(SMP_SAINS_FACTS), smpPhysics, phGen,
+    sains: [factGenL(SMP_SAINS_FACTS), smpPhysics, phGen, smpScienceDetail, smpScienceDetail,
       pairGenL({ pairs: ORGANEL, askA: (a) => `Fungsi organel ${a.toLowerCase()} adalah …`, askB: (b) => `Organel yang berfungsi “${b.toLowerCase()}” adalah …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `Itu adalah ${a}.` })],
     indonesia: [factGenL(indoFactsSMP),
       pairGenL({ pairs: KATA_BAKU, askA: (a) => `Bentuk baku dari kata “${a}” adalah …`, askB: (b) => `Kata tidak baku dari “${b}” adalah …`, exA: (a, b) => `Baku: ${b} (bukan ${a}).`, exB: (a, b) => `${a} adalah bentuk tidak baku dari ${b}.` }),
@@ -3213,7 +3978,7 @@ export const GENERATORS: Partial<Record<JenjangId, Record<string, LGen[]>>> = {
     mandarin: langVocabGensL(MANDARIN_VOCAB, "Mandarin", "SMP", MANDARIN_FACTS),
   },
   SMA: {
-    matematika: [smaDerivative, smaLimit, smaLog, smaSeries, smaCombination, smaQuadratic, smaGeomSeries, smaDet, smaPerm, factGenL(TRIG_FACTS), mathStoryGen("SMA")],
+    matematika: [smaDerivative, smaLimit, smaLog, smaSeries, smaCombination, smaQuadratic, smaGeomSeries, smaDet, smaPerm, factGenL(TRIG_FACTS), smaFunctionDetail, smaTrigDetail, smaProbStatDetail, mathStoryGen("SMA")],
     nalaria: nalariaGens("SMA"),
     "kanguru-matematika": kanguruMathGens("SMA"),
     "kanguru-bahasa": kanguruBahasaGens("SMA"),
@@ -3230,7 +3995,7 @@ export const GENERATORS: Partial<Record<JenjangId, Record<string, LGen[]>>> = {
       ] as Fact[]),
       pairGenL({ pairs: EN_PAST, askA: (a) => `The past participle check — the past tense of “${a}” is …`, askB: (b) => `“${b}” is the past form of …`, exA: (a, b) => `${a} → ${b}.`, exB: (a, b) => `${b} ← ${a}.` }),
     ],
-    biologi: [smaGenetics,
+    biologi: [smaGenetics, smaBioDetail, smaBioDetail,
       pairGenL({ pairs: ENZIM, askA: (a) => `Enzim ${a} berfungsi …`, askB: (b) => `Enzim yang berfungsi “${b.toLowerCase()}” adalah …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `Itu adalah enzim ${a}.` }),
       pairGenL({ pairs: ORGANEL, askA: (a) => `Fungsi organel ${a.toLowerCase()} adalah …`, askB: (b) => `Organel yang berfungsi “${b.toLowerCase()}” adalah …`, exA: (a, b) => `${a}: ${b}.`, exB: (a, _b) => `Itu adalah ${a}.` }),
       factGenL([
@@ -3238,8 +4003,8 @@ export const GENERATORS: Partial<Record<JenjangId, Record<string, LGen[]>>> = {
         ["Enzim yang menyambung fragmen Okazaki pada replikasi DNA adalah …", "DNA ligase", ["Helikase", "Primase", "Topoisomerase"], "DNA ligase menyambung fragmen Okazaki pada untai lagging."],
         ["Organ pernapasan pada serangga adalah …", "Trakea", ["Paru-paru", "Insang", "Kulit"], "Serangga bernapas lewat sistem trakea & spirakel."],
       ] as Fact[])],
-    fisika: [smaPhysics],
-    kimia: [smaChemistryPh,
+    fisika: [smaPhysics, smaPhysDetail, smaPhysDetail],
+    kimia: [smaChemistryPh, smaChemDetail, smaChemDetail,
       pairGenL({ pairs: UNSUR_SIMBOL, askA: (a) => `Lambang unsur ${a} adalah …`, askB: (b) => `Unsur dengan lambang “${b}” adalah …`, exA: (a, b) => `${a} = ${b}.`, exB: (a, b) => `${b} = ${a}.` }),
       factGenL([
         ["Konfigurasi elektron Fe (Z = 26) adalah …", "[Ar] 4s² 3d⁶", ["[Ar] 4s¹ 3d⁷", "[Ar] 3d⁸", "[Ne] 4s² 3d⁶"], "Fe: 1s²2s²2p⁶3s²3p⁶4s²3d⁶ = [Ar] 4s² 3d⁶."],
